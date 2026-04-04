@@ -4,13 +4,14 @@ import { useSlides } from '../../hooks/useSlides'
 import { useCourses } from '../../hooks/useCourses'
 import { PageHeader } from '../../components/ui/Card'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
+import { Spinner, PageError } from '../../components/ui/Spinner'
 import { UploadZone } from '../../components/slides/UploadZone'
 import { SlideGrid } from '../../components/slides/SlideGrid'
 import type { Slide } from '../../types'
 
 export default function FacultySlides() {
   const { profile } = useAuth()
-  const { slides, uploadSlide, deleteSlide, getDownloadUrl } = useSlides()
+  const { slides, loading, error, uploadSlide, deleteSlide, getDownloadUrl, refetch } = useSlides()
   const { courses } = useCourses()
   const [confirmDelete, setConfirmDelete] = useState<Slide | null>(null)
 
@@ -29,6 +30,9 @@ export default function FacultySlides() {
     const a = document.createElement('a')
     a.href = url; a.download = slide.title; a.click()
   }
+
+  if (loading) return <Spinner />
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   return (
     <div>

@@ -33,21 +33,30 @@ export function useGradeBook() {
   const [groups, setGroups] = useState<GradeGroup[]>([])
   const [columns, setColumns] = useState<GradeColumn[]>([])
   const [entries, setEntries] = useState<GradeEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => { fetchAll() }, [])
 
   async function fetchAll() {
-    const [groupsRes, colsRes, entsRes] = await Promise.all([
-      supabase.from('grade_groups').select('*').order('created_at', { ascending: true }),
-      supabase.from('grade_columns').select('*').order('created_at', { ascending: true }),
-      supabase.from('grade_entries').select('*'),
-    ])
-    if (groupsRes.error) throw groupsRes.error
-    if (colsRes.error) throw colsRes.error
-    if (entsRes.error) throw entsRes.error
-    setGroups(groupsRes.data || [])
-    setColumns(colsRes.data || [])
-    setEntries(entsRes.data || [])
+    try {
+      setError(null)
+      const [groupsRes, colsRes, entsRes] = await Promise.all([
+        supabase.from('grade_groups').select('*').order('created_at', { ascending: true }),
+        supabase.from('grade_columns').select('*').order('created_at', { ascending: true }),
+        supabase.from('grade_entries').select('*'),
+      ])
+      if (groupsRes.error) throw groupsRes.error
+      if (colsRes.error) throw colsRes.error
+      if (entsRes.error) throw entsRes.error
+      setGroups(groupsRes.data || [])
+      setColumns(colsRes.data || [])
+      setEntries(entsRes.data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load grade book')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function addGroup(name: string, weightPercent: number, userId: string) {
@@ -158,7 +167,7 @@ export function useGradeBook() {
   }
 
   return {
-    groups, columns, entries,
+    groups, columns, entries, loading, error,
     addGroup, updateGroup, deleteGroup,
     addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn,
     upsertEntry,

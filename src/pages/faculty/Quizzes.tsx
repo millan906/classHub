@@ -7,6 +7,7 @@ import { useCourses } from '../../hooks/useCourses'
 import { TYPE_ORDER } from '../../constants/itemTypes'
 import { useGradeBook } from '../../hooks/useGradeBook'
 import { PageHeader } from '../../components/ui/Card'
+import { Spinner, PageError } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { QuizCard } from '../../components/quizzes/QuizCard'
@@ -17,7 +18,7 @@ import type { Quiz, FileSubmission, QuizFormData } from '../../types'
 
 export default function FacultyQuizzes() {
   const { profile } = useAuth()
-  const { quizzes, submissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores } = useQuizzes()
+  const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores } = useQuizzes()
   const { slides } = useSlides()
   const { students } = useStudents()
   const { courses } = useCourses()
@@ -123,6 +124,9 @@ export default function FacultyQuizzes() {
       console.error('[GradeBook] handleSaveEssayScores failed:', err)
     }
   }
+
+  if (loading) return <Spinner />
+  if (error) return <PageError message={error} />
 
   if (viewingResults) {
     const quizSubs = submissions.filter(s => s.quiz_id === viewingResults.id)

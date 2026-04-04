@@ -196,9 +196,11 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBack, onSaveEssayScores }: QuizResultsProps) {
+  const PAGE_SIZE = 20
   const showFilesTab = !!(quiz.item_type && quiz.item_type !== 'quiz' && quiz.allow_file_upload)
   const [resultsTab, setResultsTab] = useState<'scores' | 'integrity' | 'files'>('scores')
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
   const { fetchLogsForQuiz } = useIntegrityLogs()
 
   useEffect(() => {
@@ -250,7 +252,7 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
       {resultsTab === 'scores' && (
         <>
           {enrolled.length === 0 && <div style={{ fontSize: '13px', color: '#888' }}>No enrolled students.</div>}
-          {enrolled.map(student => {
+          {enrolled.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(student => {
             const sub = submissions
               .filter(s => s.student_id === student.id)
               .sort((a, b) => (b.attempt_number ?? 0) - (a.attempt_number ?? 0))[0]
@@ -287,6 +289,23 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
               </div>
             )
           })}
+          {enrolled.length > PAGE_SIZE && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
+              <button
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+                style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.2)', background: 'transparent', cursor: page === 0 ? 'default' : 'pointer', opacity: page === 0 ? 0.4 : 1 }}
+              >← Prev</button>
+              <span style={{ fontSize: '12px', color: '#888' }}>
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, enrolled.length)} of {enrolled.length}
+              </span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={(page + 1) * PAGE_SIZE >= enrolled.length}
+                style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.2)', background: 'transparent', cursor: (page + 1) * PAGE_SIZE >= enrolled.length ? 'default' : 'pointer', opacity: (page + 1) * PAGE_SIZE >= enrolled.length ? 0.4 : 1 }}
+              >Next →</button>
+            </div>
+          )}
         </>
       )}
 

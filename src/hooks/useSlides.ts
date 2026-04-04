@@ -5,6 +5,7 @@ import type { Slide } from '../types'
 export function useSlides() {
   const [slides, setSlides] = useState<Slide[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchSlides()
@@ -16,9 +17,16 @@ export function useSlides() {
   }, [])
 
   async function fetchSlides() {
-    const { data } = await supabase.from('slides').select('*').order('created_at', { ascending: false })
-    setSlides(data || [])
-    setLoading(false)
+    try {
+      setError(null)
+      const { data, error: err } = await supabase.from('slides').select('*').order('created_at', { ascending: false })
+      if (err) throw err
+      setSlides(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load slides')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function uploadSlide(file: File, title: string, userId: string, courseId: string | null = null) {
@@ -50,5 +58,5 @@ export function useSlides() {
     return data.publicUrl
   }
 
-  return { slides, loading, uploadSlide, deleteSlide, getDownloadUrl, refetch: fetchSlides }
+  return { slides, loading, error, uploadSlide, deleteSlide, getDownloadUrl, refetch: fetchSlides }
 }

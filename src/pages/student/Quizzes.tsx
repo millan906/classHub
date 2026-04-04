@@ -8,13 +8,14 @@ import { useCourses } from '../../hooks/useCourses'
 import { TYPE_ORDER } from '../../constants/itemTypes'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { PageHeader } from '../../components/ui/Card'
+import { Spinner, PageError } from '../../components/ui/Spinner'
 import { QuizCard } from '../../components/quizzes/QuizCard'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
 import type { Quiz } from '../../types'
 
 export default function StudentQuizzes() {
   const { profile } = useAuth()
-  const { quizzes, submissions, fetchMySubmissions, submitQuiz, uploadFile } = useQuizzes()
+  const { quizzes, submissions, loading, error, fetchMySubmissions, submitQuiz, uploadFile } = useQuizzes()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
   const { logEvent } = useIntegrityLogs()
   const { groups, columns, entries } = useGradeBook()
@@ -42,6 +43,9 @@ export default function StudentQuizzes() {
     if (!profile || !takingQuiz) return
     logEvent(takingQuiz.id, profile.id, eventType, severity)
   }
+
+  if (loading) return <Spinner />
+  if (error) return <PageError message={error} />
 
   if (takingQuiz) {
     return (

@@ -4,11 +4,12 @@ import { useCourses } from '../../hooks/useCourses'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { PageHeader } from '../../components/ui/Card'
 import { SlideGrid } from '../../components/slides/SlideGrid'
+import { Spinner, PageError } from '../../components/ui/Spinner'
 import type { Slide } from '../../types'
 
 export default function StudentSlides() {
   const { profile } = useAuth()
-  const { slides, getDownloadUrl } = useSlides()
+  const { slides, loading, error, getDownloadUrl, refetch } = useSlides()
   const { courses } = useCourses()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
 
@@ -26,6 +27,9 @@ export default function StudentSlides() {
     const a = document.createElement('a')
     a.href = url; a.download = slide.title; a.click()
   }
+
+  if (loading) return <Spinner />
+  if (error) return <PageError message={error} onRetry={refetch} />
 
   return (
     <div>

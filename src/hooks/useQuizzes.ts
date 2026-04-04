@@ -6,6 +6,7 @@ export function useQuizzes() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchQuizzes()
@@ -17,12 +18,19 @@ export function useQuizzes() {
   }, [])
 
   async function fetchQuizzes() {
-    const { data } = await supabase
-      .from('quizzes')
-      .select('*, questions:quiz_questions(*)')
-      .order('created_at', { ascending: false })
-    setQuizzes(data || [])
-    setLoading(false)
+    try {
+      setError(null)
+      const { data, error: err } = await supabase
+        .from('quizzes')
+        .select('*, questions:quiz_questions(*)')
+        .order('created_at', { ascending: false })
+      if (err) throw err
+      setQuizzes(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load assessments')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function fetchMySubmissions(studentId: string) {
@@ -161,5 +169,5 @@ export function useQuizzes() {
     await fetchAllSubmissions()
   }
 
-  return { quizzes, submissions, loading, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, fetchFileSubmissions, saveEssayScores }
+  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, fetchFileSubmissions, saveEssayScores }
 }
