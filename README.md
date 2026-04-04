@@ -1,73 +1,64 @@
-# React + TypeScript + Vite
+# ClassHub
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A learning management system (LMS) for faculty and students, built with React, TypeScript, and Supabase.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Faculty
+- **Dashboard** — Grade distribution chart, action alerts (essays to grade, pending approvals, closing assessments), latest assessment stats, per-course filtering
+- **Courses** — Create and manage courses with sections; open/close enrollment
+- **Students** — Approve/reject enrollment requests, assign courses, view per-student scores, due items, and missed assessments
+- **Assessments** — Create and manage quizzes, exams, assignments, labs, and projects; course filter and type grouping; essay grading with automatic gradebook sync
+- **Grade Book** — Weighted final grade calculation across configurable grade groups; manual score entry
+- **Slides** — Upload and manage course slide decks
+- **Q&A** — Answer student questions
+- **Announcements** — Post class-wide announcements
 
-## React Compiler
+### Student
+- **Dashboard** — Summary of due/missed assessments and gradebook scores
+- **Courses** — View enrolled courses
+- **Assessments** — Take quizzes with timed submissions, multiple attempts, and file uploads; view scores grouped by type
+- **Slides** — Access course slide decks
+- **Q&A** — Post and browse questions
+- **Announcements** — View faculty announcements
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- **Frontend** — React 18, TypeScript, Vite
+- **Backend / DB** — Supabase (PostgreSQL, Auth, Storage)
+- **Charts** — Recharts
+- **Routing** — React Router v6
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Getting Started
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. Clone the repo and install dependencies:
+   ```bash
+   npm install
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+2. Create a `.env.local` file with your Supabase credentials:
+   ```
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_anon_key
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+3. Run the Supabase migrations in order (`SUPABASE_MIGRATIONS.sql` through `SUPABASE_MIGRATIONS_11.sql`) against your Supabase project.
+
+4. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+
+## Project Structure
+
 ```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+src/
+├── components/       # Reusable UI and feature components
+├── constants/        # Shared constants (item types, etc.)
+├── hooks/            # Supabase data hooks
+├── pages/            # Faculty and student page views
+│   ├── faculty/
+│   └── student/
+├── utils/            # Grade calculations, score colors
+└── types/            # Shared TypeScript types
 ```
