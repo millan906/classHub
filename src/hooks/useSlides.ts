@@ -6,7 +6,14 @@ export function useSlides() {
   const [slides, setSlides] = useState<Slide[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchSlides() }, [])
+  useEffect(() => {
+    fetchSlides()
+    const channel = supabase
+      .channel('slides-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'slides' }, fetchSlides)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   async function fetchSlides() {
     const { data } = await supabase.from('slides').select('*').order('created_at', { ascending: false })

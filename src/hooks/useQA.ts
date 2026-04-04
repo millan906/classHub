@@ -6,7 +6,15 @@ export function useQA() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchQuestions() }, [])
+  useEffect(() => {
+    fetchQuestions()
+    const channel = supabase
+      .channel('qa-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, fetchQuestions)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'answers' }, fetchQuestions)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   async function fetchQuestions() {
     const { data } = await supabase

@@ -7,7 +7,14 @@ export function useQuizzes() {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchQuizzes() }, [])
+  useEffect(() => {
+    fetchQuizzes()
+    const channel = supabase
+      .channel('quizzes-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, fetchQuizzes)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   async function fetchQuizzes() {
     const { data } = await supabase
