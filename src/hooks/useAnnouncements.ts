@@ -28,7 +28,6 @@ export function useAnnouncements() {
       .select()
       .single()
 
-    console.log('[postAnnouncement] insert data:', data)
     // Fire-and-forget — email failure never blocks the UI
     if (data) {
       const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-announcement-email`

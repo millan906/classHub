@@ -11,7 +11,8 @@ const inputStyle: React.CSSProperties = {
 }
 
 export default function Register() {
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [inviteCode, setInviteCode] = useState('')
@@ -24,9 +25,14 @@ export default function Register() {
     setError('')
     setLoading(true)
     try {
-      const isFaculty = inviteCode === import.meta.env.VITE_FACULTY_INVITE_CODE
-      const role = isFaculty ? 'faculty' : 'student'
-      const status = isFaculty ? 'approved' : 'pending'
+      // Resolve role server-side — invite code is never in the frontend bundle
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resolve-role`
+      const roleRes = await fetch(fnUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
+        body: JSON.stringify({ code: inviteCode }),
+      })
+      const { role, status } = await roleRes.json()
 
       const { data, error: authError } = await supabase.auth.signUp({ email, password })
       if (authError) throw authError
@@ -34,7 +40,9 @@ export default function Register() {
 
       const { error: profileError } = await supabase.from('profiles').insert({
         id: data.user.id,
-        full_name: name.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        full_name: `${firstName.trim()} ${lastName.trim()}`,
         email,
         role,
         status,
@@ -64,8 +72,16 @@ export default function Register() {
         <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.5rem' }}>Create your account</div>
 
         <form onSubmit={handleRegister}>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Full name</div>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" style={inputStyle} required />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>First name</div>
+              <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" style={inputStyle} required />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Last name</div>
+              <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" style={inputStyle} required />
+            </div>
+          </div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Email</div>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} required />
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Password</div>

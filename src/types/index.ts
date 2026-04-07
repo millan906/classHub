@@ -3,6 +3,8 @@ export type Status = 'pending' | 'approved' | 'rejected'
 
 export interface Profile {
   id: string
+  first_name: string
+  last_name: string
   full_name: string
   email: string
   role: Role
