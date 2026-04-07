@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@rolldown/binding-darwin-arm64": "^1.0.0-rc.13",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^24.12.0",
@@ -41,5 +40,8 @@
     "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1",
     "vitest": "^4.1.2"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-darwin-arm64": "^1.0.0-rc.13"
   }
 }
