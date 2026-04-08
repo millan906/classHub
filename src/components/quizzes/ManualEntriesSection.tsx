@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import { Button } from '../ui/Button'
+import { useState, useEffect } from 'react'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import { inputStyle } from '../../styles/shared'

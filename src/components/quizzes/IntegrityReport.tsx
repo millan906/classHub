@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useIntegrityLogs } from '../../hooks/useIntegrityLogs'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import type { Profile, QuizSubmission, IntegrityLog } from '../../types'

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { DraftQuestionEditor } from './DraftQuestionEditor'
@@ -125,7 +125,7 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       timeLimitMinutes: isQuiz ? (timeLimit ? parseInt(timeLimit, 10) : null) : null,
       lockdownEnabled: isQuiz ? lockdown : false,
       maxAttempts: isQuiz ? (parseInt(maxAttempts) || 1) : 1,
-      questions: qs.map(q => ({ ...q, points: Number(q.points) || 1 })),
+      questions: qs.map(q => ({ ...q, points: Number(q.points) || 1, code_snippet: q.code_snippet ?? undefined, code_language: q.code_language ?? undefined })),
       itemType,
       gradeGroupId: manualGroupId || null,
       allowFileUpload: isQuiz ? false : allowFileUpload,

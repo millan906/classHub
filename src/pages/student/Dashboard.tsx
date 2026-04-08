@@ -6,9 +6,8 @@ import { useQuizzes } from '../../hooks/useQuizzes'
 import { useQA } from '../../hooks/useQA'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { useGradeBook } from '../../hooks/useGradeBook'
-import { MetricCard, PageHeader, Card } from '../../components/ui/Card'
+import { MetricCard, PageHeader } from '../../components/ui/Card'
 import { scoreBarColor } from '../../utils/scoreColors'
-import { Button } from '../../components/ui/Button'
 
 export default function StudentDashboard() {
   const { profile } = useAuth()

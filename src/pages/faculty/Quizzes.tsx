@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuizzes } from '../../hooks/useQuizzes'
 import { useSlides } from '../../hooks/useSlides'
@@ -43,17 +43,18 @@ export default function FacultyQuizzes() {
 
     if (!viewingResults.grade_group_id || !profile) return
 
-    const questions = viewingResults.questions ?? []
+    const quiz = viewingResults
+    const questions = quiz.questions ?? []
     const hasEssay = questions.some(q => q.type === 'essay')
     const correctMax = questions.length > 0
       ? questions.reduce((sum, q) => sum + (Number(q.points) || 1), 0)
       : 100
-    const quizSubs = submissions.filter(s => s.quiz_id === viewingResults.id)
+    const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
 
     async function syncToGradebook() {
       try {
         const col = await findOrCreateLinkedColumn(
-          viewingResults.id, viewingResults.title, viewingResults.grade_group_id!, correctMax, profile!.id,
+          quiz.id, quiz.title, quiz.grade_group_id!, correctMax, profile!.id,
         )
         if (col.max_score !== correctMax) await updateColumnMaxScore(col.id, correctMax)
         await Promise.all(

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '../ui/Button'
 import { useLockdown } from '../../hooks/useLockdown'
 import type { Quiz, QuizQuestion } from '../../types'
@@ -132,7 +132,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [earnedPoints, setEarnedPoints] = useState(0)
-  const [totalPoints, setTotalPoints] = useState(0)
+  const [, setTotalPoints] = useState(0)
   const hasEssay = questions.some(q => q.type === 'essay')
   const allEssay = questions.length > 0 && questions.every(q => q.type === 'essay')
   const autoTotal = questions.reduce((sum, q) => q.type !== 'essay' ? sum + (q.points ?? 1) : sum, 0)

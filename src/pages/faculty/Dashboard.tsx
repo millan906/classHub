@@ -204,7 +204,7 @@ export default function FacultyDashboard() {
                   <Tooltip
                     cursor={{ fill: 'rgba(0,0,0,0.04)' }}
                     contentStyle={{ fontSize: '12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.12)' }}
-                    formatter={(val: number) => [`${val} student${val !== 1 ? 's' : ''}`, 'Count']}
+                    formatter={(val: unknown) => { const n = Number(val); return [`${n} student${n !== 1 ? 's' : ''}`, 'Count'] }}
                   />
                   <Bar dataKey="count" radius={[6, 6, 0, 0]}>
                     {chartData.map((d, i) => <Cell key={i} fill={d.color} />)}

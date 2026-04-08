@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Question, Answer } from '../types'
+import type { Question } from '../types'
 
 export function useQA() {
   const [questions, setQuestions] = useState<Question[]>([])
