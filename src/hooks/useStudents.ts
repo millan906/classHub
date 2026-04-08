@@ -6,13 +6,13 @@ export function useStudents() {
   const [students, setStudents] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchStudents() }, [])
-
   async function fetchStudents() {
     const { data } = await supabase.from('profiles').select('*').eq('role', 'student').order('created_at', { ascending: false })
     setStudents(data || [])
     setLoading(false)
   }
+
+  useEffect(() => { fetchStudents() }, [])
 
   async function approveWithCourses(studentId: string, courseIds: string[], facultyId: string) {
     await supabase.from('profiles').update({ status: 'approved' }).eq('id', studentId)

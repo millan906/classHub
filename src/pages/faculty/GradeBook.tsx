@@ -235,8 +235,8 @@ function AddColumnForm({
     setError('')
     try {
       await onAdd(title.trim(), groupId, parseFloat(maxScore) || 100)
-    } catch (err: any) {
-      setError(err?.message || 'Failed to add column')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to add column')
     } finally {
       setSaving(false)
     }
@@ -488,7 +488,7 @@ export default function FacultyGradeBook() {
           confirmLabel="Remove"
           onConfirm={async () => {
             try { await deleteColumn(confirmDeleteCol.id); setConfirmDeleteCol(null) }
-            catch (err: any) { setPageError(err?.message || 'Failed to delete column') }
+            catch (err: unknown) { setPageError(err instanceof Error ? err.message : String(err) || 'Failed to delete column') }
           }}
           onCancel={() => setConfirmDeleteCol(null)}
         />
@@ -500,7 +500,7 @@ export default function FacultyGradeBook() {
           confirmLabel="Delete"
           onConfirm={async () => {
             try { await deleteGroup(confirmDeleteGroup.id); setConfirmDeleteGroup(null) }
-            catch (err: any) { setPageError(err?.message || 'Failed to delete group') }
+            catch (err: unknown) { setPageError(err instanceof Error ? err.message : String(err) || 'Failed to delete group') }
           }}
           onCancel={() => setConfirmDeleteGroup(null)}
         />
@@ -687,7 +687,7 @@ export default function FacultyGradeBook() {
                             maxScore={c.max_score}
                             onSave={async v => {
                               try { setPageError(''); await upsertEntry(c.id, student.id, v) }
-                              catch (err: any) { setPageError(err?.message || 'Failed to save score') }
+                              catch (err: unknown) { setPageError(err instanceof Error ? err.message : String(err) || 'Failed to save score') }
                             }}
                           />
                         </td>

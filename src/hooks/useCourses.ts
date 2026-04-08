@@ -6,8 +6,6 @@ export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => { fetchCourses() }, [])
-
   async function fetchCourses() {
     const { data } = await supabase
       .from('courses')
@@ -16,6 +14,8 @@ export function useCourses() {
     setCourses(data || [])
     setLoading(false)
   }
+
+  useEffect(() => { fetchCourses() }, [])
 
   async function createCourse(name: string, section: string, userId: string) {
     const { error } = await supabase.from('courses').insert({

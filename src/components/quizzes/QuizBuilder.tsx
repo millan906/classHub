@@ -9,6 +9,7 @@ import type { GradeGroup } from '../../hooks/useGradeBook'
 
 export type { ItemType } from '../../types'
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const TYPE_CONFIG: Record<ItemType, { label: string; color: string; groupName: string }> = {
   quiz:       { label: 'Quiz',       color: '#185FA5', groupName: 'Quizzes' },
   lab:        { label: 'Lab',        color: '#0F6E56', groupName: 'Laboratory' },
@@ -144,8 +145,8 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       } else {
         await onCreate(data)
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to save')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }

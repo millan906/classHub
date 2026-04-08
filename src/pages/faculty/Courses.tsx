@@ -36,8 +36,8 @@ function CourseForm({
     setError('')
     try {
       await onSave(name, section)
-    } catch (err: any) {
-      setError(err.message || 'Failed to save')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
@@ -104,8 +104,8 @@ function CourseStudentsPanel({
     try {
       await enrollStudent(course.id, selectedStudentId, facultyId)
       setSelectedStudentId('')
-    } catch (err: any) {
-      setError(err.message || 'Failed to invite')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to invite')
     } finally {
       setInviting(false)
     }

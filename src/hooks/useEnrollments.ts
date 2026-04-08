@@ -14,10 +14,6 @@ export function useCourseEnrollments(courseId: string | null) {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (courseId) fetch(courseId)
-  }, [courseId])
-
   async function fetch(id: string) {
     setLoading(true)
     const { data } = await supabase
@@ -27,6 +23,8 @@ export function useCourseEnrollments(courseId: string | null) {
     setEnrollments(data || [])
     setLoading(false)
   }
+
+  useEffect(() => { if (courseId) fetch(courseId) }, [courseId])
 
   async function enrollStudent(cId: string, studentId: string, facultyId: string) {
     const { error } = await supabase.from('course_enrollments').insert({
@@ -55,12 +53,12 @@ export function useCourseEnrollments(courseId: string | null) {
 export function useAllEnrollments() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
 
-  useEffect(() => { fetchAll() }, [])
-
   async function fetchAll() {
     const { data } = await supabase.from('course_enrollments').select('*')
     setEnrollments(data || [])
   }
+
+  useEffect(() => { fetchAll() }, [])
 
   return { enrollments, refetch: fetchAll }
 }
@@ -70,11 +68,6 @@ export function useMyEnrollments(studentId: string | null) {
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (studentId) fetchMine(studentId)
-    else setLoading(false)
-  }, [studentId])
-
   async function fetchMine(id: string) {
     const { data } = await supabase
       .from('course_enrollments')
@@ -83,6 +76,11 @@ export function useMyEnrollments(studentId: string | null) {
     setEnrolledCourseIds((data || []).map((e: { course_id: string }) => e.course_id))
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (studentId) fetchMine(studentId)
+    else setLoading(false)
+  }, [studentId])
 
   return { enrolledCourseIds, loading }
 }

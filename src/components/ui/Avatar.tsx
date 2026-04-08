@@ -25,11 +25,13 @@ const AVATAR_COLORS = [
   { bg: '#9FE1CB', color: '#085041' },
 ]
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getAvatarColors(name: string) {
   const idx = name.charCodeAt(0) % AVATAR_COLORS.length
   return AVATAR_COLORS[idx]
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getInitials(name: string) {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 }

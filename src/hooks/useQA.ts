@@ -6,6 +6,15 @@ export function useQA() {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
 
+  async function fetchQuestions() {
+    const { data } = await supabase
+      .from('questions')
+      .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
+      .order('created_at', { ascending: false })
+    setQuestions(data || [])
+    setLoading(false)
+  }
+
   useEffect(() => {
     fetchQuestions()
     const channel = supabase
@@ -15,15 +24,6 @@ export function useQA() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
-
-  async function fetchQuestions() {
-    const { data } = await supabase
-      .from('questions')
-      .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
-      .order('created_at', { ascending: false })
-    setQuestions(data || [])
-    setLoading(false)
-  }
 
   async function postQuestion(title: string, body: string, tag: string, userId: string) {
     await supabase.from('questions').insert({ title, body, tag: tag || null, posted_by: userId })

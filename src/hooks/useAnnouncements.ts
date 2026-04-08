@@ -6,6 +6,12 @@ export function useAnnouncements() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
 
+  async function fetchAnnouncements() {
+    const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false })
+    setAnnouncements(data || [])
+    setLoading(false)
+  }
+
   useEffect(() => {
     fetchAnnouncements()
     const channel = supabase
@@ -14,12 +20,6 @@ export function useAnnouncements() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
-
-  async function fetchAnnouncements() {
-    const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false })
-    setAnnouncements(data || [])
-    setLoading(false)
-  }
 
   async function postAnnouncement(title: string, body: string, userId: string, courseId: string | null) {
     const { data } = await supabase

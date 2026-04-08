@@ -12,6 +12,7 @@ export type DraftQuestion = {
   points?: number
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const qTypeColors: Record<string, { bg: string; color: string; label: string }> = {
   mcq:         { bg: '#E6F1FB', color: '#185FA5', label: 'MCQ' },
   truefalse:   { bg: '#EEEDFE', color: '#3C3489', label: 'True/False' },
