@@ -30,15 +30,18 @@ export function useAnnouncements() {
 
     // Fire-and-forget — email failure never blocks the UI
     if (data) {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-announcement-email`
-      fetch(fnUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ announcement: data }),
-      }).catch(err => console.error('[Email] Failed to send announcement email:', err))
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) return
+        const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-announcement-email`
+        fetch(fnUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ announcement: data }),
+        }).catch(err => console.error('[Email] Failed to send announcement email:', err))
+      })
     }
 
     await fetchAnnouncements()
