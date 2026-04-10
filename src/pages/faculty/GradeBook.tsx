@@ -358,7 +358,7 @@ export default function FacultyGradeBook() {
   const { profile } = useAuth()
   const { quizzes, submissions, fetchAllSubmissions } = useQuizzes()
   const { students } = useStudents()
-  const { groups, columns, entries, addGroup, updateGroup, deleteGroup, addColumn, deleteColumn, upsertEntry } = useGradeBook()
+  const { groups, columns, entries, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry } = useGradeBook()
   const { courses } = useCourses()
   const { enrollments } = useAllEnrollments()
 
@@ -377,6 +377,20 @@ export default function FacultyGradeBook() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
+
+  // Auto-correct max_score for quiz_linked columns whose max_score is stale (e.g. was set to 100 before questions existed)
+  useEffect(() => {
+    if (!quizzes.length || !columns.length) return
+    for (const col of columns) {
+      if (col.entry_type !== 'quiz_linked' || !col.linked_quiz_id) continue
+      const quiz = quizzes.find(q => q.id === col.linked_quiz_id)
+      if (!quiz?.questions?.length) continue
+      const total = quiz.questions.reduce((s: number, q: { points?: number }) => s + (q.points ?? 1), 0)
+      if (total > 0 && col.max_score !== total) {
+        updateColumnMaxScore(col.id, total).catch(console.error)
+      }
+    }
+  }, [columns, quizzes])
 
   if (!profile) return null
 
@@ -419,10 +433,15 @@ export default function FacultyGradeBook() {
     return getBestSub(studentId, quizId)?.score ?? null
   }
 
+  function getQuizTotal(quizId: string): number {
+    const quiz = quizzes.find(q => q.id === quizId)
+    return quiz?.questions?.reduce((s: number, q: { points?: number }) => s + (q.points ?? 1), 0) ?? 0
+  }
+
   function getQuizRaw(studentId: string, quizId: string): { earned: number; total: number } | null {
     const best = getBestSub(studentId, quizId)
     if (!best) return null
-    const total = best.total_points ?? 100
+    const total = best.total_points ?? getQuizTotal(quizId) || 100
     const earned = best.earned_points ?? Math.round((best.score / 100) * total)
     return { earned, total }
   }
@@ -432,14 +451,15 @@ export default function FacultyGradeBook() {
   }
 
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
-    // Quiz-linked columns always compute from live submission data so stale grade_entries never override
     if (col.entry_type === 'quiz_linked' && col.linked_quiz_id) {
       const best = getBestSub(studentId, col.linked_quiz_id)
       if (!best) return null
-      if (best.earned_points != null && best.total_points != null && best.total_points > 0) {
-        return Math.round((best.earned_points / best.total_points) * col.max_score)
-      }
-      return Math.round((best.score / 100) * col.max_score)
+      // Return raw earned points — col.max_score may be stale (100 vs actual quiz pts)
+      // Use quiz questions total as authoritative denominator
+      if (best.earned_points != null) return best.earned_points
+      const quizTotal = best.total_points ?? getQuizTotal(col.linked_quiz_id)
+      if (quizTotal > 0) return Math.round((best.score / 100) * quizTotal)
+      return null
     }
 
     const entry = entryMap.get(`${studentId}:${col.id}`)
@@ -458,7 +478,7 @@ export default function FacultyGradeBook() {
       <th style={{ ...thStyle, position: 'relative', minWidth: '70px' }}>
         <div>{col.title}</div>
         <div style={{ fontSize: '10px', color: '#bbb' }}>
-          /{col.max_score}
+          /{col.entry_type === 'quiz_linked' && col.linked_quiz_id ? (getQuizTotal(col.linked_quiz_id) || col.max_score) : col.max_score}
           {col.entry_type === 'quiz_linked' && (
             <span title="Auto-filled from quiz submissions" style={{ marginLeft: '3px', color: '#1D9E75' }}>⟳</span>
           )}
