@@ -15,7 +15,14 @@ export function useCourses() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchCourses() }, [])
+  useEffect(() => {
+    fetchCourses()
+    const channel = supabase
+      .channel('courses-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, fetchCourses)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   async function createCourse(name: string, section: string, userId: string) {
     const { error } = await supabase.from('courses').insert({

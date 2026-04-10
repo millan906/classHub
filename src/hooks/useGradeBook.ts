@@ -39,7 +39,16 @@ export function useGradeBook() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    fetchAll()
+    const channel = supabase
+      .channel('gradebook-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'grade_groups' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'grade_columns' }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'grade_entries' }, fetchAll)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   async function fetchAll() {
     try {

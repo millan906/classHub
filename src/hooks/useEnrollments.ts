@@ -24,7 +24,14 @@ export function useCourseEnrollments(courseId: string | null) {
     setLoading(false)
   }
 
-  useEffect(() => { if (courseId) fetch(courseId) }, [courseId])
+  useEffect(() => {
+    if (courseId) fetch(courseId)
+    const channel = supabase
+      .channel('course-enrollments-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'course_enrollments' }, () => { if (courseId) fetch(courseId) })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [courseId])
 
   async function enrollStudent(cId: string, studentId: string, facultyId: string) {
     const { error } = await supabase.from('course_enrollments').insert({
@@ -58,7 +65,14 @@ export function useAllEnrollments() {
     setEnrollments(data || [])
   }
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    fetchAll()
+    const channel = supabase
+      .channel('all-enrollments-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'course_enrollments' }, fetchAll)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   return { enrollments, refetch: fetchAll }
 }
@@ -80,6 +94,11 @@ export function useMyEnrollments(studentId: string | null) {
   useEffect(() => {
     if (studentId) fetchMine(studentId)
     else setLoading(false)
+    const channel = supabase
+      .channel('my-enrollments-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'course_enrollments' }, () => { if (studentId) fetchMine(studentId) })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [studentId])
 
   return { enrolledCourseIds, loading }

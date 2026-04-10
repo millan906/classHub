@@ -12,7 +12,14 @@ export function useStudents() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchStudents() }, [])
+  useEffect(() => {
+    fetchStudents()
+    const channel = supabase
+      .channel('students-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, fetchStudents)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   async function approveWithCourses(studentId: string, courseIds: string[], facultyId: string) {
     await supabase.from('profiles').update({ status: 'approved' }).eq('id', studentId)
