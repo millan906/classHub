@@ -104,6 +104,19 @@ export function useQuizzes() {
   async function toggleQuiz(id: string, isOpen: boolean) {
     await supabase.from('quizzes').update({ is_open: isOpen }).eq('id', id)
     await fetchQuizzes()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
+      fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ type: isOpen ? 'quiz_open' : 'quiz_close', quizId: id }),
+      }).catch(err => console.error('[Email] Quiz toggle notification failed:', err))
+    }
   }
 
   async function submitQuiz(
@@ -167,6 +180,19 @@ export function useQuizzes() {
       score,
     }).eq('id', submissionId)
     await fetchAllSubmissions()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
+      fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ type: 'essay_graded', submissionId, earnedPoints, totalPoints }),
+      }).catch(err => console.error('[Email] Essay graded notification failed:', err))
+    }
   }
 
   return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, fetchFileSubmissions, saveEssayScores }
