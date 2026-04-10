@@ -24,10 +24,12 @@ A learning management system (LMS) for faculty and students, built with React, T
 
 ## Tech Stack
 
-- **Frontend** — React 18, TypeScript, Vite
-- **Backend / DB** — Supabase (PostgreSQL, Auth, Storage)
+- **Frontend** — React 19, TypeScript, Vite, Tailwind CSS
+- **Backend / DB** — Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **Email** — Resend
 - **Charts** — Recharts
-- **Routing** — React Router v6
+- **Routing** — React Router v7
+- **Deployment** — Vercel ([classhub.work](https://classhub.work))
 
 ## Getting Started
 
@@ -48,6 +50,24 @@ A learning management system (LMS) for faculty and students, built with React, T
    ```bash
    npm run dev
    ```
+
+## Edge Functions
+
+Deployed to Supabase. To deploy:
+
+```bash
+supabase functions deploy send-announcement-email --no-verify-jwt
+supabase functions deploy resolve-role
+```
+
+Required Supabase secrets: `RESEND_API_KEY`, `FROM_ADDRESS`, `SUPABASE_SERVICE_ROLE_KEY`, `FACULTY_INVITE_CODE`
+
+## Testing
+
+```bash
+npm test
+npm run test:coverage
+```
 
 ## Project Structure
 
