@@ -38,8 +38,11 @@ export function useAnnouncements() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ announcement: data }),
+      }).then(r => r.json()).then(result => {
+        if (result.failed > 0) console.error('[Email] Resend errors:', result.errors)
       }).catch(err => console.error('[Email] Failed to send announcement email:', err))
     }
 
