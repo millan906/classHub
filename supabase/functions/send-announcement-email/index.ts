@@ -174,8 +174,8 @@ Deno.serve(async (req) => {
     </html>
   `
 
-  await Promise.all(emails.map(email =>
-    fetch('https://api.resend.com/emails', {
+  const results = await Promise.all(emails.map(async email => {
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -187,10 +187,22 @@ Deno.serve(async (req) => {
         subject: `[ClassHub] ${announcement.title}`,
         html,
       }),
-    }).then(r => r.json())
-  ))
+    })
+    const body = await res.json()
+    if (!res.ok) {
+      console.error('[Resend] Failed for', email, res.status, JSON.stringify(body))
+    }
+    return { email, ok: res.ok, status: res.status, body }
+  }))
 
-  return new Response(JSON.stringify({ sent: emails.length }), {
+  const sent = results.filter(r => r.ok).length
+  const failed = results.filter(r => !r.ok)
+
+  return new Response(JSON.stringify({
+    sent,
+    failed: failed.length,
+    errors: failed.map(r => ({ email: r.email, status: r.status, error: r.body })),
+  }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })
