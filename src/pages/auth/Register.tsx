@@ -49,6 +49,8 @@ export default function Register() {
       })
       if (profileError) throw profileError
 
+      // Refresh session so onAuthStateChange re-fires after the profile exists
+      await supabase.auth.refreshSession()
       navigate('/')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed')
