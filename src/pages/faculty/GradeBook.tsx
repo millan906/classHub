@@ -424,9 +424,7 @@ export default function FacultyGradeBook() {
   }
 
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
-    const entry = entryMap.get(`${studentId}:${col.id}`)
-    if (entry !== undefined && entry.score !== null) return entry.score
-
+    // Quiz-linked columns always compute from live submission data so stale grade_entries never override
     if (col.entry_type === 'quiz_linked' && col.linked_quiz_id) {
       const best = getBestSub(studentId, col.linked_quiz_id)
       if (!best) return null
@@ -435,6 +433,9 @@ export default function FacultyGradeBook() {
       }
       return Math.round((best.score / 100) * col.max_score)
     }
+
+    const entry = entryMap.get(`${studentId}:${col.id}`)
+    if (entry !== undefined && entry.score !== null) return entry.score
 
     return null
   }
