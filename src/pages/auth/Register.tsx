@@ -25,32 +25,18 @@ export default function Register() {
     setError('')
     setLoading(true)
     try {
-      // Resolve role server-side — invite code is never in the frontend bundle
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resolve-role`
-      const roleRes = await fetch(fnUrl, {
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-user`
+      const res = await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ code: inviteCode }),
+        body: JSON.stringify({ firstName, lastName, email, password, inviteCode }),
       })
-      const { role, status } = await roleRes.json()
+      const result = await res.json()
+      if (!res.ok) throw new Error(result.error ?? 'Registration failed')
 
-      const { data, error: authError } = await supabase.auth.signUp({ email, password })
-      if (authError) throw authError
-      if (!data.user) throw new Error('Registration failed')
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInError) throw signInError
 
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        full_name: `${firstName.trim()} ${lastName.trim()}`,
-        email,
-        role,
-        status,
-      })
-      if (profileError) throw profileError
-
-      // Refresh session so onAuthStateChange re-fires after the profile exists
-      await supabase.auth.refreshSession()
       navigate('/')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed')
