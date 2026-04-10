@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuizzes } from '../../hooks/useQuizzes'
+import { supabase } from '../../lib/supabase'
 import { useStudents } from '../../hooks/useStudents'
 import { useGradeBook } from '../../hooks/useGradeBook'
 import { useCourses } from '../../hooks/useCourses'
@@ -368,7 +369,14 @@ export default function FacultyGradeBook() {
   const [pageError, setPageError] = useState('')
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
 
-  useEffect(() => { fetchAllSubmissions() }, [])
+  useEffect(() => {
+    fetchAllSubmissions()
+    const channel = supabase
+      .channel('gradebook-submissions')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_submissions' }, fetchAllSubmissions)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
 
   if (!profile) return null
 
