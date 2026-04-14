@@ -4,14 +4,20 @@ import type { Profile } from '../../types'
 
 interface SidebarProps {
   profile: Profile
+  onNavigate?: () => void
 }
 
-export function Sidebar({ profile }: SidebarProps) {
+export function Sidebar({ profile, onNavigate }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const isFaculty = profile.role === 'faculty'
   const base = isFaculty ? '/faculty' : '/student'
   const isActive = (path: string) => location.pathname === path
+
+  function go(path: string) {
+    navigate(path)
+    onNavigate?.()
+  }
 
   return (
     <div style={{
@@ -31,20 +37,20 @@ export function Sidebar({ profile }: SidebarProps) {
       {/* Navigation */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0' }}>
         <SidebarGroup label="Overview">
-          <SidebarItem icon="⊞" text="Dashboard" path={`${base}/dashboard`} isActive={isActive(`${base}/dashboard`)} navigate={navigate} />
-          <SidebarItem icon="📄" text="Slides" path={`${base}/slides`} isActive={isActive(`${base}/slides`)} navigate={navigate} />
+          <SidebarItem icon="⊞" text="Dashboard" path={`${base}/dashboard`} isActive={isActive(`${base}/dashboard`)} navigate={go} />
+          <SidebarItem icon="📄" text="Slides" path={`${base}/slides`} isActive={isActive(`${base}/slides`)} navigate={go} />
         </SidebarGroup>
 
         <SidebarGroup label="Class">
           {isFaculty
-            ? <SidebarItem icon="🏫" text="Courses" path="/faculty/courses" isActive={isActive('/faculty/courses')} navigate={navigate} />
-            : <SidebarItem icon="🏫" text="My Courses" path="/student/courses" isActive={isActive('/student/courses')} navigate={navigate} />
+            ? <SidebarItem icon="🏫" text="Courses" path="/faculty/courses" isActive={isActive('/faculty/courses')} navigate={go} />
+            : <SidebarItem icon="🏫" text="My Courses" path="/student/courses" isActive={isActive('/student/courses')} navigate={go} />
           }
-          {isFaculty && <SidebarItem icon="👥" text="Students" path={`${base}/students`} isActive={isActive(`${base}/students`)} navigate={navigate} />}
-          <SidebarItem icon="📝" text="Assessments" path={`${base}/quizzes`} isActive={isActive(`${base}/quizzes`)} navigate={navigate} />
-          <SidebarItem icon="💬" text="Q&A" path={`${base}/qa`} isActive={isActive(`${base}/qa`)} navigate={navigate} />
-          <SidebarItem icon="📢" text="Announcements" path={`${base}/announcements`} isActive={isActive(`${base}/announcements`)} navigate={navigate} />
-          {isFaculty && <SidebarItem icon="📊" text="Grade Book" path="/faculty/gradebook" isActive={isActive('/faculty/gradebook')} navigate={navigate} />}
+          {isFaculty && <SidebarItem icon="👥" text="Students" path={`${base}/students`} isActive={isActive(`${base}/students`)} navigate={go} />}
+          <SidebarItem icon="📝" text="Assessments" path={`${base}/quizzes`} isActive={isActive(`${base}/quizzes`)} navigate={go} />
+          <SidebarItem icon="💬" text="Q&A" path={`${base}/qa`} isActive={isActive(`${base}/qa`)} navigate={go} />
+          <SidebarItem icon="📢" text="Announcements" path={`${base}/announcements`} isActive={isActive(`${base}/announcements`)} navigate={go} />
+          {isFaculty && <SidebarItem icon="📊" text="Grade Book" path="/faculty/gradebook" isActive={isActive('/faculty/gradebook')} navigate={go} />}
         </SidebarGroup>
       </div>
     </div>
