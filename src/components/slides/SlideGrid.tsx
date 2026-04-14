@@ -19,7 +19,7 @@ export function SlideGrid({ slides, courses, isFaculty, onDelete, onView, onDown
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
       {slides.map((slide, i) => {
         const course = slide.course_id && courses ? courses.find(c => c.id === slide.course_id) : null
         return (

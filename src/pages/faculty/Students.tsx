@@ -397,9 +397,14 @@ function EnrolledStudentCard({ student, assignedCourses, onClick }: {
       cursor: 'pointer',
     }}>
       <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
-        <div style={{ fontSize: '12px', color: '#888' }}>{student.email}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Name + badge + view on one row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', fontWeight: 600 }}>{student.full_name}</span>
+          <Badge label="Enrolled" color="green" />
+          <span style={{ fontSize: '11px', color: '#aaa', marginLeft: 'auto' }}>View →</span>
+        </div>
+        <div style={{ fontSize: '12px', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>{student.email}</div>
         {assignedCourses.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '5px' }}>
             {assignedCourses.map(c => (
@@ -416,8 +421,6 @@ function EnrolledStudentCard({ student, assignedCourses, onClick }: {
           <div style={{ fontSize: '11px', color: '#bbb', marginTop: '3px' }}>No courses assigned</div>
         )}
       </div>
-      <Badge label="Enrolled" color="green" />
-      <span style={{ fontSize: '11px', color: '#aaa' }}>View →</span>
     </div>
   )
 }

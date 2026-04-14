@@ -144,7 +144,7 @@ export default function FacultyDashboard() {
   return (
     <div>
       {/* Header + course selector */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
         <PageHeader
           title={`${greeting}, ${profile?.full_name ?? 'Professor'}`}
           subtitle="Here's your class at a glance."
@@ -162,7 +162,7 @@ export default function FacultyDashboard() {
       </div>
 
       {/* Top metrics */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '8px', marginBottom: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginBottom: '1rem' }}>
         <MetricCard label="Enrolled students" value={enrolled.length} />
         <MetricCard label="Pending approvals" value={pending.length} valueColor={pending.length > 0 ? '#854F0B' : '#1a1a1a'} />
         <MetricCard label="Open questions" value={openQuestions} valueColor={openQuestions > 0 ? '#854F0B' : '#1a1a1a'} />
@@ -190,7 +190,7 @@ export default function FacultyDashboard() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px', marginBottom: '10px' }}>
         {/* Class avg per course — bar chart */}
         <Card>
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px' }}>Grade distribution</div>
@@ -247,14 +247,14 @@ export default function FacultyDashboard() {
         </Card>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
         {/* Recent activity */}
         <Card>
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Recent activity</div>
           {questions.slice(0, 3).map(q => (
             <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: q.is_answered ? '#1D9E75' : '#EF9F27', flexShrink: 0 }} />
-              <div style={{ fontSize: '12px', flex: 1 }}>
+              <div style={{ fontSize: '12px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 <span style={{ fontWeight: 500 }}>{q.poster?.full_name ?? 'Student'}</span> asked: {q.title}
               </div>
               <div style={{ fontSize: '11px', color: '#aaa', whiteSpace: 'nowrap' }}>

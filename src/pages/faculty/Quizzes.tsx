@@ -293,7 +293,7 @@ export default function FacultyQuizzes() {
       <PageHeader title="Assessments" subtitle="Create and manage quizzes, assignments, exams, and grade entries." />
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px', flexWrap: 'wrap' }}>
         <select
           value={filterCourseId}
           onChange={e => setFilterCourseId(e.target.value)}

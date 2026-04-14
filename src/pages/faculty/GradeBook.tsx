@@ -680,9 +680,9 @@ export default function FacultyGradeBook() {
               {/* Column header row */}
               <tr style={{ background: '#F5F5F3' }}>
                 <th style={{ ...thStyle, textAlign: 'left', width: '32px' }}>#</th>
-                <th style={{ ...thStyle, textAlign: 'left', minWidth: '160px' }}>Student Name</th>
+                <th style={{ ...thStyle, textAlign: 'left', minWidth: '120px' }}>Student Name</th>
                 {regularQuizzes.map(q => (
-                  <th key={q.id} style={{ ...thStyle, minWidth: '80px' }}>{q.title}</th>
+                  <th key={q.id} style={{ ...thStyle, minWidth: '70px' }}>{q.title}</th>
                 ))}
                 {manualGroups.flatMap(g =>
                   manualCols.filter(c => c.group_id === g.id).map(c => (

@@ -56,14 +56,14 @@ export default function StudentDashboard() {
       />
 
       {/* Metric row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginBottom: '1.1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', marginBottom: '1.1rem' }}>
         <MetricCard label="Slides available" value={visibleSlides.length} />
         <MetricCard label="Latest score" value={latestScore !== null ? `${latestScore}%` : '—'} valueColor={latestScore !== null ? (latestScore >= 50 ? '#0F6E56' : '#A32D2D') : '#1a1a1a'} />
         <MetricCard label="My questions" value={myQuestions.length} />
       </div>
 
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '1rem' }}>
         {/* Due */}
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', padding: '12px 14px' }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: '#185FA5', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>

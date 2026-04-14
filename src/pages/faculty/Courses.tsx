@@ -192,14 +192,13 @@ function CourseRow({
       background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)',
       borderRadius: '12px', padding: '12px 14px', marginBottom: '8px',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{course.name}</span>
-            {course.section && (
-              <span style={{ fontSize: '12px', color: '#888' }}>· Section {course.section}</span>
-            )}
-          </div>
+      {/* Info row */}
+      <div style={{ marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '14px', fontWeight: 500 }}>{course.name}</span>
+          {course.section && (
+            <span style={{ fontSize: '12px', color: '#888' }}>· Section {course.section}</span>
+          )}
           <span style={{
             fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
             background: isOpen ? '#E1F5EE' : '#F1EFE8',
@@ -208,25 +207,23 @@ function CourseRow({
             {isOpen ? 'Open' : 'Closed'}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <Button
-            onClick={() => setExpanded(v => !v)}
-            style={{ fontSize: '12px' }}
-          >
-            {expanded ? 'Hide students' : 'Students'}
-          </Button>
-          <Button onClick={() => onEdit(course)}>Edit</Button>
-          <Button
-            onClick={() => onToggle(course.id, isOpen ? 'closed' : 'open')}
-            style={isOpen
-              ? { background: '#FEF3CD', color: '#D4900A', borderColor: '#D4900A' }
-              : { background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56' }
-            }
-          >
-            {isOpen ? 'Close' : 'Open'}
-          </Button>
-          <Button variant="danger" onClick={() => onDelete(course)}>Delete</Button>
-        </div>
+      </div>
+      {/* Button row */}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <Button onClick={() => setExpanded(v => !v)} style={{ fontSize: '12px' }}>
+          {expanded ? 'Hide students' : 'Students'}
+        </Button>
+        <Button onClick={() => onEdit(course)}>Edit</Button>
+        <Button
+          onClick={() => onToggle(course.id, isOpen ? 'closed' : 'open')}
+          style={isOpen
+            ? { background: '#FEF3CD', color: '#D4900A', borderColor: '#D4900A' }
+            : { background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56' }
+          }
+        >
+          {isOpen ? 'Close' : 'Open'}
+        </Button>
+        <Button variant="danger" onClick={() => onDelete(course)}>Delete</Button>
       </div>
 
       {expanded && (
