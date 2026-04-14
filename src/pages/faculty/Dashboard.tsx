@@ -80,47 +80,16 @@ export default function FacultyDashboard() {
     () => new Map(entries.map(e => [`${e.student_id}:${e.column_id}`, e])),
     [entries],
   )
-  const submissionsByKey = useMemo(
-    () => submissions.reduce<Map<string, typeof submissions>>((acc, s) => {
-      const key = `${s.student_id}:${s.quiz_id}`
-      const list = acc.get(key) ?? []; list.push(s); acc.set(key, list); return acc
-    }, new Map()),
-    [submissions],
-  )
-
-  function getBestSub(studentId: string, quizId: string) {
-    const subs = submissionsByKey.get(`${studentId}:${quizId}`) ?? []
-    return subs.length === 0 ? null : subs.reduce((b, s) => s.score > b.score ? s : b)
-  }
-  function getQuizRaw(studentId: string, quizId: string) {
-    const best = getBestSub(studentId, quizId)
-    if (!best) return null
-    const total = best.total_points ?? 100
-    const earned = best.earned_points ?? Math.round((best.score / 100) * total)
-    return { earned, total }
-  }
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
     const entry = entryMap.get(`${studentId}:${col.id}`)
-    if (entry !== undefined && entry.score !== null) return entry.score
-    if (col.entry_type === 'quiz_linked' && col.linked_quiz_id) {
-      const best = getBestSub(studentId, col.linked_quiz_id)
-      if (!best) return null
-      if (best.earned_points != null && best.total_points != null && best.total_points > 0)
-        return Math.round((best.earned_points / best.total_points) * col.max_score)
-      return Math.round((best.score / 100) * col.max_score)
-    }
-    return null
+    return entry !== undefined && entry.score !== null ? entry.score : null
   }
-
-  const quizzesGroup = groups.find(g => g.name === 'Quizzes')
-  const manualGroups = groups.filter(g => g.name !== 'Quizzes')
-  const scopedQuizzes = courseQuizzes.filter(q => !q.item_type || q.item_type === 'quiz')
 
   // ── Bar chart: weighted final grade distribution ──────────────────────────
   const distribution = useMemo(() => {
     const dist = { low: 0, mid: 0, high: 0 }
     for (const studentId of courseStudentIds) {
-      const grade = computeWeightedGrade(studentId, quizzesGroup, scopedQuizzes, manualGroups, columns, getQuizRaw, getColumnScore)
+      const grade = computeWeightedGrade(studentId, groups, columns, getColumnScore)
       if (grade === null) continue
       if (grade >= 75) dist.high++
       else if (grade >= 50) dist.mid++
@@ -128,7 +97,7 @@ export default function FacultyDashboard() {
     }
     return dist
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseStudentIds, quizzesGroup, scopedQuizzes, manualGroups, columns, entryMap, submissionsByKey])
+  }, [courseStudentIds, groups, columns, entryMap])
   const chartData = [
     { name: 'Low  0–49%',  count: distribution.low,  color: '#EF4444' },
     { name: 'Mid  50–74%', count: distribution.mid,  color: '#F59E0B' },

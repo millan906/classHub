@@ -292,34 +292,25 @@ function AddColumnForm({
 
 interface GradeBookExportParams {
   students: { id: string; full_name: string }[]
-  quizzes: { id: string; title: string }[]
   groups: GradeGroup[]
-  manualCols: GradeColumn[]
-  getQuizScore: (sid: string, qid: string) => number | null
-  getGradeScore: (sid: string, cid: string) => number | null
+  columns: GradeColumn[]
+  getColumnScore: (sid: string, col: GradeColumn) => number | null
   getWeightedGrade: (sid: string) => number | null
   filename?: string
 }
 
-function buildRows({ students, quizzes, groups, manualCols, getQuizScore, getGradeScore, getWeightedGrade }: GradeBookExportParams) {
+function buildRows({ students, groups, columns, getColumnScore, getWeightedGrade }: GradeBookExportParams) {
   const headers = [
     'Student Name',
-    ...quizzes.map(q => q.title),
-    ...groups.filter(g => g.name !== 'Quizzes').flatMap(g =>
-      manualCols.filter(c => c.group_id === g.id).map(c => c.title)
-    ),
+    ...groups.flatMap(g => columns.filter(c => c.group_id === g.id).map(c => `${c.title} (/${c.max_score})`)),
     'Final Grade',
   ]
 
   const rows = students.map(s => {
     const cells: (string | number)[] = [s.full_name]
-    for (const q of quizzes) {
-      const v = getQuizScore(s.id, q.id)
-      cells.push(v !== null ? `${v}%` : '—')
-    }
-    for (const g of groups.filter(g => g.name !== 'Quizzes')) {
-      for (const c of manualCols.filter(c => c.group_id === g.id)) {
-        const v = getGradeScore(s.id, c.id)
+    for (const g of groups) {
+      for (const c of columns.filter(col => col.group_id === g.id)) {
+        const v = getColumnScore(s.id, c)
         cells.push(v !== null ? v : '—')
       }
     }
@@ -358,7 +349,7 @@ export default function FacultyGradeBook() {
   const { profile } = useAuth()
   const { quizzes, submissions, fetchAllSubmissions } = useQuizzes()
   const { students } = useStudents()
-  const { groups, columns, entries, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry } = useGradeBook()
+  const { groups, columns, entries, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, findOrCreateLinkedColumn } = useGradeBook()
   const { courses } = useCourses()
   const { enrollments } = useAllEnrollments()
 
@@ -372,31 +363,48 @@ export default function FacultyGradeBook() {
   useEffect(() => {
     fetchAllSubmissions()
     const channel = supabase
-      .channel('gradebook-submissions')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'quiz_submissions' }, fetchAllSubmissions)
+      .channel('gradebook-quiz-submissions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'quiz_submissions' }, fetchAllSubmissions)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  // Auto-correct max_score for quiz_linked columns whose max_score is stale (e.g. was set to 100 before questions existed)
+  // Sync quiz_submissions → grade_entries so the gradebook has one source of truth
   useEffect(() => {
-    if (!quizzes.length || !columns.length) return
-    for (const col of columns) {
-      if (col.entry_type !== 'quiz_linked' || !col.linked_quiz_id) continue
-      const quiz = quizzes.find(q => q.id === col.linked_quiz_id)
-      if (!quiz?.questions?.length) continue
-      const total = quiz.questions.reduce((s: number, q: { points?: number }) => s + (q.points ?? 1), 0)
-      if (total > 0 && col.max_score !== total) {
-        updateColumnMaxScore(col.id, total).catch(console.error)
+    if (!profile || !quizzes.length || !submissions.length) return
+
+    const entryMap = new Map(entries.map(e => [`${e.student_id}:${e.column_id}`, e]))
+
+    async function syncQuizScores() {
+      for (const quiz of quizzes) {
+        if (!quiz.grade_group_id) continue
+        const quizTotal = (quiz.questions ?? []).reduce((s: number, q: { points?: number }) => s + (q.points ?? 1), 0)
+        if (quizTotal === 0) continue
+        const hasEssay = (quiz.questions ?? []).some((q: { type?: string }) => q.type === 'essay')
+        const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
+        if (quizSubs.length === 0) continue
+        try {
+          const col = await findOrCreateLinkedColumn(quiz.id, quiz.title, quiz.grade_group_id!, quizTotal, profile!.id)
+          if (col.max_score !== quizTotal) await updateColumnMaxScore(col.id, quizTotal)
+          for (const sub of quizSubs) {
+            if (hasEssay && !sub.essay_scores) continue
+            const earned = sub.earned_points ?? Math.round((sub.score / 100) * quizTotal)
+            const existing = entryMap.get(`${sub.student_id}:${col.id}`)
+            if (existing !== undefined && existing.score === earned) continue
+            await upsertEntry(col.id, sub.student_id, earned)
+          }
+        } catch (err) {
+          console.error('[GradeBook] quiz sync failed:', err)
+        }
       }
     }
-  }, [columns, quizzes])
+    syncQuizScores()
+  }, [profile?.id, submissions.length])
 
   if (!profile) return null
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
 
-  // When a course is selected, limit students to those enrolled in it
   const courseStudentIds = selectedCourseId
     ? new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.student_id))
     : null
@@ -404,84 +412,26 @@ export default function FacultyGradeBook() {
     s.status === 'approved' && (!courseStudentIds || courseStudentIds.has(s.id))
   )
 
-  // Quizzes group (auto) vs manual groups — filter quizzes by selected course
-  const regularQuizzes = quizzes.filter(q =>
-    (!q.item_type || q.item_type === 'quiz') &&
-    (!selectedCourseId || q.course_id === selectedCourseId)
-  )
-  const quizzesGroup = groups.find(g => g.name === 'Quizzes')
-  const manualGroups = groups.filter(g => g.name !== 'Quizzes')
-  const manualCols = columns
-
-  // Precomputed lookup maps — O(n) build, O(1) per lookup instead of O(n) per cell
+  // Single source of truth: grade_entries only
   const entryMap = new Map(entries.map(e => [`${e.student_id}:${e.column_id}`, e]))
-  const submissionsByKey = submissions.reduce<Map<string, typeof submissions>>((acc, s) => {
-    const key = `${s.student_id}:${s.quiz_id}`
-    const list = acc.get(key) ?? []
-    list.push(s)
-    acc.set(key, list)
-    return acc
-  }, new Map())
-
-  function getBestSub(studentId: string, quizId: string) {
-    const subs = submissionsByKey.get(`${studentId}:${quizId}`) ?? []
-    if (subs.length === 0) return null
-    return subs.reduce((b, s) => s.score > b.score ? s : b)
-  }
-
-  function getQuizScore(studentId: string, quizId: string): number | null {
-    return getBestSub(studentId, quizId)?.score ?? null
-  }
-
-  function getQuizTotal(quizId: string): number {
-    const quiz = quizzes.find(q => q.id === quizId)
-    return quiz?.questions?.reduce((s: number, q: { points?: number }) => s + (q.points ?? 1), 0) ?? 0
-  }
-
-  function getQuizRaw(studentId: string, quizId: string): { earned: number; total: number } | null {
-    const best = getBestSub(studentId, quizId)
-    if (!best) return null
-    const total = best.total_points ?? (getQuizTotal(quizId) || 100)
-    const earned = best.earned_points ?? Math.round((best.score / 100) * total)
-    return { earned, total }
-  }
-
-  function getGradeScore(studentId: string, columnId: string): number | null {
-    return entryMap.get(`${studentId}:${columnId}`)?.score ?? null
-  }
 
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
-    if (col.entry_type === 'quiz_linked' && col.linked_quiz_id) {
-      const best = getBestSub(studentId, col.linked_quiz_id)
-      if (best) {
-        // Return raw earned points — col.max_score may be stale (100 vs actual quiz pts)
-        if (best.earned_points != null) return best.earned_points
-        const quizTotal = best.total_points ?? getQuizTotal(col.linked_quiz_id)
-        if (quizTotal > 0) return Math.round((best.score / 100) * quizTotal)
-        return null
-      }
-      // No regular quiz submission — fall through to grade_entries (used by PDF quizzes)
-    }
-
     const entry = entryMap.get(`${studentId}:${col.id}`)
-    if (entry !== undefined && entry.score !== null) return entry.score
-
-    return null
+    return entry !== undefined && entry.score !== null ? entry.score : null
   }
 
   function getWeightedGrade(studentId: string): number | null {
-    return computeWeightedGrade(studentId, quizzesGroup, regularQuizzes, manualGroups, manualCols, getQuizRaw, getColumnScore)
+    return computeWeightedGrade(studentId, groups, columns, getColumnScore)
   }
 
-  // Column header for manual grade_columns
   function ColHeader({ col }: { col: GradeColumn }) {
     return (
       <th style={{ ...thStyle, position: 'relative', minWidth: '70px' }}>
         <div>{col.title}</div>
         <div style={{ fontSize: '10px', color: '#bbb' }}>
-          /{col.entry_type === 'quiz_linked' && col.linked_quiz_id ? (getQuizTotal(col.linked_quiz_id) || col.max_score) : col.max_score}
+          /{col.max_score}
           {col.entry_type === 'quiz_linked' && (
-            <span title="Auto-filled from quiz submissions" style={{ marginLeft: '3px', color: '#1D9E75' }}>⟳</span>
+            <span title="Auto-filled from submissions" style={{ marginLeft: '3px', color: '#1D9E75' }}>⟳</span>
           )}
         </div>
         <button
@@ -504,8 +454,8 @@ export default function FacultyGradeBook() {
     : 'gradebook'
 
   const exportParams: GradeBookExportParams = {
-    students: enrolled, quizzes: regularQuizzes, groups, manualCols,
-    getQuizScore, getGradeScore, getWeightedGrade,
+    students: enrolled, groups, columns,
+    getColumnScore, getWeightedGrade,
     filename: exportFilename,
   }
 
@@ -655,37 +605,24 @@ export default function FacultyGradeBook() {
               {/* Group header row */}
               <tr style={{ background: '#FAFAF8' }}>
                 <th colSpan={2} style={{ ...thStyle, textAlign: 'left' }} />
-                {regularQuizzes.length > 0 && (
-                  <th colSpan={regularQuizzes.length} style={{ ...thStyle, background: '#FAEEDA', color: '#7A4F00' }}>
-                    Quizzes {quizzesGroup ? `(${quizzesGroup.weight_percent}%)` : ''}
-                  </th>
-                )}
-                {manualGroups.map(g => {
-                  const cols = manualCols.filter(c => c.group_id === g.id)
+                {groups.map(g => {
+                  const cols = columns.filter(c => c.group_id === g.id)
                   if (cols.length === 0) return null
                   return (
-                    <th key={g.id} colSpan={cols.length} style={{
-                      ...thStyle,
-                      background: '#EAF3FF', color: '#1a5fa8',
-                    }}>
+                    <th key={g.id} colSpan={cols.length} style={{ ...thStyle, background: '#EAF3FF', color: '#1a5fa8' }}>
                       {g.name} ({g.weight_percent}%)
                     </th>
                   )
                 })}
-                <th style={{ ...thStyle, background: '#E1F5EE', color: '#0F6E56' }}>
-                  Final Grade
-                </th>
+                <th style={{ ...thStyle, background: '#E1F5EE', color: '#0F6E56' }}>Final Grade</th>
               </tr>
 
               {/* Column header row */}
               <tr style={{ background: '#F5F5F3' }}>
                 <th style={{ ...thStyle, textAlign: 'left', width: '32px' }}>#</th>
                 <th style={{ ...thStyle, textAlign: 'left', minWidth: '120px' }}>Student Name</th>
-                {regularQuizzes.map(q => (
-                  <th key={q.id} style={{ ...thStyle, minWidth: '70px' }}>{q.title}</th>
-                ))}
-                {manualGroups.flatMap(g =>
-                  manualCols.filter(c => c.group_id === g.id).map(c => (
+                {groups.flatMap(g =>
+                  columns.filter(c => c.group_id === g.id).map(c => (
                     <ColHeader key={c.id} col={c} />
                   ))
                 )}
@@ -703,22 +640,17 @@ export default function FacultyGradeBook() {
                       {student.full_name}
                     </td>
 
-                    {regularQuizzes.map(q => (
-                      <td key={q.id} style={tdStyle}>
-                        <ScoreCell value={getQuizScore(student.id, q.id)} maxScore={100} readOnly />
-                      </td>
-                    ))}
-
-                    {manualGroups.flatMap(g =>
-                      manualCols.filter(c => c.group_id === g.id).map(c => (
+                    {groups.flatMap(g =>
+                      columns.filter(c => c.group_id === g.id).map(c => (
                         <td key={c.id} style={tdStyle}>
                           <ScoreCell
                             value={getColumnScore(student.id, c)}
                             maxScore={c.max_score}
-                            onSave={async v => {
+                            readOnly={c.entry_type === 'quiz_linked'}
+                            onSave={c.entry_type === 'manual' ? async v => {
                               try { setPageError(''); await upsertEntry(c.id, student.id, v) }
                               catch (err: unknown) { setPageError(err instanceof Error ? err.message : String(err) || 'Failed to save score') }
-                            }}
+                            } : undefined}
                           />
                         </td>
                       ))
