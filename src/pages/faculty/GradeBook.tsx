@@ -453,13 +453,14 @@ export default function FacultyGradeBook() {
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
     if (col.entry_type === 'quiz_linked' && col.linked_quiz_id) {
       const best = getBestSub(studentId, col.linked_quiz_id)
-      if (!best) return null
-      // Return raw earned points — col.max_score may be stale (100 vs actual quiz pts)
-      // Use quiz questions total as authoritative denominator
-      if (best.earned_points != null) return best.earned_points
-      const quizTotal = best.total_points ?? getQuizTotal(col.linked_quiz_id)
-      if (quizTotal > 0) return Math.round((best.score / 100) * quizTotal)
-      return null
+      if (best) {
+        // Return raw earned points — col.max_score may be stale (100 vs actual quiz pts)
+        if (best.earned_points != null) return best.earned_points
+        const quizTotal = best.total_points ?? getQuizTotal(col.linked_quiz_id)
+        if (quizTotal > 0) return Math.round((best.score / 100) * quizTotal)
+        return null
+      }
+      // No regular quiz submission — fall through to grade_entries (used by PDF quizzes)
     }
 
     const entry = entryMap.get(`${studentId}:${col.id}`)
