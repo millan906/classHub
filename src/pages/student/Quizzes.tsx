@@ -5,27 +5,35 @@ import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { useIntegrityLogs } from '../../hooks/useIntegrityLogs'
 import { useGradeBook } from '../../hooks/useGradeBook'
 import { useCourses } from '../../hooks/useCourses'
+import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
 import { TYPE_ORDER } from '../../constants/itemTypes'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { PageHeader } from '../../components/ui/Card'
 import { Spinner, PageError } from '../../components/ui/Spinner'
 import { QuizCard } from '../../components/quizzes/QuizCard'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
-import type { Quiz } from '../../types'
+import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
+import { PdfQuizTaker } from '../../components/pdfquizzes/PdfQuizTaker'
+import type { Quiz, PdfQuiz } from '../../types'
 
 export default function StudentQuizzes() {
   const { profile } = useAuth()
   const { quizzes, submissions, loading, error, fetchMySubmissions, submitQuiz, uploadFile } = useQuizzes()
+  const { pdfQuizzes, submissions: pdfSubmissions, fetchMySubmissions: fetchMyPdfSubmissions, submitPdfQuiz, getPdfUrl } = usePdfQuizzes()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
   const { logEvent } = useIntegrityLogs()
   const { groups, columns, entries } = useGradeBook()
   const { courses } = useCourses()
   const [takingQuiz, setTakingQuiz] = useState<Quiz | null>(null)
+  const [takingPdfQuiz, setTakingPdfQuiz] = useState<PdfQuiz | null>(null)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
   const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (profile) fetchMySubmissions(profile.id)
+    if (profile) {
+      fetchMySubmissions(profile.id)
+      fetchMyPdfSubmissions(profile.id)
+    }
   }, [profile])
 
   const visibleQuizzes = quizzes.filter(q =>
@@ -46,6 +54,20 @@ export default function StudentQuizzes() {
 
   if (loading) return <Spinner />
   if (error) return <PageError message={error} />
+
+  if (takingPdfQuiz) {
+    return (
+      <PdfQuizTaker
+        quiz={takingPdfQuiz}
+        pdfUrl={getPdfUrl(takingPdfQuiz.pdf_path)}
+        onSubmit={async (answers) => {
+          if (!profile) return { earned: 0, total: 0, score: 0 }
+          return await submitPdfQuiz(takingPdfQuiz.id, profile.id, answers)
+        }}
+        onClose={() => setTakingPdfQuiz(null)}
+      />
+    )
+  }
 
   if (takingQuiz) {
     return (
@@ -138,6 +160,39 @@ export default function StudentQuizzes() {
             </div>
           )
         })
+      })()}
+
+      {/* PDF Quizzes */}
+      {(() => {
+        const visiblePdf = pdfQuizzes.filter(q =>
+          q.course_id == null || enrolledCourseIds.includes(q.course_id)
+        ).filter(q => {
+          if (filterCourseId === 'all') return true
+          if (filterCourseId === 'none') return !q.course_id
+          return q.course_id === filterCourseId
+        })
+        if (visiblePdf.length === 0) return null
+        return (
+          <div style={{ marginTop: '24px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+              PDF Quizzes
+            </div>
+            {visiblePdf.map(quiz => {
+              const subs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
+              const best = subs.length > 0 ? subs.reduce((b, s) => s.earned_points > b.earned_points ? s : b) : undefined
+              const attemptsUsed = subs.length
+              return (
+                <PdfQuizCard
+                  key={quiz.id}
+                  quiz={quiz}
+                  mySubmission={best}
+                  attemptsUsed={attemptsUsed}
+                  onTake={quiz.is_open && attemptsUsed < quiz.max_attempts ? setTakingPdfQuiz : undefined}
+                />
+              )
+            })}
+          </div>
+        )
       })()}
 
       {/* Manual entry scores */}

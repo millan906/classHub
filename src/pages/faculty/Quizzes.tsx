@@ -6,6 +6,7 @@ import { useStudents } from '../../hooks/useStudents'
 import { useCourses } from '../../hooks/useCourses'
 import { TYPE_ORDER } from '../../constants/itemTypes'
 import { useGradeBook } from '../../hooks/useGradeBook'
+import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
 import { PageHeader } from '../../components/ui/Card'
 import { Spinner, PageError } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
@@ -14,7 +15,10 @@ import { QuizCard } from '../../components/quizzes/QuizCard'
 import { QuizBuilder } from '../../components/quizzes/QuizBuilder'
 import { QuizResults } from '../../components/quizzes/QuizResults'
 import { ManualEntriesSection } from '../../components/quizzes/ManualEntriesSection'
-import type { Quiz, FileSubmission, QuizFormData } from '../../types'
+import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
+import { PdfQuizBuilder } from '../../components/pdfquizzes/PdfQuizBuilder'
+import { PdfQuizResults } from '../../components/pdfquizzes/PdfQuizResults'
+import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } from '../../types'
 
 export default function FacultyQuizzes() {
   const { profile } = useAuth()
@@ -23,6 +27,7 @@ export default function FacultyQuizzes() {
   const { students } = useStudents()
   const { courses } = useCourses()
   const { groups, columns, entries, addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn, upsertEntry } = useGradeBook()
+  const { pdfQuizzes, submissions: pdfSubmissions, fetchAllSubmissions: fetchAllPdfSubmissions, uploadAndCreate, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz, saveScannedAnswers, saveEssayScores: savePdfEssayScores, createEssaySubmission, downloadScoresCsv } = usePdfQuizzes()
   const [showBuilder, setShowBuilder] = useState(false)
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null)
   const [viewingResults, setViewingResults] = useState<Quiz | null>(null)
@@ -30,8 +35,14 @@ export default function FacultyQuizzes() {
   const [fileSubmissions, setFileSubmissions] = useState<FileSubmission[]>([])
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
   const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
+  const [showPdfBuilder, setShowPdfBuilder] = useState(false)
+  const [editingPdfQuiz, setEditingPdfQuiz] = useState<PdfQuiz | null>(null)
+  const [viewingPdfResults, setViewingPdfResults] = useState<PdfQuiz | null>(null)
+  const [confirmDeletePdf, setConfirmDeletePdf] = useState<PdfQuiz | null>(null)
+  const [pdfSectionCollapsed, setPdfSectionCollapsed] = useState(false)
 
   useEffect(() => { fetchAllSubmissions() }, [])
+  useEffect(() => { fetchAllPdfSubmissions() }, [])
 
   useEffect(() => {
     if (!viewingResults) return
@@ -126,8 +137,91 @@ export default function FacultyQuizzes() {
     }
   }
 
+  async function handleCreatePdf(file: File | undefined, formData: PdfQuizFormData) {
+    if (!profile || !file) return
+    const quizId = await uploadAndCreate(file, formData, profile.id)
+    if (formData.gradeGroupId) {
+      const totalPoints = formData.answerKey.reduce((s, k) => s + k.points, 0)
+      await addColumn(formData.title, formData.gradeGroupId, totalPoints, profile.id, null, 'quiz_linked', quizId)
+    }
+    setShowPdfBuilder(false)
+  }
+
+  async function handleUpdatePdf(file: File | undefined, formData: PdfQuizFormData) {
+    if (!editingPdfQuiz || !profile) return
+    await updatePdfQuiz(editingPdfQuiz.id, formData, file, profile.id)
+    setEditingPdfQuiz(null)
+  }
+
+  async function syncPdfToGradebook(quiz: PdfQuiz) {
+    if (!quiz.grade_group_id || !profile) return
+    const quizSubs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
+    try {
+      const col = await findOrCreateLinkedColumn(
+        quiz.id, quiz.title, quiz.grade_group_id, quiz.total_points, profile.id,
+      )
+      if (col.max_score !== quiz.total_points) await updateColumnMaxScore(col.id, quiz.total_points)
+      await Promise.all(quizSubs.map(sub => upsertEntry(col.id, sub.student_id, sub.earned_points)))
+    } catch (err) {
+      console.error('[GradeBook] PDF quiz sync failed:', err)
+    }
+  }
+
+  async function handlePdfScanAnswers(studentId: string, answers: Record<string, string>) {
+    if (!viewingPdfResults) return
+    await saveScannedAnswers(viewingPdfResults.id, studentId, answers)
+    await syncPdfToGradebook(viewingPdfResults)
+  }
+
+  async function handlePdfEssayScores(
+    submissionId: string | null,
+    studentId: string,
+    essayScores: Record<string, Record<string, number>>,
+  ) {
+    if (!viewingPdfResults) return
+    if (submissionId) {
+      await savePdfEssayScores(submissionId, viewingPdfResults.id, studentId, essayScores)
+    } else {
+      await createEssaySubmission(viewingPdfResults.id, studentId, essayScores)
+    }
+    await syncPdfToGradebook(viewingPdfResults)
+  }
+
   if (loading) return <Spinner />
   if (error) return <PageError message={error} />
+
+  if (viewingPdfResults) {
+    const quizSubs = pdfSubmissions.filter(s => s.pdf_quiz_id === viewingPdfResults.id)
+    return (
+      <PdfQuizResults
+        quiz={viewingPdfResults}
+        submissions={quizSubs}
+        enrolled={enrolled}
+        onBack={() => setViewingPdfResults(null)}
+        onDownloadCsv={() => downloadScoresCsv(viewingPdfResults, quizSubs, enrolled)}
+        onScanAnswers={handlePdfScanAnswers}
+        onSaveEssayScores={handlePdfEssayScores}
+      />
+    )
+  }
+
+  if (showPdfBuilder || editingPdfQuiz) {
+    return (
+      <div>
+        <PageHeader
+          title={editingPdfQuiz ? 'Edit PDF Quiz' : 'New PDF Quiz'}
+          subtitle="Upload a PDF and define the answer key."
+        />
+        <PdfQuizBuilder
+          courses={courses}
+          groups={groups}
+          onSave={editingPdfQuiz ? handleUpdatePdf : handleCreatePdf}
+          onCancel={() => { setShowPdfBuilder(false); setEditingPdfQuiz(null) }}
+          initialQuiz={editingPdfQuiz ?? undefined}
+        />
+      </div>
+    )
+  }
 
   if (viewingResults) {
     const quizSubs = submissions.filter(s => s.quiz_id === viewingResults.id)
@@ -183,6 +277,14 @@ export default function FacultyQuizzes() {
           message={`Delete "${confirmDelete.title}"? This will also remove all student submissions and cannot be undone.`}
           onConfirm={async () => { await deleteQuiz(confirmDelete.id); setConfirmDelete(null) }}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+      {confirmDeletePdf && (
+        <ConfirmDialog
+          title="Delete PDF quiz"
+          message={`Delete "${confirmDeletePdf.title}"? This will also remove the PDF file and all student submissions and cannot be undone.`}
+          onConfirm={async () => { await deletePdfQuiz(confirmDeletePdf.id); setConfirmDeletePdf(null) }}
+          onCancel={() => setConfirmDeletePdf(null)}
         />
       )}
 
@@ -270,6 +372,59 @@ export default function FacultyQuizzes() {
           )
         })
       })()}
+
+      {/* PDF Quizzes section */}
+      <div style={{ marginTop: '24px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <button
+            onClick={() => setPdfSectionCollapsed(p => !p)}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
+          >
+            <span style={{ fontSize: '11px', color: '#888', display: 'inline-block', transition: 'transform 0.15s', transform: pdfSectionCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>▼</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PDF Quizzes</span>
+            <span style={{ fontSize: '11px', color: '#aaa', fontWeight: 400 }}>
+              ({pdfQuizzes.filter(q => filterCourseId === 'all' || (filterCourseId === 'none' ? !q.course_id : q.course_id === filterCourseId)).length})
+            </span>
+          </button>
+          <Button variant="primary" onClick={() => setShowPdfBuilder(true)}>+ New PDF Quiz</Button>
+        </div>
+
+        {!pdfSectionCollapsed && (() => {
+          const filtered = pdfQuizzes.filter(q => {
+            if (filterCourseId === 'all') return true
+            if (filterCourseId === 'none') return !q.course_id
+            return q.course_id === filterCourseId
+          })
+          if (filtered.length === 0) {
+            return <div style={{ fontSize: '13px', color: '#888' }}>No PDF quizzes yet.</div>
+          }
+          return filtered.map(quiz => {
+            const quizCourse = quiz.course_id ? courses.find(c => c.id === quiz.course_id) : null
+            const quizSubs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
+            return (
+              <div key={quiz.id}>
+                {quizCourse && filterCourseId === 'all' && (
+                  <div style={{ marginBottom: '4px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px', background: '#E6F1FB', color: '#185FA5', display: 'inline-block' }}>
+                      {quizCourse.name}{quizCourse.section ? ` · Section ${quizCourse.section}` : ''}
+                    </span>
+                  </div>
+                )}
+                <PdfQuizCard
+                  quiz={quiz}
+                  submissions={quizSubs}
+                  totalStudents={enrolled.length}
+                  isFaculty
+                  onToggle={togglePdfQuiz}
+                  onEdit={setEditingPdfQuiz}
+                  onDelete={setConfirmDeletePdf}
+                  onViewResults={setViewingPdfResults}
+                />
+              </div>
+            )
+          })
+        })()}
+      </div>
 
       <ManualEntriesSection
         columns={columns}

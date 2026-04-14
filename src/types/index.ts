@@ -146,3 +146,71 @@ export interface Answer {
   created_at: string
   poster?: Profile
 }
+
+export type PdfQuizQuestionType = 'mcq' | 'truefalse' | 'text' | 'essay'
+
+export interface PdfQuizAnswerKeyEntry {
+  id: string
+  pdf_quiz_id: string
+  question_number: number
+  question_type: PdfQuizQuestionType
+  correct_answer: string
+  points: number
+}
+
+export interface PdfQuizEssayRubric {
+  id: string
+  pdf_quiz_id: string
+  question_number: number
+  category_name: string
+  max_points: number
+  order_index: number
+}
+
+export interface PdfQuiz {
+  id: string
+  title: string
+  course_id: string | null
+  grade_group_id: string | null
+  pdf_path: string
+  due_date: string | null
+  is_open: boolean
+  max_attempts: number
+  num_questions: number
+  total_points: number
+  created_by: string
+  created_at: string
+  answer_key?: PdfQuizAnswerKeyEntry[]
+  essay_rubrics?: PdfQuizEssayRubric[]
+}
+
+export interface PdfQuizSubmission {
+  id: string
+  pdf_quiz_id: string
+  student_id: string
+  answers: Record<string, string>
+  earned_points: number
+  score: number
+  attempt_number: number
+  submitted_at: string
+  // essay_scores: { [question_number]: { [rubric_id]: earned_points } }
+  essay_scores: Record<string, Record<string, number>>
+}
+
+export interface PdfQuizFormData {
+  title: string
+  courseId: string | null
+  gradeGroupId: string | null
+  dueDate: string | null
+  maxAttempts: number
+  answerKey: {
+    question_number: number
+    question_type: PdfQuizQuestionType
+    correct_answer: string
+    points: number
+  }[]
+  rubrics: {
+    question_number: number
+    categories: { category_name: string; max_points: number; order_index: number }[]
+  }[]
+}

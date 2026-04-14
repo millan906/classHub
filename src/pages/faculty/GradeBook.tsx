@@ -441,7 +441,7 @@ export default function FacultyGradeBook() {
   function getQuizRaw(studentId: string, quizId: string): { earned: number; total: number } | null {
     const best = getBestSub(studentId, quizId)
     if (!best) return null
-    const total = best.total_points ?? getQuizTotal(quizId) || 100
+    const total = best.total_points ?? (getQuizTotal(quizId) || 100)
     const earned = best.earned_points ?? Math.round((best.score / 100) * total)
     return { earned, total }
   }
