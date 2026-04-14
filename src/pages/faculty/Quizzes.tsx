@@ -153,15 +153,14 @@ export default function FacultyQuizzes() {
     setEditingPdfQuiz(null)
   }
 
-  async function syncPdfToGradebook(quiz: PdfQuiz) {
+  async function syncPdfToGradebook(quiz: PdfQuiz, studentId: string, earned: number) {
     if (!quiz.grade_group_id || !profile) return
-    const quizSubs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
     try {
       const col = await findOrCreateLinkedColumn(
         quiz.id, quiz.title, quiz.grade_group_id, quiz.total_points, profile.id,
       )
       if (col.max_score !== quiz.total_points) await updateColumnMaxScore(col.id, quiz.total_points)
-      await Promise.all(quizSubs.map(sub => upsertEntry(col.id, sub.student_id, sub.earned_points)))
+      await upsertEntry(col.id, studentId, earned)
     } catch (err) {
       console.error('[GradeBook] PDF quiz sync failed:', err)
     }
@@ -169,8 +168,8 @@ export default function FacultyQuizzes() {
 
   async function handlePdfScanAnswers(studentId: string, answers: Record<string, string>) {
     if (!viewingPdfResults) return
-    await saveScannedAnswers(viewingPdfResults.id, studentId, answers)
-    await syncPdfToGradebook(viewingPdfResults)
+    const sub = await saveScannedAnswers(viewingPdfResults.id, studentId, answers)
+    await syncPdfToGradebook(viewingPdfResults, studentId, sub.earned_points)
   }
 
   async function handlePdfEssayScores(
@@ -179,12 +178,15 @@ export default function FacultyQuizzes() {
     essayScores: Record<string, Record<string, number>>,
   ) {
     if (!viewingPdfResults) return
+    let earned: number
     if (submissionId) {
-      await savePdfEssayScores(submissionId, viewingPdfResults.id, studentId, essayScores)
+      const result = await savePdfEssayScores(submissionId, viewingPdfResults.id, studentId, essayScores)
+      earned = result.earned
     } else {
-      await createEssaySubmission(viewingPdfResults.id, studentId, essayScores)
+      const result = await createEssaySubmission(viewingPdfResults.id, studentId, essayScores)
+      earned = result.earned
     }
-    await syncPdfToGradebook(viewingPdfResults)
+    await syncPdfToGradebook(viewingPdfResults, studentId, earned)
   }
 
   if (loading) return <Spinner />

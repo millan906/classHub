@@ -277,6 +277,7 @@ export function usePdfQuizzes() {
       earned_points: essayEarned, score, attempt_number: attemptNumber,
     })
     await fetchAllSubmissions()
+    return { earned: essayEarned, total, score }
   }
 
   function scoreObjective(
