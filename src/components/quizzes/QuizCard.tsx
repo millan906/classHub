@@ -31,52 +31,56 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onTo
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '12px',
-      padding: '1rem 1.1rem', background: '#fff',
+      padding: '0.875rem 1rem', background: '#fff',
       border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
     }}>
-      <div style={{
-        width: '38px', height: '38px', borderRadius: '8px',
-        background: quiz.is_open ? '#FAEEDA' : '#E6F1FB',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '18px', flexShrink: 0,
-      }}>
-        {typeIcon}
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '13px', fontWeight: 500 }}>{quiz.title}</div>
-        <div style={{ fontSize: '12px', color: '#888' }}>
-          {questionCount} question{questionCount !== 1 ? 's' : ''}
-          {isFaculty ? ` · ${submittedCount}/${totalStudents} submitted` : ''}
-          {quiz.due_date ? ` · Due ${new Date(quiz.due_date).toLocaleDateString()}` : ''}
-          {quiz.max_attempts && quiz.max_attempts > 1 ? ` · ${quiz.max_attempts} attempts` : ''}
+      {/* Top row: icon + info + badge */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+        <div style={{
+          width: '36px', height: '36px', borderRadius: '8px',
+          background: quiz.is_open ? '#FAEEDA' : '#E6F1FB',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '17px', flexShrink: 0,
+        }}>
+          {typeIcon}
         </div>
-        {(isFaculty || mySubmission) && (
-          <div style={{ height: '5px', background: '#F1EFE8', borderRadius: '999px', marginTop: '6px', width: '100%' }}>
-            <div style={{ height: '100%', width: progressPct + '%', background: '#1D9E75', borderRadius: '999px' }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '13px', fontWeight: 500 }}>{quiz.title}</div>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '1px' }}>
+            {questionCount} question{questionCount !== 1 ? 's' : ''}
+            {isFaculty ? ` · ${submittedCount}/${totalStudents} submitted` : ''}
+            {quiz.due_date ? ` · Due ${new Date(quiz.due_date).toLocaleDateString()}` : ''}
+            {quiz.max_attempts && quiz.max_attempts > 1 ? ` · ${quiz.max_attempts} attempts` : ''}
           </div>
-        )}
+          {(isFaculty || mySubmission) && (
+            <div style={{ height: '4px', background: '#F1EFE8', borderRadius: '999px', marginTop: '6px' }}>
+              <div style={{ height: '100%', width: progressPct + '%', background: '#1D9E75', borderRadius: '999px' }} />
+            </div>
+          )}
+        </div>
+        <Badge label={quiz.is_open ? 'Open' : 'Closed'} color={quiz.is_open ? 'amber' : 'green'} />
       </div>
-      <Badge label={quiz.is_open ? 'Open' : 'Closed'} color={quiz.is_open ? 'amber' : 'green'} />
+
+      {/* Bottom row: action buttons */}
       {isFaculty && (
-        <>
+        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
           <Button onClick={() => onEdit?.(quiz)}>Edit</Button>
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}
           </Button>
           <Button onClick={() => onViewResults?.(quiz)}>Results</Button>
           <Button variant="danger" onClick={() => onDelete?.(quiz)}>Delete</Button>
-        </>
+        </div>
       )}
       {!isFaculty && (
-        <>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
           {quiz.is_open && (attemptsUsed ?? 0) < (quiz.max_attempts ?? 1) && (
             <Button variant="primary" onClick={() => onTake?.(quiz)}>
               {actionLabel}
             </Button>
           )}
           {mySubmission && (
-            <div style={{ textAlign: 'right' }}>
+            <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
               <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
                 {mySubmission.earned_points ?? mySubmission.score} {mySubmission.total_points ? `/ ${mySubmission.total_points} pts` : '%'}
               </div>
@@ -91,7 +95,7 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onTo
           {(attemptsUsed ?? 0) >= (quiz.max_attempts ?? 1) && mySubmission && (
             <Badge label="Done" color="green" />
           )}
-        </>
+        </div>
       )}
     </div>
   )
