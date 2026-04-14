@@ -152,7 +152,6 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-    if (!initialQuiz && !file) { setFileError('Please select a PDF file.'); return }
     if (keyRows.length === 0) return
 
     setSaving(true)
@@ -224,11 +223,13 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
           </div>
         </div>
 
-        <label style={labelStyle}>{initialQuiz ? 'Replace PDF (optional)' : 'PDF File *'}</label>
+        <label style={labelStyle}>PDF File (optional)</label>
         <input type="file" accept=".pdf" onChange={handleFileChange} style={{ fontSize: '13px', marginBottom: '4px' }} />
         {fileError && <div style={{ fontSize: '12px', color: '#A32D2D', marginBottom: '4px' }}>{fileError}</div>}
         {file && <div style={{ fontSize: '12px', color: '#555' }}>{file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)</div>}
-        {initialQuiz && !file && <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>Current PDF kept if no new file selected.</div>}
+        {!file && <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
+          {initialQuiz?.pdf_path ? 'Current PDF kept if no new file selected.' : 'Leave blank for paper-only quizzes — students will answer via the answer form.'}
+        </div>}
       </div>
 
       {/* Questions & Answer Key */}

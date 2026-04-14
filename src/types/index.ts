@@ -172,7 +172,7 @@ export interface PdfQuiz {
   title: string
   course_id: string | null
   grade_group_id: string | null
-  pdf_path: string
+  pdf_path: string | null
   due_date: string | null
   is_open: boolean
   max_attempts: number

@@ -45,13 +45,16 @@ export function usePdfQuizzes() {
     setSubmissions(data || [])
   }
 
-  async function uploadAndCreate(file: File, formData: PdfQuizFormData, userId: string): Promise<string> {
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `${userId}/${Date.now()}_${safeName}`
+  async function createPdfQuiz(file: File | undefined, formData: PdfQuizFormData, userId: string): Promise<string> {
+    let pdfPath: string | null = null
 
-    const { error: uploadErr } = await supabase.storage
-      .from('pdf-quizzes').upload(path, file, { upsert: false })
-    if (uploadErr) throw uploadErr
+    if (file) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      pdfPath = `${userId}/${Date.now()}_${safeName}`
+      const { error: uploadErr } = await supabase.storage
+        .from('pdf-quizzes').upload(pdfPath, file, { upsert: false })
+      if (uploadErr) throw uploadErr
+    }
 
     const totalPoints = formData.answerKey.reduce((s, k) => s + k.points, 0)
 
@@ -61,7 +64,7 @@ export function usePdfQuizzes() {
         title: formData.title,
         course_id: formData.courseId,
         grade_group_id: formData.gradeGroupId,
-        pdf_path: path,
+        pdf_path: pdfPath,
         due_date: formData.dueDate,
         max_attempts: formData.maxAttempts,
         num_questions: formData.answerKey.length,
@@ -293,7 +296,8 @@ export function usePdfQuizzes() {
     return { earned }
   }
 
-  function getPdfUrl(pdfPath: string): string {
+  function getPdfUrl(pdfPath: string | null): string | null {
+    if (!pdfPath) return null
     return supabase.storage.from('pdf-quizzes').getPublicUrl(pdfPath).data.publicUrl
   }
 
@@ -344,7 +348,7 @@ export function usePdfQuizzes() {
   return {
     pdfQuizzes, submissions, loading, error,
     fetchAllSubmissions, fetchMySubmissions,
-    uploadAndCreate, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz,
+    createPdfQuiz, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz,
     submitPdfQuiz, saveScannedAnswers, saveEssayScores, createEssaySubmission,
     getPdfUrl, downloadScoresCsv,
   }

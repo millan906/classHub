@@ -5,7 +5,7 @@ import type { PdfQuiz, PdfQuizAnswerKeyEntry } from '../../types'
 
 interface PdfQuizTakerProps {
   quiz: PdfQuiz
-  pdfUrl: string
+  pdfUrl: string | null
   onSubmit: (answers: Record<string, string>) => Promise<{ earned: number; total: number; score: number }>
   onClose: () => void
 }
@@ -142,17 +142,19 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
-      {/* Left: PDF viewer */}
-      <div style={{ flex: '1 1 58%', borderRight: '0.5px solid rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '10px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-          <div style={{ fontSize: '13px', fontWeight: 500 }}>{quiz.title}</div>
-          <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#378ADD' }}>Open in new tab</a>
+      {/* Left: PDF viewer (only if PDF exists) */}
+      {pdfUrl && (
+        <div style={{ flex: '1 1 58%', borderRight: '0.5px solid rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ padding: '10px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ fontSize: '13px', fontWeight: 500 }}>{quiz.title}</div>
+            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#378ADD' }}>Open in new tab</a>
+          </div>
+          <iframe src={pdfUrl} title={quiz.title} style={{ flex: 1, width: '100%', border: 'none' }} />
         </div>
-        <iframe src={pdfUrl} title={quiz.title} style={{ flex: 1, width: '100%', border: 'none' }} />
-      </div>
+      )}
 
-      {/* Right: Answer form */}
-      <div style={{ flex: '0 0 42%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Answer form */}
+      <div style={{ flex: pdfUrl ? '0 0 42%' : '1 1 100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '14px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 600 }}>Your Answers</div>
           <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>

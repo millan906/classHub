@@ -27,7 +27,7 @@ export default function FacultyQuizzes() {
   const { students } = useStudents()
   const { courses } = useCourses()
   const { groups, columns, entries, addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn, upsertEntry } = useGradeBook()
-  const { pdfQuizzes, submissions: pdfSubmissions, fetchAllSubmissions: fetchAllPdfSubmissions, uploadAndCreate, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz, saveScannedAnswers, saveEssayScores: savePdfEssayScores, createEssaySubmission, downloadScoresCsv } = usePdfQuizzes()
+  const { pdfQuizzes, submissions: pdfSubmissions, fetchAllSubmissions: fetchAllPdfSubmissions, createPdfQuiz, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz, saveScannedAnswers, saveEssayScores: savePdfEssayScores, createEssaySubmission, downloadScoresCsv } = usePdfQuizzes()
   const [showBuilder, setShowBuilder] = useState(false)
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null)
   const [viewingResults, setViewingResults] = useState<Quiz | null>(null)
@@ -138,8 +138,8 @@ export default function FacultyQuizzes() {
   }
 
   async function handleCreatePdf(file: File | undefined, formData: PdfQuizFormData) {
-    if (!profile || !file) return
-    const quizId = await uploadAndCreate(file, formData, profile.id)
+    if (!profile) return
+    const quizId = await createPdfQuiz(file, formData, profile.id)
     if (formData.gradeGroupId) {
       const totalPoints = formData.answerKey.reduce((s, k) => s + k.points, 0)
       await addColumn(formData.title, formData.gradeGroupId, totalPoints, profile.id, null, 'quiz_linked', quizId)
