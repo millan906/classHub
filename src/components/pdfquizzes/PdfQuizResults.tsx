@@ -109,47 +109,79 @@ export function PdfQuizResults({
         const pct = best?.score ?? null
         const barColor = scoreBarColor(pct)
         const hasEssayScored = best && Object.keys(best.essay_scores ?? {}).length > 0
+        const isScanned = !!best
+        const isFullyGraded = isScanned && (!hasEssay || hasEssayScored)
+
+        // Status label
+        let statusLabel: string
+        let statusColor: string
+        let statusBg: string
+        if (!isScanned) {
+          statusLabel = '⬜ Not scanned'
+          statusColor = '#aaa'
+          statusBg = '#f4f4f4'
+        } else if (hasEssay && !hasEssayScored) {
+          statusLabel = '⏳ Essay pending'
+          statusColor = '#D4900A'
+          statusBg = '#FEF3CD'
+        } else {
+          statusLabel = '✓ Logged'
+          statusColor = '#0F6E56'
+          statusBg = '#E1F5EE'
+        }
 
         return (
           <div key={student.id} style={{
-            background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)',
+            background: '#fff',
+            border: `0.5px solid ${isFullyGraded ? '#A8E6C8' : 'rgba(0,0,0,0.12)'}`,
             borderRadius: '12px', marginBottom: '8px', overflow: 'hidden',
           }}>
             {/* Student summary */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '160px' }}>
-                <div style={{ fontSize: '13px', fontWeight: 500 }}>
-                  {student.last_name}, {student.first_name}
-                </div>
-                <div style={{ fontSize: '12px', color: '#888', marginTop: '1px' }}>{student.email}</div>
-                {pct !== null && (
-                  <div style={{ height: '5px', background: '#F1EFE8', borderRadius: '999px', marginTop: '6px', maxWidth: '200px' }}>
-                    <div style={{ height: '100%', width: pct + '%', background: barColor, borderRadius: '999px' }} />
+            <div style={{ padding: '12px 16px' }}>
+              {/* Top row: name + status badge */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '6px' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600 }}>
+                    {student.last_name}, {student.first_name}
                   </div>
-                )}
+                  <div style={{ fontSize: '12px', color: '#888', marginTop: '1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{student.email}</div>
+                </div>
+                <span style={{
+                  fontSize: '11px', fontWeight: 600, padding: '3px 10px',
+                  borderRadius: '999px', background: statusBg, color: statusColor,
+                  flexShrink: 0,
+                }}>
+                  {statusLabel}
+                </span>
               </div>
 
+              {/* Score + progress bar */}
               {best ? (
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: barColor }}>
-                    {best.earned_points} / {quiz.total_points} pts
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', color: '#888' }}>
+                      {subs.length} scan{subs.length !== 1 ? 's' : ''}
+                    </span>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: barColor }}>
+                      {best.earned_points} / {quiz.total_points} pts
+                      <span style={{ fontSize: '11px', fontWeight: 400, color: '#888', marginLeft: '6px' }}>({best.score}%)</span>
+                    </span>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#888' }}>
-                    {best.score}% · {subs.length} attempt{subs.length !== 1 ? 's' : ''}
-                    {hasEssay && !hasEssayScored && (
-                      <span style={{ color: '#f59e0b', marginLeft: '6px' }}>· Essay pending</span>
-                    )}
-                  </div>
-                </div>
+                  {pct !== null && (
+                    <div style={{ height: '5px', background: '#F1EFE8', borderRadius: '999px', marginBottom: '10px' }}>
+                      <div style={{ height: '100%', width: pct + '%', background: barColor, borderRadius: '999px' }} />
+                    </div>
+                  )}
+                </>
               ) : (
-                <span style={{ fontSize: '12px', color: '#aaa', flexShrink: 0 }}>Not submitted</span>
+                <div style={{ fontSize: '12px', color: '#bbb', marginBottom: '10px' }}>No paper scanned yet.</div>
               )}
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {objectiveQuestions.length > 0 && (
                   <Button onClick={() => setActivePanel({ type: 'scan', studentId: student.id })}>
-                    📷 Scan
+                    {isScanned ? '🔄 Re-scan' : '📷 Scan'}
                   </Button>
                 )}
                 {hasEssay && (
@@ -157,7 +189,7 @@ export function PdfQuizResults({
                     variant={best && !hasEssayScored ? 'primary' : 'default'}
                     onClick={() => setActivePanel({ type: 'essay', studentId: student.id })}
                   >
-                    ✏️ Essay
+                    ✏️ {hasEssayScored ? 'Edit Essay' : 'Score Essay'}
                   </Button>
                 )}
               </div>

@@ -169,7 +169,12 @@ export default function FacultyQuizzes() {
   async function handlePdfScanAnswers(studentId: string, answers: Record<string, string>) {
     if (!viewingPdfResults) return
     const sub = await saveScannedAnswers(viewingPdfResults.id, studentId, answers)
-    await syncPdfToGradebook(viewingPdfResults, studentId, sub.earned_points)
+    // Only log to gradebook if there are no essay questions.
+    // If there are essays, hold off until essay scores are saved.
+    const hasEssay = (viewingPdfResults.answer_key ?? []).some(k => k.question_type === 'essay')
+    if (!hasEssay) {
+      await syncPdfToGradebook(viewingPdfResults, studentId, sub.earned_points)
+    }
   }
 
   async function handlePdfEssayScores(

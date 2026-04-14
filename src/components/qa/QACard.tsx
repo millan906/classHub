@@ -106,10 +106,11 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
       borderLeft: `3px solid ${borderColor}`,
       borderRadius: '0 12px 12px 0', padding: '0.9rem 1.1rem', marginBottom: '8px',
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '6px' }}>
+      {/* Header: avatar + title + status */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '4px' }}>
         <Avatar initials={initials} bg={colors.bg} color={colors.color} size={28} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '13px', fontWeight: 500 }}>{question.title}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '13px', fontWeight: 600 }}>{question.title}</div>
           <div style={{ fontSize: '11px', color: '#888' }}>
             {poster?.full_name ?? 'Unknown'} · {timeAgo(question.created_at)}
           </div>
@@ -121,45 +122,48 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
         {question.is_answered && (
           <span style={{
             fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#E1F5EE', color: '#0F6E56',
+            background: '#E1F5EE', color: '#0F6E56', flexShrink: 0,
           }}>
             Closed
           </span>
         )}
       </div>
 
-      <div style={{ fontSize: '13px', color: '#555', lineHeight: 1.6, marginBottom: '8px' }}>
+      {/* Tag — above question body */}
+      {question.tag && (
+        <div style={{ marginBottom: '6px', paddingLeft: '38px' }}>
+          <Badge label={question.tag} color="blue" />
+        </div>
+      )}
+
+      <div style={{ fontSize: '13px', color: '#555', lineHeight: 1.6, marginBottom: '10px' }}>
         {question.body}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-        {question.tag && <Badge label={question.tag} color="blue" />}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {answerCount > 0 && (
-            <Button onClick={() => setShowAnswers(v => !v)}>
-              {showAnswers ? 'Hide answers' : 'View answers'}
-            </Button>
-          )}
-          {/* Faculty controls */}
-          {isFaculty && onUpdate && (
-            <Button onClick={() => setEditing(true)}>Edit</Button>
-          )}
-          {isFaculty && onToggle && (
-            <Button
-              onClick={() => onToggle(question.id, !question.is_answered)}
-              style={question.is_answered
-                ? { background: '#FEF3CD', color: '#D4900A', borderColor: '#D4900A' }
-                : { background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56' }
-              }
-            >
-              {question.is_answered ? 'Reopen' : 'Close'}
-            </Button>
-          )}
-          {/* Answer button: hidden for students when closed */}
-          {(!question.is_answered || isFaculty) && (
-            <Button onClick={() => setShowReply(v => !v)}>Answer</Button>
-          )}
-        </div>
+      {/* Actions — all in one row */}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        {answerCount > 0 && (
+          <Button onClick={() => setShowAnswers(v => !v)}>
+            {showAnswers ? 'Hide answers' : 'View answers'}
+          </Button>
+        )}
+        {isFaculty && onUpdate && (
+          <Button onClick={() => setEditing(true)}>Edit</Button>
+        )}
+        {isFaculty && onToggle && (
+          <Button
+            onClick={() => onToggle(question.id, !question.is_answered)}
+            style={question.is_answered
+              ? { background: '#FEF3CD', color: '#D4900A', borderColor: '#D4900A' }
+              : { background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56' }
+            }
+          >
+            {question.is_answered ? 'Reopen' : 'Close'}
+          </Button>
+        )}
+        {(!question.is_answered || isFaculty) && (
+          <Button onClick={() => setShowReply(v => !v)}>Answer</Button>
+        )}
       </div>
 
       {showAnswers && question.answers && question.answers.length > 0 && (
