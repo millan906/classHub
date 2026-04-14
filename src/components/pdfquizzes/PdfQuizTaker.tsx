@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '../ui/Button'
 import { scoreBarColor } from '../../utils/scoreColors'
 import type { PdfQuiz, PdfQuizAnswerKeyEntry } from '../../types'
@@ -10,11 +10,24 @@ interface PdfQuizTakerProps {
   onClose: () => void
 }
 
+function parseOcrText(text: string, expectedNums: number[]): Record<string, string> {
+  const result: Record<string, string> = {}
+  const pattern = /(\d+)\s*[.)]\s*([A-Da-dTtFf])\b/g
+  let match
+  while ((match = pattern.exec(text)) !== null) {
+    const num = parseInt(match[1])
+    if (expectedNums.includes(num)) {
+      let ans = match[2].toUpperCase()
+      if (ans === 'T') ans = 'True'
+      if (ans === 'F') ans = 'False'
+      result[String(num)] = ans
+    }
+  }
+  return result
+}
+
 function AnswerField({
-  entry,
-  value,
-  onChange,
-  disabled,
+  entry, value, onChange, disabled,
 }: {
   entry: PdfQuizAnswerKeyEntry
   value: string
@@ -62,9 +75,18 @@ function AnswerField({
 
 export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerProps) {
   const key = [...(quiz.answer_key ?? [])].sort((a, b) => a.question_number - b.question_number)
+  const objectiveKey = key.filter(k => k.question_type !== 'essay')
+  const expectedNums = objectiveKey.map(k => k.question_number)
+
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [result, setResult] = useState<{ earned: number; total: number; score: number } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  // OCR scan state
+  const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState(0)
+  const [scanError, setScanError] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
 
   function setAnswer(qNum: number, val: string) {
     setAnswers(prev => ({ ...prev, [String(qNum)]: val }))
@@ -84,6 +106,38 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
     }
   }
 
+  async function handleScanImage(file: File) {
+    if (!file.type.startsWith('image/')) { setScanError('Please select an image file.'); return }
+    setScanError('')
+    setScanning(true)
+    setScanProgress(0)
+    try {
+      const { createWorker } = await import('tesseract.js')
+      const worker = await createWorker('eng', 1, {
+        logger: (m: { status: string; progress: number }) => {
+          if (m.status === 'recognizing text') setScanProgress(Math.round(m.progress * 100))
+        },
+      })
+      const { data: { text } } = await worker.recognize(file)
+      await worker.terminate()
+
+      const parsed = parseOcrText(text, expectedNums)
+      // Merge into existing answers — only fill objective questions
+      setAnswers(prev => {
+        const next = { ...prev }
+        for (const q of objectiveKey) {
+          const k = String(q.question_number)
+          if (parsed[k]) next[k] = parsed[k]
+        }
+        return next
+      })
+    } catch {
+      setScanError('OCR failed. Try a clearer photo.')
+    } finally {
+      setScanning(false)
+    }
+  }
+
   const scoreColor = result ? scoreBarColor(result.score) : '#1D9E75'
 
   return (
@@ -94,11 +148,7 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
           <div style={{ fontSize: '13px', fontWeight: 500 }}>{quiz.title}</div>
           <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#378ADD' }}>Open in new tab</a>
         </div>
-        <iframe
-          src={pdfUrl}
-          title={quiz.title}
-          style={{ flex: 1, width: '100%', border: 'none' }}
-        />
+        <iframe src={pdfUrl} title={quiz.title} style={{ flex: 1, width: '100%', border: 'none' }} />
       </div>
 
       {/* Right: Answer form */}
@@ -113,17 +163,11 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
         {result ? (
           /* Score result */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', gap: '16px' }}>
-            <div style={{ fontSize: '40px', fontWeight: 700, color: scoreColor }}>
-              {result.score}%
-            </div>
-            <div style={{ fontSize: '16px', fontWeight: 500, color: '#1a1a1a' }}>
-              {result.earned} / {result.total} points
-            </div>
+            <div style={{ fontSize: '40px', fontWeight: 700, color: scoreColor }}>{result.score}%</div>
+            <div style={{ fontSize: '16px', fontWeight: 500 }}>{result.earned} / {result.total} points</div>
             <div style={{ width: '100%', maxWidth: '220px', height: '8px', background: '#F1EFE8', borderRadius: '999px' }}>
               <div style={{ height: '100%', width: result.score + '%', background: scoreColor, borderRadius: '999px' }} />
             </div>
-
-            {/* Per-question breakdown */}
             <div style={{ width: '100%', marginTop: '8px', overflowY: 'auto', maxHeight: '260px' }}>
               {key.map(entry => {
                 const given = (answers[String(entry.question_number)] ?? '').trim()
@@ -136,7 +180,7 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
                     background: isCorrect ? '#E1F5EE' : '#FCEBEB',
                   }}>
                     <div>
-                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#1a1a1a' }}>Q{entry.question_number}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 500 }}>Q{entry.question_number}</span>
                       <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>
                         Your answer: <strong>{given || '—'}</strong>
                       </span>
@@ -153,12 +197,57 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
                 )
               })}
             </div>
-
             <Button onClick={onClose} style={{ marginTop: '8px' }}>Back to Quizzes</Button>
           </div>
         ) : (
-          /* Answer inputs */
           <>
+            {/* Scan banner */}
+            {objectiveKey.length > 0 && !scanning && (
+              <div style={{
+                margin: '10px 16px 0', padding: '10px 12px',
+                background: '#E6F1FB', borderRadius: '8px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px',
+              }}>
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: '#185FA5' }}>Have a paper answer sheet?</div>
+                  <div style={{ fontSize: '11px', color: '#378ADD' }}>Take a photo to auto-fill your answers</div>
+                </div>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  style={{
+                    fontSize: '12px', fontWeight: 600, padding: '6px 12px',
+                    background: '#185FA5', color: '#fff', border: 'none',
+                    borderRadius: '7px', cursor: 'pointer', flexShrink: 0,
+                  }}
+                >
+                  📷 Scan
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handleScanImage(f) }}
+                />
+              </div>
+            )}
+
+            {/* OCR progress */}
+            {scanning && (
+              <div style={{ margin: '10px 16px 0', padding: '10px 12px', background: '#F6FFF9', borderRadius: '8px' }}>
+                <div style={{ fontSize: '12px', color: '#0F6E56', marginBottom: '6px' }}>Reading answer sheet… {scanProgress}%</div>
+                <div style={{ height: '4px', background: '#F1EFE8', borderRadius: '999px' }}>
+                  <div style={{ height: '100%', width: `${scanProgress}%`, background: '#1D9E75', borderRadius: '999px', transition: 'width 0.3s' }} />
+                </div>
+              </div>
+            )}
+
+            {scanError && (
+              <div style={{ margin: '6px 16px 0', fontSize: '12px', color: '#A32D2D' }}>{scanError}</div>
+            )}
+
+            {/* Answer inputs */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }}>
               {key.map(entry => (
                 <div key={entry.question_number} style={{ marginBottom: '12px' }}>
@@ -170,7 +259,7 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
                     entry={entry}
                     value={answers[String(entry.question_number)] ?? ''}
                     onChange={v => setAnswer(entry.question_number, v)}
-                    disabled={false}
+                    disabled={scanning}
                   />
                 </div>
               ))}
@@ -181,7 +270,7 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
               <Button
                 variant="primary"
                 onClick={handleSubmit}
-                disabled={!allAnswered || submitting}
+                disabled={!allAnswered || submitting || scanning}
               >
                 {submitting ? 'Submitting…' : `Submit (${answeredCount}/${key.length})`}
               </Button>
