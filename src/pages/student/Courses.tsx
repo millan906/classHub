@@ -189,17 +189,26 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
       {/* Grading system */}
       {grading.length > 0 && (
         <Section title="Grading System">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '320px' }}>
-            {grading.map((p, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '9px', gap: '12px' }}>
-                <span style={{ fontSize: '13px', color: '#444' }}>{p.label}</span>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#1D9E75', background: '#E1F5EE', padding: '2px 10px', borderRadius: '999px' }}>{p.weight}%</span>
-              </div>
-            ))}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '12px', color: '#888', marginTop: '2px', paddingRight: '4px' }}>
-              Total: {grading.reduce((s, p) => s + p.weight, 0)}%
-            </div>
-          </div>
+          <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '200px' }}>
+            <thead>
+              <tr>
+                <th style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'left', border: '0.5px solid #ddd' }}>Component</th>
+                <th style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'left', border: '0.5px solid #ddd' }}>Weight</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grading.map((p, i) => (
+                <tr key={i}>
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee' }}>{p.label}</td>
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, color: '#1D9E75' }}>{p.weight}%</td>
+                </tr>
+              ))}
+              <tr>
+                <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, background: '#F9F9F7' }}>Total</td>
+                <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 700, color: '#1D9E75', background: '#F9F9F7' }}>{grading.reduce((s, p) => s + p.weight, 0)}%</td>
+              </tr>
+            </tbody>
+          </table>
         </Section>
       )}
 
