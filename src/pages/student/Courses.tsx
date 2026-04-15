@@ -3,11 +3,33 @@ import { useAuth } from '../../hooks/useAuth'
 import { useCourses } from '../../hooks/useCourses'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { PageHeader } from '../../components/ui/Card'
-import type { Course, CourseResource } from '../../types'
+import { printSyllabus } from '../../utils/syllabuspPrint'
+import type { Course, CourseResource, SyllabusCell } from '../../types'
 
 const SCHEDULE_TYPE_LABELS: Record<string, string> = { lecture: 'Lecture', lab: 'Lab', other: 'Other' }
 const CAT_LABELS: Record<CourseResource['category'], string> = {
   book: '📚 Books', journal: '📰 Journal Readings', lab: '🧪 Lab Materials', other: '📎 Other',
+}
+
+function SyllabusFileLink({ cell, getResourceUrl }: { cell: SyllabusCell; getResourceUrl: (p: string) => string }) {
+  if (!cell.text && !cell.file_path && !cell.link) return <span style={{ color: '#ccc' }}>—</span>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+      {cell.text && <span style={{ fontSize: '12px', color: '#333' }}>{cell.text}</span>}
+      {cell.file_path && (
+        <a href={getResourceUrl(cell.file_path)} target="_blank" rel="noopener noreferrer"
+          style={{ fontSize: '11px', color: '#185FA5', textDecoration: 'none' }}>
+          📎 {cell.file_name ?? 'File'}
+        </a>
+      )}
+      {!cell.file_path && cell.link && (
+        <a href={cell.link} target="_blank" rel="noopener noreferrer"
+          style={{ fontSize: '11px', color: '#185FA5', textDecoration: 'none' }}>
+          🔗 Link
+        </a>
+      )}
+    </div>
+  )
 }
 
 function CourseDetail({ course, onBack, getResourceUrl }: {
@@ -19,6 +41,7 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
   const topics = course.topics ?? []
   const grading = course.grading_system ?? []
   const resources = course.resources ?? []
+  const syllabus = course.syllabus ?? []
 
   const byCategory = (cat: CourseResource['category']) => resources.filter(r => r.category === cat)
 
@@ -40,13 +63,23 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
           <div style={{ fontSize: '18px', fontWeight: 600 }}>{course.name}</div>
           {course.section && <div style={{ fontSize: '13px', color: '#888' }}>Section {course.section}</div>}
         </div>
-        <span style={{
-          marginLeft: 'auto', fontSize: '11px', fontWeight: 500, padding: '3px 12px', borderRadius: '999px',
-          background: course.status === 'open' ? '#E1F5EE' : '#F1EFE8',
-          color: course.status === 'open' ? '#0F6E56' : '#888',
-        }}>
-          {course.status === 'open' ? 'Open' : 'Closed'}
-        </span>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {(syllabus.length > 0 || grading.length > 0) && (
+            <button
+              onClick={() => printSyllabus(course, getResourceUrl)}
+              style={{ fontSize: '12px', padding: '4px 12px', borderRadius: '8px', border: '0.5px solid #1D9E75', background: '#E1F5EE', color: '#0F6E56', cursor: 'pointer', fontWeight: 500 }}
+            >
+              🖨 Print / Download
+            </button>
+          )}
+          <span style={{
+            fontSize: '11px', fontWeight: 500, padding: '3px 12px', borderRadius: '999px',
+            background: course.status === 'open' ? '#E1F5EE' : '#F1EFE8',
+            color: course.status === 'open' ? '#0F6E56' : '#888',
+          }}>
+            {course.status === 'open' ? 'Open' : 'Closed'}
+          </span>
+        </div>
       </div>
 
       {/* Schedule */}
@@ -78,6 +111,36 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
                 <span style={{ fontSize: '13px', color: '#333' }}>{t}</span>
               </div>
             ))}
+          </div>
+        </Section>
+      )}
+
+      {/* Syllabus table */}
+      {syllabus.length > 0 && (
+        <Section title="Course Syllabus">
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr>
+                  {['Week', 'Lesson / Topic', 'Readings', 'Assignments', 'Laboratory'].map(h => (
+                    <th key={h} style={{ background: '#F1EFE8', padding: '8px 10px', border: '0.5px solid #ddd', textAlign: 'left', fontWeight: 600, fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {syllabus.map(row => (
+                  <tr key={row.id}>
+                    <td style={{ padding: '8px 10px', border: '0.5px solid #eee', verticalAlign: 'top', whiteSpace: 'nowrap', color: '#888', fontWeight: 500 }}>{row.week}</td>
+                    <td style={{ padding: '8px 10px', border: '0.5px solid #eee', verticalAlign: 'top' }}>{row.lesson}</td>
+                    <td style={{ padding: '8px 10px', border: '0.5px solid #eee', verticalAlign: 'top' }}><SyllabusFileLink cell={row.readings} getResourceUrl={getResourceUrl} /></td>
+                    <td style={{ padding: '8px 10px', border: '0.5px solid #eee', verticalAlign: 'top' }}><SyllabusFileLink cell={row.assignments} getResourceUrl={getResourceUrl} /></td>
+                    <td style={{ padding: '8px 10px', border: '0.5px solid #eee', verticalAlign: 'top' }}><SyllabusFileLink cell={row.laboratory} getResourceUrl={getResourceUrl} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Section>
       )}
@@ -194,6 +257,7 @@ export default function StudentCourses() {
         enrolledCourses.map(course => {
           const hasInfo = (course.topics?.length ?? 0) > 0 || (course.schedule?.length ?? 0) > 0
             || (course.resources?.length ?? 0) > 0 || (course.grading_system?.length ?? 0) > 0
+            || (course.syllabus?.length ?? 0) > 0
           return (
             <div
               key={course.id}

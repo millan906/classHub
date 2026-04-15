@@ -12,6 +12,22 @@ export interface Profile {
   created_at: string
 }
 
+export interface SyllabusCell {
+  text: string
+  link?: string
+  file_path?: string
+  file_name?: string
+}
+
+export interface SyllabusRow {
+  id: string
+  week: string
+  lesson: string
+  readings: SyllabusCell
+  assignments: SyllabusCell
+  laboratory: SyllabusCell
+}
+
 export interface GradingPeriod {
   label: string   // e.g. "Prelim", "Midterm", "Finals"
   weight: number  // percentage, should sum to 100
@@ -40,6 +56,7 @@ export interface Course {
   section?: string
   status: 'open' | 'closed'
   topics?: string[]
+  syllabus?: SyllabusRow[]
   schedule?: CourseScheduleItem[]
   resources?: CourseResource[]
   grading_system?: GradingPeriod[]

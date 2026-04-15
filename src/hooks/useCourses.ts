@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Course, GradingPeriod, CourseScheduleItem, CourseResource } from '../types'
+import type { Course, GradingPeriod, CourseScheduleItem, CourseResource, SyllabusRow } from '../types'
 
 const BUCKET = 'course-resources'
 
@@ -35,6 +35,7 @@ export function useCourses() {
     gradingSystem: GradingPeriod[] = [],
     schedule: CourseScheduleItem[] = [],
     resources: CourseResource[] = [],
+    syllabus: SyllabusRow[] = [],
   ) {
     const { error } = await supabase.from('courses').insert({
       id,
@@ -45,6 +46,7 @@ export function useCourses() {
       grading_system: gradingSystem,
       schedule,
       resources,
+      syllabus,
     })
     if (error) throw error
     await fetchCourses()
@@ -58,6 +60,7 @@ export function useCourses() {
     gradingSystem: GradingPeriod[] = [],
     schedule: CourseScheduleItem[] = [],
     resources: CourseResource[] = [],
+    syllabus: SyllabusRow[] = [],
   ) {
     const { error } = await supabase.from('courses').update({
       name: name.trim(),
@@ -66,6 +69,7 @@ export function useCourses() {
       grading_system: gradingSystem,
       schedule,
       resources,
+      syllabus,
     }).eq('id', id)
     if (error) throw error
     await fetchCourses()
