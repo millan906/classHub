@@ -29,8 +29,28 @@ export default function StudentDashboard() {
   const latestSub = [...mySubmissions].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0]
   const latestScore = latestSub?.score ?? null
 
-  // Due: open, not yet submitted
-  const dueItems = visibleQuizzes.filter(q => q.is_open && !submittedQuizIds.has(q.id))
+  const now = new Date()
+
+  function urgencyLabel(due_date?: string): { text: string; color: string } {
+    if (!due_date) return { text: 'No deadline', color: '#bbb' }
+    const d = new Date(due_date)
+    const diffMs = d.getTime() - now.getTime()
+    const diffDays = diffMs / (1000 * 60 * 60 * 24)
+    if (diffMs < 0)       return { text: 'Overdue',    color: '#A32D2D' }
+    if (diffDays < 1)     return { text: 'Due today',  color: '#C87000' }
+    if (diffDays < 7)     return { text: `${Math.ceil(diffDays)}d left`, color: '#185FA5' }
+    return { text: d.toLocaleDateString(), color: '#aaa' }
+  }
+
+  // Due: open, not yet submitted — sorted by closest deadline
+  const dueItems = visibleQuizzes
+    .filter(q => q.is_open && !submittedQuizIds.has(q.id))
+    .sort((a, b) => {
+      if (!a.due_date && !b.due_date) return 0
+      if (!a.due_date) return 1
+      if (!b.due_date) return -1
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+    })
 
   // Missed: closed, no submission
   const missedItems = visibleQuizzes.filter(q => !q.is_open && !submittedQuizIds.has(q.id))
@@ -71,20 +91,27 @@ export default function StudentDashboard() {
           </div>
           {dueItems.length === 0
             ? <div style={{ fontSize: '12px', color: '#aaa' }}>Nothing due right now.</div>
-            : dueItems.map(q => (
-                <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{q.title}</div>
-                    {q.due_date && <div style={{ fontSize: '11px', color: '#aaa' }}>Due {new Date(q.due_date).toLocaleDateString()}</div>}
+            : dueItems.map(q => {
+                const { text, color } = urgencyLabel(q.due_date)
+                const typeLabel = q.item_type ? q.item_type.charAt(0).toUpperCase() + q.item_type.slice(1) : 'Quiz'
+                return (
+                  <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '13px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.title}</div>
+                      <div style={{ fontSize: '11px', display: 'flex', gap: '6px', alignItems: 'center', marginTop: '1px' }}>
+                        <span style={{ color: '#bbb' }}>{typeLabel}</span>
+                        <span style={{ color, fontWeight: color === '#A32D2D' || color === '#C87000' ? 600 : 400 }}>{text}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('/student/quizzes')}
+                      style={{ fontSize: '11px', color: '#185FA5', background: '#E6F1FB', border: 'none', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}
+                    >
+                      Go →
+                    </button>
                   </div>
-                  <button
-                    onClick={() => navigate('/student/quizzes')}
-                    style={{ fontSize: '11px', color: '#185FA5', background: '#E6F1FB', border: 'none', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
-                  >
-                    Go →
-                  </button>
-                </div>
-              ))
+                )
+              })
           }
         </div>
 
