@@ -5,10 +5,9 @@ import type { Profile } from '../../types'
 interface SidebarProps {
   profile: Profile
   onNavigate?: () => void
-  announcementBadge?: number
 }
 
-export function Sidebar({ profile, onNavigate, announcementBadge = 0 }: SidebarProps) {
+export function Sidebar({ profile, onNavigate }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const isFaculty = profile.role === 'faculty'

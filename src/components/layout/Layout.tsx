@@ -63,7 +63,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
     <div style={{ display: 'flex', height: '100vh', background: '#F5F5F3' }}>
 
       {/* Sidebar — always visible on desktop, overlay on mobile */}
-      {!isMobile && <Sidebar profile={profile} onNavigate={handleNavigate} announcementBadge={announcementBadge} />}
+      {!isMobile && <Sidebar profile={profile} onNavigate={handleNavigate} />}
 
       {isMobile && sidebarOpen && (
         <>
@@ -77,7 +77,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
           />
           {/* Drawer */}
           <div style={{ position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 50 }}>
-            <Sidebar profile={profile} onNavigate={handleNavigate} announcementBadge={announcementBadge} />
+            <Sidebar profile={profile} onNavigate={handleNavigate} />
           </div>
         </>
       )}
