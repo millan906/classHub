@@ -220,33 +220,6 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
         </Section>
       )}
 
-      {/* Grading system — vertical detail */}
-      {grading.length > 0 && (
-        <Section title="Grading Breakdown">
-          <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '200px' }}>
-            <thead>
-              <tr>
-                <th style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'left', border: '0.5px solid #ddd' }}>Component</th>
-                <th style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'left', border: '0.5px solid #ddd' }}>Weight</th>
-              </tr>
-            </thead>
-            <tbody>
-              {grading.map((p, i) => (
-                <tr key={i}>
-                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee' }}>{p.label}</td>
-                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, color: '#1D9E75' }}>{p.weight}%</td>
-                </tr>
-              ))}
-              <tr>
-                <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, background: '#F9F9F7' }}>Total</td>
-                <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 700, color: '#1D9E75', background: '#F9F9F7' }}>{grading.reduce((s, p) => s + p.weight, 0)}%</td>
-              </tr>
-            </tbody>
-          </table>
-          </div>
-        </Section>
-      )}
 
       {schedule.length === 0 && topics.length === 0 && resources.length === 0 && grading.length === 0 && (
         <div style={{ fontSize: '13px', color: '#aaa', marginTop: '8px' }}>

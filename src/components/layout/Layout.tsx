@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Sidebar } from './Sidebar'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
@@ -14,6 +14,7 @@ interface LayoutProps {
 export function Layout({ children, profile, onSignOut }: LayoutProps) {
   const isFaculty = profile.role === 'faculty'
   const colors = getAvatarColors(profile.full_name)
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [announcementBadge, setAnnouncementBadge] = useState(0)
@@ -105,14 +106,34 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
           )}
           {!isMobile && <div />}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Announcement bell */}
+            <button
+              onClick={() => navigate(isFaculty ? '/faculty/announcements' : '/student/announcements')}
+              style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', lineHeight: 1, fontSize: '18px' }}
+              title="Announcements"
+            >
+              🔔
+              {announcementBadge > 0 && (
+                <span style={{
+                  position: 'absolute', top: 0, right: 0,
+                  background: '#A32D2D', color: '#fff',
+                  fontSize: '9px', fontWeight: 700, borderRadius: '999px',
+                  minWidth: '15px', height: '15px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '0 3px', lineHeight: 1,
+                }}>
+                  {announcementBadge > 99 ? '99+' : announcementBadge}
+                </span>
+              )}
+            </button>
+
             <Avatar
               initials={getInitials(profile.full_name)}
               bg={isFaculty ? '#9FE1CB' : colors.bg}
               color={isFaculty ? '#085041' : colors.color}
               size={28}
             />
-            <span style={{ fontSize: '13px', color: '#555' }}>{profile.full_name}</span>
             <button
               onClick={onSignOut}
               style={{

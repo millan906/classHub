@@ -50,7 +50,6 @@ export function Sidebar({ profile, onNavigate, announcementBadge = 0 }: SidebarP
           {isFaculty && <SidebarItem icon="👥" text="Students" path={`${base}/students`} isActive={isActive(`${base}/students`)} navigate={go} />}
           <SidebarItem icon="📝" text="Assessments" path={`${base}/quizzes`} isActive={isActive(`${base}/quizzes`)} navigate={go} />
           <SidebarItem icon="💬" text="Q&A" path={`${base}/qa`} isActive={isActive(`${base}/qa`)} navigate={go} />
-          <SidebarItem icon="📢" text="Announcements" path={`${base}/announcements`} isActive={isActive(`${base}/announcements`)} navigate={go} badge={announcementBadge} />
           {isFaculty && <SidebarItem icon="📊" text="Grade Book" path="/faculty/gradebook" isActive={isActive('/faculty/gradebook')} navigate={go} />}
         </SidebarGroup>
       </div>
