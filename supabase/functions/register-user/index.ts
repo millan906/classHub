@@ -19,6 +19,17 @@ Deno.serve(async (req) => {
     })
   }
 
+  if (password.length < 15 || password.length > 64) {
+    return new Response(JSON.stringify({ error: 'Password must be between 15 and 64 characters.' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return new Response(JSON.stringify({ error: 'Password must contain at least one letter and one number.' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
   const isFaculty = FACULTY_INVITE_CODE.length > 0 && inviteCode === FACULTY_INVITE_CODE
   const role = isFaculty ? 'faculty' : 'student'
   const status = isFaculty ? 'approved' : 'pending'
