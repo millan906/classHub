@@ -38,6 +38,56 @@ function emptyRow(): SyllabusRow {
   return { id: uid(), week: '', lesson: '', readings: emptyCell(), assignments: emptyCell(), laboratory: emptyCell() }
 }
 
+// ─── SyllabusCellEditor ───────────────────────────────────────────────────────
+
+function SyllabusCellEditor({ col, label, row, fileRef, isUploading, onUpdate, onUpload }: {
+  col: 'readings' | 'assignments' | 'laboratory'
+  label: string
+  row: SyllabusRow
+  fileRef: (el: HTMLInputElement | null) => void
+  isUploading: boolean
+  onUpdate: (id: string, updated: SyllabusRow) => void
+  onUpload: (rowId: string, col: 'readings' | 'assignments' | 'laboratory', file: File) => Promise<void>
+}) {
+  const c = row[col]
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  function updateCell(field: keyof SyllabusCell, value: string) {
+    onUpdate(row.id, { ...row, [col]: { ...row[col], [field]: value } })
+  }
+
+  return (
+    <div style={{ marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, color: '#888', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+      <textarea
+        value={c.text}
+        onChange={e => updateCell('text', e.target.value)}
+        placeholder={`${label} description...`}
+        rows={2}
+        style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: '12px', marginBottom: '4px' }}
+      />
+      {c.file_path ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: '#1D9E75' }}>📎 {c.file_name}</span>
+          <button onClick={() => { updateCell('file_path', ''); updateCell('file_name', '') }}
+            style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <input value={c.link ?? ''} onChange={e => updateCell('link', e.target.value)}
+            placeholder="Paste a link..." style={{ ...inputStyle, flex: 1, fontSize: '12px' }} />
+          <span style={{ fontSize: '11px', color: '#bbb' }}>or</span>
+          <input type="file" ref={el => { fileInputRef.current = el; fileRef(el) }} style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(row.id, col, f) }} />
+          <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading} style={{ fontSize: '11px', padding: '4px 10px' }}>
+            {isUploading ? 'Uploading…' : '📎 File'}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── SyllabusRowEditor ────────────────────────────────────────────────────────
 
 function SyllabusRowEditor({ row, index, onUpdate, onRemove, onUpload, uploadingCells }: {
@@ -50,46 +100,6 @@ function SyllabusRowEditor({ row, index, onUpdate, onRemove, onUpload, uploading
 }) {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
-  function updateCell(col: 'readings' | 'assignments' | 'laboratory', field: keyof SyllabusCell, value: string) {
-    onUpdate(row.id, { ...row, [col]: { ...row[col], [field]: value } })
-  }
-
-  function CellEditor({ col, label }: { col: 'readings' | 'assignments' | 'laboratory'; label: string }) {
-    const c = row[col]
-    const uploadKey = `${row.id}:${col}`
-    const isUploading = uploadingCells.has(uploadKey)
-    return (
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 600, color: '#888', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
-        <textarea
-          value={c.text}
-          onChange={e => updateCell(col, 'text', e.target.value)}
-          placeholder={`${label} description...`}
-          rows={2}
-          style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: '12px', marginBottom: '4px' }}
-        />
-        {c.file_path ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: '#1D9E75' }}>📎 {c.file_name}</span>
-            <button onClick={() => { updateCell(col, 'file_path', ''); updateCell(col, 'file_name', '') }}
-              style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <input value={c.link ?? ''} onChange={e => updateCell(col, 'link', e.target.value)}
-              placeholder="Paste a link..." style={{ ...inputStyle, flex: 1, fontSize: '12px' }} />
-            <span style={{ fontSize: '11px', color: '#bbb' }}>or</span>
-            <input type="file" ref={el => { fileRefs.current[col] = el }} style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) onUpload(row.id, col, f) }} />
-            <Button onClick={() => fileRefs.current[col]?.click()} disabled={isUploading} style={{ fontSize: '11px', padding: '4px 10px' }}>
-              {isUploading ? 'Uploading…' : '📎 File'}
-            </Button>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div style={{ background: '#F9F9F7', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' }}>
       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '10px' }}>
@@ -101,9 +111,18 @@ function SyllabusRowEditor({ row, index, onUpdate, onRemove, onUpload, uploading
         <button onClick={() => onRemove(row.id)}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ccc', fontSize: '18px', lineHeight: 1, padding: '2px 4px', flexShrink: 0 }}>×</button>
       </div>
-      <CellEditor col="readings" label="Readings" />
-      <CellEditor col="assignments" label="Assignments" />
-      <CellEditor col="laboratory" label="Laboratory" />
+      {(['readings', 'assignments', 'laboratory'] as const).map(col => (
+        <SyllabusCellEditor
+          key={col}
+          col={col}
+          label={col.charAt(0).toUpperCase() + col.slice(1)}
+          row={row}
+          fileRef={el => { fileRefs.current[col] = el }}
+          isUploading={uploadingCells.has(`${row.id}:${col}`)}
+          onUpdate={onUpdate}
+          onUpload={onUpload}
+        />
+      ))}
     </div>
   )
 }
