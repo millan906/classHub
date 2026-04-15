@@ -372,13 +372,27 @@ function CourseInfoPanel({ course, getResourceUrl }: { course: Course; getResour
   return (
     <div style={{ borderTop: '0.5px solid rgba(0,0,0,0.08)', marginTop: '10px', paddingTop: '12px' }}>
       {schedule.length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <div style={sectionHead}>Schedule</div>
-          {schedule.map(s => (
-            <div key={s.id} style={{ fontSize: '12px', marginBottom: '4px' }}>
-              <strong>{s.type.charAt(0).toUpperCase() + s.type.slice(1)}</strong> — {s.day}, {s.time}{s.room ? ` · ${s.room}` : ''}
-            </div>
-          ))}
+          <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '320px' }}>
+            <thead>
+              <tr>
+                {['Type', 'Day', 'Time', 'Room'].map(h => (
+                  <th key={h} style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'left', border: '0.5px solid #ddd', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {schedule.map(s => (
+                <tr key={s.id}>
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, whiteSpace: 'nowrap' }}>{s.type.charAt(0).toUpperCase() + s.type.slice(1)}</td>
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee' }}>{s.day}</td>
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', whiteSpace: 'nowrap' }}>{s.time}</td>
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', color: '#888' }}>{s.room ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -414,7 +428,7 @@ function CourseInfoPanel({ course, getResourceUrl }: { course: Course; getResour
       )}
 
       {grading.length > 0 && (
-        <div style={{ marginBottom: '12px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <div style={sectionHead}>Grading System</div>
           <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '200px' }}>
             <thead>
@@ -430,6 +444,10 @@ function CourseInfoPanel({ course, getResourceUrl }: { course: Course; getResour
                   <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, color: '#1D9E75' }}>{p.weight}%</td>
                 </tr>
               ))}
+              <tr>
+                <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, background: '#F9F9F7' }}>Total</td>
+                <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 700, color: '#1D9E75', background: '#F9F9F7' }}>{grading.reduce((s, p) => s + p.weight, 0)}%</td>
+              </tr>
             </tbody>
           </table>
         </div>
