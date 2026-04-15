@@ -371,6 +371,30 @@ function CourseInfoPanel({ course, getResourceUrl }: { course: Course; getResour
 
   return (
     <div style={{ borderTop: '0.5px solid rgba(0,0,0,0.08)', marginTop: '10px', paddingTop: '12px' }}>
+      {grading.length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={sectionHead}>Grading System</div>
+          <table style={{ borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr>
+                {grading.map((p, i) => (
+                  <th key={i} style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'center', border: '0.5px solid #ddd', fontWeight: 600, whiteSpace: 'nowrap' }}>{p.label}</th>
+                ))}
+                <th style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'center', border: '0.5px solid #ddd', fontWeight: 600 }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                {grading.map((p, i) => (
+                  <td key={i} style={{ padding: '5px 10px', border: '0.5px solid #eee', textAlign: 'center', fontWeight: 600, color: '#1D9E75' }}>{p.weight}%</td>
+                ))}
+                <td style={{ padding: '5px 10px', border: '0.5px solid #eee', textAlign: 'center', fontWeight: 700, color: '#1D9E75', background: '#F9F9F7' }}>{grading.reduce((s, p) => s + p.weight, 0)}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {schedule.length > 0 && (
         <div style={{ marginBottom: '10px' }}>
           <div style={sectionHead}>Schedule</div>
