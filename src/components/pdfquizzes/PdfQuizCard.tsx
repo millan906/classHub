@@ -67,7 +67,7 @@ export function PdfQuizCard({
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}
           </Button>
-          <Button onClick={() => onViewResults?.(quiz)}>Results</Button>
+          <Button onClick={() => onViewResults?.(quiz)}>Submissions</Button>
           <Button variant="danger" onClick={() => onDelete?.(quiz)}>Delete</Button>
         </div>
       )}
@@ -93,7 +93,7 @@ export function PdfQuizCard({
             <Badge label="Closed" color="green" />
           )}
           {(attemptsUsed ?? 0) >= quiz.max_attempts && mySubmission && (
-            <Badge label="Done" color="green" />
+            <Badge label="Submitted" color="green" />
           )}
         </div>
       )}

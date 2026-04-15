@@ -26,8 +26,18 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onTo
   const submissionPct = totalStudents > 0 ? Math.round((submittedCount / totalStudents) * 100) : 0
   const progressPct = isFaculty ? submissionPct : (mySubmission?.score ?? 0)
   const typeIcon = TYPE_ICONS[quiz.item_type ?? 'quiz'] ?? '📝'
-  const actionLabel = quiz.item_type && quiz.item_type !== 'quiz' ? 'Open' :
-    (attemptsUsed ?? 0) === 0 ? 'Take quiz' : 'Retake'
+  const itemType = quiz.item_type ?? 'quiz'
+  const isFirstAttempt = (attemptsUsed ?? 0) === 0
+  const START_LABELS: Record<string, string> = {
+    quiz: 'Start Quiz', lab: 'Start Lab', assignment: 'Submit',
+    project: 'Submit', exam: 'Start Exam',
+  }
+  const RETRY_LABELS: Record<string, string> = {
+    assignment: 'Resubmit', project: 'Resubmit',
+  }
+  const actionLabel = isFirstAttempt
+    ? (START_LABELS[itemType] ?? 'Start')
+    : (RETRY_LABELS[itemType] ?? 'Retake')
 
   return (
     <div style={{
@@ -68,7 +78,7 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onTo
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}
           </Button>
-          <Button onClick={() => onViewResults?.(quiz)}>Results</Button>
+          <Button onClick={() => onViewResults?.(quiz)}>Submissions</Button>
           <Button variant="danger" onClick={() => onDelete?.(quiz)}>Delete</Button>
         </div>
       )}
@@ -93,7 +103,7 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onTo
             <Badge label="Closed" color="green" />
           )}
           {(attemptsUsed ?? 0) >= (quiz.max_attempts ?? 1) && mySubmission && (
-            <Badge label="Done" color="green" />
+            <Badge label="Submitted" color="green" />
           )}
         </div>
       )}

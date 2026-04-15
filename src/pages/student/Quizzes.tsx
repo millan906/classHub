@@ -85,7 +85,7 @@ export default function StudentQuizzes() {
 
   return (
     <div>
-      <PageHeader title="Assessments" subtitle="Take quizzes and view your results." />
+      <PageHeader title="Assessments" subtitle="View and submit your assessments." />
 
       {/* Course filter */}
       <div style={{ marginBottom: '1rem' }}>
@@ -175,7 +175,7 @@ export default function StudentQuizzes() {
         return (
           <div style={{ marginTop: '24px' }}>
             <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              PDF Quizzes
+              Paper Assessments
             </div>
             {visiblePdf.map(quiz => {
               const subs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
@@ -199,7 +199,7 @@ export default function StudentQuizzes() {
       {manualColumns.length > 0 && (
         <div style={{ marginTop: '24px' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Manual Scores
+            Instructor Grades
           </div>
           {manualColumns.map(col => {
             const group = groups.find(g => g.id === col.group_id)
@@ -225,7 +225,7 @@ export default function StudentQuizzes() {
                     )}
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: 500, color: score !== null ? '#1a1a1a' : '#aaa', flexShrink: 0 }}>
-                    {score !== null ? `${score} / ${col.max_score}` : 'Not graded'}
+                    {score !== null ? `${score} / ${col.max_score}` : 'Awaiting grade'}
                   </div>
                 </div>
                 {col.description && (

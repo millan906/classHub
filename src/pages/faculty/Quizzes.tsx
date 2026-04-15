@@ -18,6 +18,7 @@ import { ManualEntriesSection } from '../../components/quizzes/ManualEntriesSect
 import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
 import { PdfQuizBuilder } from '../../components/pdfquizzes/PdfQuizBuilder'
 import { PdfQuizResults } from '../../components/pdfquizzes/PdfQuizResults'
+import { Toast } from '../../components/ui/Toast'
 import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } from '../../types'
 
 export default function FacultyQuizzes() {
@@ -40,6 +41,11 @@ export default function FacultyQuizzes() {
   const [viewingPdfResults, setViewingPdfResults] = useState<PdfQuiz | null>(null)
   const [confirmDeletePdf, setConfirmDeletePdf] = useState<PdfQuiz | null>(null)
   const [pdfSectionCollapsed, setPdfSectionCollapsed] = useState(false)
+  const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
+
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    setToast({ message, type })
+  }
 
   useEffect(() => { fetchAllSubmissions() }, [])
   useEffect(() => { fetchAllPdfSubmissions() }, [])
@@ -95,6 +101,7 @@ export default function FacultyQuizzes() {
       await addColumn(data.title, data.gradeGroupId, computeMaxScore(data), profile.id, data.description, 'quiz_linked', quizId)
     }
     setShowBuilder(false)
+    showToast('Quiz created!')
   }
 
   async function handleUpdate(quizId: string, data: QuizFormData) {
@@ -113,6 +120,7 @@ export default function FacultyQuizzes() {
       }
     }
     setEditingQuiz(null)
+    showToast('Quiz updated!')
   }
 
   async function handleSaveEssayScores(
@@ -145,12 +153,14 @@ export default function FacultyQuizzes() {
       await addColumn(formData.title, formData.gradeGroupId, totalPoints, profile.id, null, 'quiz_linked', quizId)
     }
     setShowPdfBuilder(false)
+    showToast('Assessment created!')
   }
 
   async function handleUpdatePdf(file: File | undefined, formData: PdfQuizFormData) {
     if (!editingPdfQuiz || !profile) return
     await updatePdfQuiz(editingPdfQuiz.id, formData, file, profile.id)
     setEditingPdfQuiz(null)
+    showToast('Assessment updated!')
   }
 
   async function syncPdfToGradebook(quiz: PdfQuiz, studentId: string, earned: number) {
@@ -278,11 +288,12 @@ export default function FacultyQuizzes() {
 
   return (
     <div>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
       {confirmDelete && (
         <ConfirmDialog
           title="Delete quiz"
           message={`Delete "${confirmDelete.title}"? This will also remove all student submissions and cannot be undone.`}
-          onConfirm={async () => { await deleteQuiz(confirmDelete.id); setConfirmDelete(null) }}
+          onConfirm={async () => { await deleteQuiz(confirmDelete.id); setConfirmDelete(null); showToast('Deleted.') }}
           onCancel={() => setConfirmDelete(null)}
         />
       )}
@@ -290,7 +301,7 @@ export default function FacultyQuizzes() {
         <ConfirmDialog
           title="Delete PDF quiz"
           message={`Delete "${confirmDeletePdf.title}"? This will also remove the PDF file and all student submissions and cannot be undone.`}
-          onConfirm={async () => { await deletePdfQuiz(confirmDeletePdf.id); setConfirmDeletePdf(null) }}
+          onConfirm={async () => { await deletePdfQuiz(confirmDeletePdf.id); setConfirmDeletePdf(null); showToast('Deleted.') }}
           onCancel={() => setConfirmDeletePdf(null)}
         />
       )}

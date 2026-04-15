@@ -12,11 +12,37 @@ export interface Profile {
   created_at: string
 }
 
+export interface GradingPeriod {
+  label: string   // e.g. "Prelim", "Midterm", "Finals"
+  weight: number  // percentage, should sum to 100
+}
+
+export interface CourseScheduleItem {
+  id: string
+  type: 'lecture' | 'lab' | 'other'
+  day: string    // e.g. "Mon & Wed", "Tuesday"
+  time: string   // e.g. "8:00 AM – 10:00 AM"
+  room?: string
+}
+
+export interface CourseResource {
+  id: string
+  title: string
+  category: 'book' | 'journal' | 'lab' | 'other'
+  link?: string        // external URL
+  file_path?: string   // Supabase Storage path
+  file_name?: string   // original filename for display
+}
+
 export interface Course {
   id: string
   name: string
   section?: string
   status: 'open' | 'closed'
+  topics?: string[]
+  schedule?: CourseScheduleItem[]
+  resources?: CourseResource[]
+  grading_system?: GradingPeriod[]
   created_by: string
   created_at: string
 }

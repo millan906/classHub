@@ -116,7 +116,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
           </div>
         </div>
         <Badge
-          label={question.is_answered ? `${answerCount} answer${answerCount !== 1 ? 's' : ''}` : 'Unanswered'}
+          label={question.is_answered ? `${answerCount} response${answerCount !== 1 ? 's' : ''}` : 'Unanswered'}
           color={question.is_answered ? 'green' : 'amber'}
         />
         {question.is_answered && (
@@ -144,7 +144,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         {answerCount > 0 && (
           <Button onClick={() => setShowAnswers(v => !v)}>
-            {showAnswers ? 'Hide answers' : 'View answers'}
+            {showAnswers ? 'Hide responses' : 'View responses'}
           </Button>
         )}
         {isFaculty && onUpdate && (
@@ -162,7 +162,9 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
           </Button>
         )}
         {(!question.is_answered || isFaculty) && (
-          <Button onClick={() => setShowReply(v => !v)}>Answer</Button>
+          <Button onClick={() => setShowReply(v => !v)}>
+            {showReply ? 'Cancel' : 'Add a response'}
+          </Button>
         )}
       </div>
 
@@ -204,13 +206,12 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
           <textarea
             value={replyText}
             onChange={(e) => setReplyText(e.target.value)}
-            placeholder="Write your answer..."
+            placeholder="Write your response..."
             style={{ ...inputStyle, minHeight: '65px', resize: 'vertical' }}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
-            <Button onClick={() => setShowReply(false)}>Cancel</Button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button variant="primary" onClick={handlePostAnswer} disabled={posting}>
-              {posting ? 'Posting...' : 'Post answer'}
+              {posting ? 'Posting...' : 'Post response'}
             </Button>
           </div>
         </div>

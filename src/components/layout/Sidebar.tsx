@@ -5,9 +5,10 @@ import type { Profile } from '../../types'
 interface SidebarProps {
   profile: Profile
   onNavigate?: () => void
+  announcementBadge?: number
 }
 
-export function Sidebar({ profile, onNavigate }: SidebarProps) {
+export function Sidebar({ profile, onNavigate, announcementBadge = 0 }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const isFaculty = profile.role === 'faculty'
@@ -49,7 +50,7 @@ export function Sidebar({ profile, onNavigate }: SidebarProps) {
           {isFaculty && <SidebarItem icon="👥" text="Students" path={`${base}/students`} isActive={isActive(`${base}/students`)} navigate={go} />}
           <SidebarItem icon="📝" text="Assessments" path={`${base}/quizzes`} isActive={isActive(`${base}/quizzes`)} navigate={go} />
           <SidebarItem icon="💬" text="Q&A" path={`${base}/qa`} isActive={isActive(`${base}/qa`)} navigate={go} />
-          <SidebarItem icon="📢" text="Announcements" path={`${base}/announcements`} isActive={isActive(`${base}/announcements`)} navigate={go} />
+          <SidebarItem icon="📢" text="Announcements" path={`${base}/announcements`} isActive={isActive(`${base}/announcements`)} navigate={go} badge={announcementBadge} />
           {isFaculty && <SidebarItem icon="📊" text="Grade Book" path="/faculty/gradebook" isActive={isActive('/faculty/gradebook')} navigate={go} />}
         </SidebarGroup>
       </div>
@@ -72,8 +73,8 @@ function SidebarGroup({ label, children }: { label: string; children: React.Reac
   )
 }
 
-function SidebarItem({ icon, text, path, isActive, navigate }: {
-  icon: string; text: string; path: string; isActive: boolean; navigate: (path: string) => void
+function SidebarItem({ icon, text, path, isActive, navigate, badge = 0 }: {
+  icon: string; text: string; path: string; isActive: boolean; navigate: (path: string) => void; badge?: number
 }) {
   return (
     <div onClick={() => navigate(path)} style={{
@@ -85,7 +86,18 @@ function SidebarItem({ icon, text, path, isActive, navigate }: {
       borderRadius: '0',
     }}>
       <span style={{ fontSize: '14px' }}>{icon}</span>
-      {text}
+      <span style={{ flex: 1 }}>{text}</span>
+      {badge > 0 && (
+        <span style={{
+          background: '#A32D2D', color: '#fff',
+          fontSize: '10px', fontWeight: 700,
+          borderRadius: '999px', minWidth: '17px', height: '17px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 4px', lineHeight: 1,
+        }}>
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
     </div>
   )
 }

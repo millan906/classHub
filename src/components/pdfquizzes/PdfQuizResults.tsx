@@ -121,11 +121,11 @@ export function PdfQuizResults({
           statusColor = '#aaa'
           statusBg = '#f4f4f4'
         } else if (hasEssay && !hasEssayScored) {
-          statusLabel = '⏳ Essay pending'
+          statusLabel = '⏳ Needs grading'
           statusColor = '#D4900A'
           statusBg = '#FEF3CD'
         } else {
-          statusLabel = '✓ Logged'
+          statusLabel = '✓ Graded'
           statusColor = '#0F6E56'
           statusBg = '#E1F5EE'
         }
@@ -174,14 +174,14 @@ export function PdfQuizResults({
                   )}
                 </>
               ) : (
-                <div style={{ fontSize: '12px', color: '#bbb', marginBottom: '10px' }}>No paper scanned yet.</div>
+                <div style={{ fontSize: '12px', color: '#bbb', marginBottom: '10px' }}>No answers recorded yet.</div>
               )}
 
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {objectiveQuestions.length > 0 && (
                   <Button onClick={() => setActivePanel({ type: 'scan', studentId: student.id })}>
-                    {isScanned ? '🔄 Re-scan' : '📷 Scan'}
+                    {isScanned ? '🔄 Re-scan' : '📷 Record Answers'}
                   </Button>
                 )}
                 {hasEssay && (
@@ -189,7 +189,7 @@ export function PdfQuizResults({
                     variant={best && !hasEssayScored ? 'primary' : 'default'}
                     onClick={() => setActivePanel({ type: 'essay', studentId: student.id })}
                   >
-                    ✏️ {hasEssayScored ? 'Edit Essay' : 'Score Essay'}
+                    ✏️ {hasEssayScored ? 'Edit Grade' : 'Grade Essay'}
                   </Button>
                 )}
               </div>

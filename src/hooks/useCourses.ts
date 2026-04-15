@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Course } from '../types'
+import type { Course, GradingPeriod, CourseScheduleItem, CourseResource } from '../types'
+
+const BUCKET = 'course-resources'
 
 export function useCourses() {
   const [courses, setCourses] = useState<Course[]>([])
@@ -24,26 +26,57 @@ export function useCourses() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  async function createCourse(name: string, section: string, userId: string) {
+  async function createCourse(
+    id: string,
+    name: string,
+    section: string,
+    userId: string,
+    topics: string[] = [],
+    gradingSystem: GradingPeriod[] = [],
+    schedule: CourseScheduleItem[] = [],
+    resources: CourseResource[] = [],
+  ) {
     const { error } = await supabase.from('courses').insert({
+      id,
       name: name.trim(),
       section: section.trim() || null,
       created_by: userId,
+      topics,
+      grading_system: gradingSystem,
+      schedule,
+      resources,
     })
     if (error) throw error
     await fetchCourses()
   }
 
-  async function updateCourse(id: string, name: string, section: string) {
+  async function updateCourse(
+    id: string,
+    name: string,
+    section: string,
+    topics: string[] = [],
+    gradingSystem: GradingPeriod[] = [],
+    schedule: CourseScheduleItem[] = [],
+    resources: CourseResource[] = [],
+  ) {
     const { error } = await supabase.from('courses').update({
       name: name.trim(),
       section: section.trim() || null,
+      topics,
+      grading_system: gradingSystem,
+      schedule,
+      resources,
     }).eq('id', id)
     if (error) throw error
     await fetchCourses()
   }
 
   async function deleteCourse(id: string) {
+    // Remove all storage files for this course
+    const { data: files } = await supabase.storage.from(BUCKET).list(id)
+    if (files && files.length > 0) {
+      await supabase.storage.from(BUCKET).remove(files.map(f => `${id}/${f.name}`))
+    }
     const { error } = await supabase.from('courses').delete().eq('id', id)
     if (error) throw error
     await fetchCourses()
@@ -55,5 +88,25 @@ export function useCourses() {
     await fetchCourses()
   }
 
-  return { courses, loading, createCourse, updateCourse, deleteCourse, toggleCourseStatus }
+  async function uploadResource(courseId: string, file: File): Promise<{ file_path: string; file_name: string }> {
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `${courseId}/${Date.now()}_${safe}`
+    const { error } = await supabase.storage.from(BUCKET).upload(path, file)
+    if (error) throw error
+    return { file_path: path, file_name: file.name }
+  }
+
+  async function deleteResource(filePath: string) {
+    await supabase.storage.from(BUCKET).remove([filePath])
+  }
+
+  function getResourceUrl(filePath: string): string {
+    return supabase.storage.from(BUCKET).getPublicUrl(filePath).data.publicUrl
+  }
+
+  return {
+    courses, loading,
+    createCourse, updateCourse, deleteCourse, toggleCourseStatus,
+    uploadResource, deleteResource, getResourceUrl,
+  }
 }

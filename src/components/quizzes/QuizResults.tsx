@@ -88,7 +88,7 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
     <div>
       <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>{quiz.title}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-        <Button onClick={onBack}>← Scores</Button>
+        <Button onClick={onBack}>← Back</Button>
         <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
         <div>
           <div style={{ fontSize: '15px', fontWeight: 500 }}>{student.full_name}</div>
@@ -96,10 +96,10 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
             <div style={{ fontSize: '12px', color: '#888' }}>
               {submission.earned_points ?? getAutoEarned()} / {submission.total_points ?? getTotalPoints()} pts
               {' · '}{submission.score}%
-              {hasEssay && !submission.essay_scores && <span style={{ color: '#7A4F00' }}> · essay pending</span>}
+              {hasEssay && !submission.essay_scores && <span style={{ color: '#7A4F00' }}> · needs grading</span>}
             </div>
           ) : (
-            <div style={{ fontSize: '12px', color: '#aaa' }}>No submission</div>
+            <div style={{ fontSize: '12px', color: '#aaa' }}>Not submitted</div>
           )}
         </div>
       </div>
