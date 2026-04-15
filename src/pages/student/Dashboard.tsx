@@ -66,6 +66,23 @@ export default function StudentDashboard() {
     return { group: g, rows }
   }).filter(g => g.rows.length > 0)
 
+  // Weighted grade summary
+  const weightedRows = groups.map(g => {
+    const cols = columns.filter(c => c.group_id === g.id)
+    const graded = cols.filter(c => myEntries.some(e => e.column_id === c.id && e.score !== null))
+    const totalEarned = graded.reduce((sum, c) => {
+      const entry = myEntries.find(e => e.column_id === c.id)
+      return sum + (entry?.score ?? 0)
+    }, 0)
+    const totalMax = graded.reduce((sum, c) => sum + c.max_score, 0)
+    const rawPct = totalMax > 0 ? (totalEarned / totalMax) * 100 : null
+    const weighted = rawPct !== null ? (rawPct * g.weight_percent) / 100 : null
+    return { group: g, rawPct, weighted, graded: graded.length }
+  })
+  const hasAnyGrade = weightedRows.some(r => r.weighted !== null)
+  const finalGrade = weightedRows.reduce((sum, r) => sum + (r.weighted ?? 0), 0)
+  const totalWeight = weightedRows.filter(r => r.weighted !== null).reduce((sum, r) => sum + r.group.weight_percent, 0)
+
   const myQuestions = questions.filter(q => q.posted_by === profile?.id)
 
   return (
@@ -133,6 +150,49 @@ export default function StudentDashboard() {
           }
         </div>
       </div>
+
+      {/* Weighted grade summary */}
+      {hasAnyGrade && (
+        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', padding: '12px 14px', marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Weighted Grade
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr>
+                  {['Component', 'Weight', 'Score', 'Weighted'].map(h => (
+                    <th key={h} style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'left', border: '0.5px solid #ddd', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {weightedRows.map(({ group, rawPct, weighted }) => (
+                  <tr key={group.id}>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee' }}>{group.name}</td>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee', color: '#888' }}>{group.weight_percent}%</td>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee', color: rawPct !== null ? scoreBarColor(Math.round(rawPct)) : '#bbb' }}>
+                      {rawPct !== null ? `${rawPct.toFixed(1)}%` : '—'}
+                    </td>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, color: weighted !== null ? scoreBarColor(Math.round((weighted / group.weight_percent) * 100)) : '#bbb' }}>
+                      {weighted !== null ? weighted.toFixed(2) : '—'}
+                    </td>
+                  </tr>
+                ))}
+                <tr>
+                  <td colSpan={2} style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, background: '#F9F9F7' }}>
+                    Final Grade {totalWeight < 100 ? <span style={{ fontSize: '10px', color: '#aaa', fontWeight: 400 }}>({totalWeight}% graded)</span> : ''}
+                  </td>
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', background: '#F9F9F7' }} />
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 700, fontSize: '13px', background: '#F9F9F7', color: scoreBarColor(Math.round(finalGrade)) }}>
+                    {finalGrade.toFixed(2)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Scores */}
       {scoresByGroup.length > 0 && (
