@@ -144,7 +144,7 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
     if (!f) return
-    if (f.size > 20 * 1024 * 1024) { setFileError('File must be under 20 MB.'); return }
+    if (f.size > 50 * 1024 * 1024) { setFileError('File too large. Maximum size is 50 MB.'); return }
     setFileError('')
     setFile(f)
   }
@@ -223,7 +223,7 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
           </div>
         </div>
 
-        <label style={labelStyle}>PDF File (optional)</label>
+        <label style={labelStyle}>PDF File (optional) <span style={{ fontWeight: 400, color: '#aaa' }}>· max 50 MB</span></label>
         <input type="file" accept=".pdf" onChange={handleFileChange} style={{ fontSize: '13px', marginBottom: '4px' }} />
         {fileError && <div style={{ fontSize: '12px', color: '#A32D2D', marginBottom: '4px' }}>{fileError}</div>}
         {file && <div style={{ fontSize: '12px', color: '#555' }}>{file.name} ({(file.size / 1024 / 1024).toFixed(1)} MB)</div>}

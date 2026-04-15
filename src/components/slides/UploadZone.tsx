@@ -13,18 +13,27 @@ export function UploadZone({ courses, onUpload }: UploadZoneProps) {
   const [title, setTitle] = useState('')
   const [courseId, setCourseId] = useState<string>('')
   const [uploading, setUploading] = useState(false)
+  const [sizeError, setSizeError] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const MAX_MB = 100
+
+  function pickFile(f: File) {
+    if (f.size > MAX_MB * 1024 * 1024) { setSizeError(`File too large. Maximum size is ${MAX_MB} MB.`); return }
+    setSizeError('')
+    setFile(f)
+    setTitle(f.name.replace(/\.[^/.]+$/, ''))
+  }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragging(false)
     const f = e.dataTransfer.files[0]
-    if (f) { setFile(f); setTitle(f.name.replace(/\.[^/.]+$/, '')) }
+    if (f) pickFile(f)
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]
-    if (f) { setFile(f); setTitle(f.name.replace(/\.[^/.]+$/, '')) }
+    if (f) pickFile(f)
   }
 
   async function handleUpload() {
@@ -64,9 +73,10 @@ export function UploadZone({ courses, onUpload }: UploadZoneProps) {
         <div style={{ fontWeight: 500, color: '#1a1a1a', marginBottom: '3px' }}>
           {file ? file.name : 'Upload slides'}
         </div>
-        <div>.pptx, .pdf, .key supported</div>
+        <div>.pptx, .pdf, .key supported · max {MAX_MB} MB</div>
       </div>
       <input ref={inputRef} type="file" accept=".pptx,.pdf,.key" style={{ display: 'none' }} onChange={handleFileChange} />
+      {sizeError && <div style={{ fontSize: '12px', color: '#A32D2D', marginTop: '6px' }}>{sizeError}</div>}
       {file && (
         <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

@@ -108,6 +108,7 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
 
   async function handleScanImage(file: File) {
     if (!file.type.startsWith('image/')) { setScanError('Please select an image file.'); return }
+    if (file.size > 10 * 1024 * 1024) { setScanError('Image too large. Maximum size is 10 MB.'); return }
     setScanError('')
     setScanning(true)
     setScanProgress(0)

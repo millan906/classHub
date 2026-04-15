@@ -10,6 +10,17 @@ const inputStyle: React.CSSProperties = {
   marginBottom: '12px', color: '#1a1a1a',
 }
 
+const PASSWORD_MIN = 15
+const PASSWORD_MAX = 64
+
+function validatePassword(pw: string): string | null {
+  if (pw.length < PASSWORD_MIN) return `At least ${PASSWORD_MIN} characters required.`
+  if (pw.length > PASSWORD_MAX) return `Maximum ${PASSWORD_MAX} characters allowed.`
+  if (!/[a-zA-Z]/.test(pw)) return 'Must contain at least one letter.'
+  if (!/[0-9]/.test(pw)) return 'Must contain at least one number.'
+  return null
+}
+
 export default function Register() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -20,8 +31,13 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
+  const pwError = password.length > 0 ? validatePassword(password) : null
+  const pwOk = password.length > 0 && pwError === null
+
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
+    const pwValidation = validatePassword(password)
+    if (pwValidation) { setError(pwValidation); return }
     setError('')
     setLoading(true)
     try {
@@ -73,7 +89,19 @@ export default function Register() {
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Email</div>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} required />
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Password</div>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} required minLength={6} />
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="••••••••••••••••"
+            style={{ ...inputStyle, borderColor: password.length > 0 ? (pwOk ? '#1D9E75' : '#A32D2D') : undefined, marginBottom: '4px' }}
+            required
+            minLength={PASSWORD_MIN}
+            maxLength={PASSWORD_MAX}
+          />
+          <div style={{ fontSize: '11px', marginBottom: '10px', color: pwOk ? '#1D9E75' : (password.length > 0 ? '#A32D2D' : '#aaa') }}>
+            {pwOk ? '✓ Password looks good' : (pwError ?? `Min ${PASSWORD_MIN} chars, max ${PASSWORD_MAX}, letters + numbers required`)}
+          </div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Faculty invite code (optional)</div>
           <input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Leave blank if student" style={inputStyle} />
           {error && <div style={{ fontSize: '12px', color: '#A32D2D', marginBottom: '10px' }}>{error}</div>}

@@ -93,6 +93,7 @@ export function useCourses() {
   }
 
   async function uploadResource(courseId: string, file: File): Promise<{ file_path: string; file_name: string }> {
+    if (file.size > 50 * 1024 * 1024) throw new Error('File too large. Maximum size is 50 MB.')
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `${courseId}/${Date.now()}_${safe}`
     const { error } = await supabase.storage.from(BUCKET).upload(path, file)

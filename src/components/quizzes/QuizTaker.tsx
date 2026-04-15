@@ -328,8 +328,13 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
             </div>
           )}
           <input type="file" accept="video/*,application/pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"
-            onChange={e => setPendingFile(e.target.files?.[0] ?? null)}
+            onChange={e => {
+              const f = e.target.files?.[0] ?? null
+              if (f && f.size > 100 * 1024 * 1024) { alert('File too large. Maximum size is 100 MB.'); e.target.value = ''; return }
+              setPendingFile(f)
+            }}
             style={{ fontSize: '13px' }} />
+          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>Max 100 MB</div>
           {pendingFile && (
             <div style={{ fontSize: '12px', color: '#0F6E56', marginTop: '6px' }}>
               Selected: {pendingFile.name} ({(pendingFile.size / 1024 / 1024).toFixed(1)} MB)
