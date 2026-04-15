@@ -82,21 +82,55 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
         </div>
       </div>
 
+      {/* Grading summary — horizontal, shown at top */}
+      {grading.length > 0 && (
+        <Section title="Grading System">
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr>
+                  {grading.map((p, i) => (
+                    <th key={i} style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'center', border: '0.5px solid #ddd', fontWeight: 600, whiteSpace: 'nowrap' }}>{p.label}</th>
+                  ))}
+                  <th style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'center', border: '0.5px solid #ddd', fontWeight: 600 }}>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {grading.map((p, i) => (
+                    <td key={i} style={{ padding: '5px 10px', border: '0.5px solid #eee', textAlign: 'center', fontWeight: 600, color: '#1D9E75' }}>{p.weight}%</td>
+                  ))}
+                  <td style={{ padding: '5px 10px', border: '0.5px solid #eee', textAlign: 'center', fontWeight: 700, color: '#1D9E75', background: '#F9F9F7' }}>{grading.reduce((s, p) => s + p.weight, 0)}%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+
       {/* Schedule */}
       {schedule.length > 0 && (
         <Section title="Class Schedule">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {schedule.map(s => (
-              <div key={s.id} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px 14px', background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '10px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', background: s.type === 'lab' ? '#FEF3CD' : '#E6F1FB', color: s.type === 'lab' ? '#D4900A' : '#185FA5', flexShrink: 0 }}>
-                  {SCHEDULE_TYPE_LABELS[s.type] ?? s.type}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 500 }}>{s.day}</div>
-                  <div style={{ fontSize: '12px', color: '#888' }}>{s.time}{s.room ? ` · ${s.room}` : ''}</div>
-                </div>
-              </div>
-            ))}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '320px' }}>
+              <thead>
+                <tr>
+                  {['Type', 'Day', 'Time', 'Room'].map(h => (
+                    <th key={h} style={{ background: '#F1EFE8', padding: '5px 10px', textAlign: 'left', border: '0.5px solid #ddd', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {schedule.map(s => (
+                  <tr key={s.id}>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee', fontWeight: 600, whiteSpace: 'nowrap' }}>{SCHEDULE_TYPE_LABELS[s.type] ?? s.type}</td>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee' }}>{s.day}</td>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee', whiteSpace: 'nowrap' }}>{s.time}</td>
+                    <td style={{ padding: '5px 10px', border: '0.5px solid #eee', color: '#888' }}>{s.room ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Section>
       )}
@@ -186,9 +220,10 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
         </Section>
       )}
 
-      {/* Grading system */}
+      {/* Grading system — vertical detail */}
       {grading.length > 0 && (
-        <Section title="Grading System">
+        <Section title="Grading Breakdown">
+          <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', fontSize: '12px', minWidth: '200px' }}>
             <thead>
               <tr>
@@ -209,6 +244,7 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
               </tr>
             </tbody>
           </table>
+          </div>
         </Section>
       )}
 
