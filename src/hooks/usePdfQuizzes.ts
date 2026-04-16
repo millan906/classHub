@@ -64,8 +64,11 @@ export function usePdfQuizzes() {
         title: formData.title,
         course_id: formData.courseId,
         grade_group_id: formData.gradeGroupId,
+        instructions: formData.instructions,
         pdf_path: pdfPath,
         due_date: formData.dueDate,
+        open_at: formData.openAt,
+        close_at: formData.closeAt,
         max_attempts: formData.maxAttempts,
         num_questions: formData.answerKey.length,
         total_points: totalPoints,
@@ -107,9 +110,14 @@ export function usePdfQuizzes() {
       grade_group_id: formData.gradeGroupId,
       pdf_path: pdfPath,
       due_date: formData.dueDate,
+      open_at: formData.openAt,
+      close_at: formData.closeAt,
+      open_notif_sent: false,
+      reminder_notif_sent: false,
       max_attempts: formData.maxAttempts,
       num_questions: formData.answerKey.length,
       total_points: totalPoints,
+      instructions: formData.instructions,
     }).eq('id', id)
 
     await supabase.from('pdf_quiz_answer_key').delete().eq('pdf_quiz_id', id)
@@ -150,6 +158,44 @@ export function usePdfQuizzes() {
   async function togglePdfQuiz(id: string, isOpen: boolean) {
     await supabase.from('pdf_quizzes').update({ is_open: isOpen }).eq('id', id)
     await fetchPdfQuizzes()
+    if (!isOpen) return // only notify students when opening
+
+    const quiz = pdfQuizzes.find(q => q.id === id)
+    const { data: { session } } = await supabase.auth.getSession()
+
+    // In-app notification
+    if (quiz?.course_id) {
+      const { data: enrollments } = await supabase
+        .from('course_enrollments').select('student_id').eq('course_id', quiz.course_id)
+      const ids = (enrollments ?? []).map((e: { student_id: string }) => e.student_id).filter(Boolean)
+      if (ids.length > 0) {
+        await supabase.from('notifications').insert(
+          ids.map(uid => ({
+            user_id: uid,
+            title: `${quiz.title} is now open`,
+            body: 'A quiz is now available. Log in to begin.',
+            type: 'quiz_open',
+            related_id: id,
+          }))
+        )
+      }
+    }
+
+    // Email notification
+    if (session) {
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
+      fetch(fnUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ type: 'quiz_open', quizId: id, isPdf: true }),
+      }).then(r => r.json())
+        .then(result => console.log('[Email] PDF quiz open result:', result))
+        .catch(err => console.error('[Email] PDF quiz open notification failed:', err))
+    }
   }
 
   // Used by students taking the quiz online

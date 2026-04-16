@@ -6,6 +6,7 @@ import { useQuizzes } from '../../hooks/useQuizzes'
 import { useQA } from '../../hooks/useQA'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { useGradeBook } from '../../hooks/useGradeBook'
+import { useGradesVisible } from '../../hooks/useSettings'
 import { MetricCard, PageHeader } from '../../components/ui/Card'
 import { scoreBarColor } from '../../utils/scoreColors'
 
@@ -16,6 +17,7 @@ export default function StudentDashboard() {
   const { questions } = useQA()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
   const { groups, columns, entries } = useGradeBook()
+  const { gradesVisible } = useGradesVisible(profile?.id ?? null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -152,7 +154,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Weighted grade summary */}
-      {hasAnyGrade && (
+      {gradesVisible && hasAnyGrade && (
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', padding: '12px 14px', marginBottom: '12px' }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Weighted Grade
@@ -195,7 +197,7 @@ export default function StudentDashboard() {
       )}
 
       {/* Scores */}
-      {scoresByGroup.length > 0 && (
+      {gradesVisible && scoresByGroup.length > 0 && (
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', padding: '12px 14px' }}>
           <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             My Scores

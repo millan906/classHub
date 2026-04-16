@@ -56,12 +56,15 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
   const [courseId, setCourseId] = useState(initialQuiz?.course_id ?? '')
   const [slideId, setSlideId] = useState(initialQuiz?.slide_id ?? '')
   const [dueDate, setDueDate] = useState(initialQuiz?.due_date?.slice(0, 10) ?? '')
+  const [openAt, setOpenAt] = useState(initialQuiz?.open_at?.slice(0, 16) ?? '')
+  const [closeAt, setCloseAt] = useState(initialQuiz?.close_at?.slice(0, 16) ?? '')
   const [timeLimit, setTimeLimit] = useState<string>(initialQuiz?.time_limit_minutes?.toString() ?? '')
   const [lockdown, setLockdown] = useState(initialQuiz?.lockdown_enabled ?? false)
   const [maxAttempts, setMaxAttempts] = useState<string>(initialQuiz?.max_attempts?.toString() ?? '1')
   const [description, setDescription] = useState(initialQuiz?.description ?? '')
   const [manualGroupId, setManualGroupId] = useState(initialQuiz?.grade_group_id ?? '')
   const [allowFileUpload, setAllowFileUpload] = useState(initialQuiz?.allow_file_upload ?? false)
+  const [notifyStudents, setNotifyStudents] = useState(!initialQuiz)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -122,7 +125,9 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       title: title.trim(),
       courseId: courseId || null,
       slideId: isQuiz ? (slideId || null) : null,
-      dueDate: dueDate || null,
+      dueDate: closeAt ? closeAt : (dueDate || null),
+      openAt: openAt || null,
+      closeAt: closeAt || null,
       timeLimitMinutes: isQuiz ? (timeLimit ? parseInt(timeLimit, 10) : null) : null,
       lockdownEnabled: isQuiz ? lockdown : false,
       maxAttempts: isQuiz ? (parseInt(maxAttempts) || 1) : 1,
@@ -130,11 +135,13 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       itemType,
       gradeGroupId: manualGroupId || null,
       allowFileUpload: isQuiz ? false : allowFileUpload,
-      description: isQuiz ? null : (description.trim() || null),
+      description: description.trim() || null,
+      notifyStudents,
     }
   }
 
   async function handleSave() {
+    if (!courseId) { setError('A course must be selected before saving.'); return }
     if (!title.trim()) { setError('Title is required.'); return }
     setError('')
     setSaving(true)
@@ -182,9 +189,11 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       )}
 
       {/* Course */}
-      <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Course</div>
-      <select value={courseId} onChange={e => setCourseId(e.target.value)} style={formInputStyle}>
-        <option value="">— No course assigned —</option>
+      <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>
+        Course <span style={{ color: '#A32D2D' }}>*</span>
+      </div>
+      <select value={courseId} onChange={e => setCourseId(e.target.value)} style={{ ...formInputStyle, borderColor: !courseId ? '#A32D2D' : undefined }}>
+        <option value="">— Select a course —</option>
         {courses.map(c => (
           <option key={c.id} value={c.id}>
             {c.name}{c.section ? ` · Section ${c.section}` : ''}{c.status === 'closed' ? ' (Closed)' : ''}
@@ -199,19 +208,15 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       <input value={title} onChange={e => setTitle(e.target.value)}
         placeholder={`${cfg.label} title`} style={formInputStyle} />
 
-      {/* Description (non-quiz only) */}
-      {itemType !== 'quiz' && (
-        <>
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Instructions / Content (optional)</div>
-          <textarea
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            placeholder={`Describe what students need to do for this ${cfg.label.toLowerCase()}…`}
-            rows={4}
-            style={{ ...formInputStyle, resize: 'vertical', lineHeight: '1.5' }}
-          />
-        </>
-      )}
+      {/* Instructions / Description */}
+      <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Instructions (optional)</div>
+      <textarea
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+        placeholder={`e.g. Write T if the statement is true and F if it is false…`}
+        rows={3}
+        style={{ ...formInputStyle, resize: 'vertical', lineHeight: '1.5' }}
+      />
 
       {/* Grade group — shown for all types */}
       {groups.length > 0 && (
@@ -228,6 +233,8 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       {itemType === 'quiz' ? (
         <QuizSettings
           dueDate={dueDate} setDueDate={setDueDate}
+          openAt={openAt} setOpenAt={setOpenAt}
+          closeAt={closeAt} setCloseAt={setCloseAt}
           timeLimit={timeLimit} setTimeLimit={setTimeLimit}
           lockdown={lockdown} setLockdown={setLockdown}
           maxAttempts={maxAttempts} setMaxAttempts={setMaxAttempts}
@@ -237,6 +244,8 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       ) : (
         <NonQuizSettings
           dueDate={dueDate} setDueDate={setDueDate}
+          openAt={openAt} setOpenAt={setOpenAt}
+          closeAt={closeAt} setCloseAt={setCloseAt}
           allowFileUpload={allowFileUpload} setAllowFileUpload={setAllowFileUpload}
         />
       )}
@@ -274,6 +283,10 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
           <Button onClick={() => addQuestion('codesnippet')} style={{ background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56', fontSize: '12px' }}>+ Code Snippet</Button>
           <Button onClick={() => addQuestion('essay')} style={{ background: '#FEF3CD', color: '#7A4F00', borderColor: '#B8860B', fontSize: '12px' }}>+ Essay</Button>
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#555', cursor: 'pointer' }}>
+          <input type="checkbox" checked={notifyStudents} onChange={e => setNotifyStudents(e.target.checked)} />
+          Notify students
+        </label>
         <div style={{ display: 'flex', gap: '6px' }}>
           <Button onClick={onCancel}>Cancel</Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>
@@ -287,8 +300,10 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
 
 // ─── Settings sub-panels ──────────────────────────────────────────────────────
 
-function QuizSettings({ dueDate, setDueDate, timeLimit, setTimeLimit, lockdown, setLockdown, maxAttempts, setMaxAttempts, slideId, setSlideId, slides }: {
+function QuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setCloseAt, timeLimit, setTimeLimit, lockdown, setLockdown, maxAttempts, setMaxAttempts, slideId, setSlideId, slides }: {
   dueDate: string; setDueDate: (v: string) => void
+  openAt: string; setOpenAt: (v: string) => void
+  closeAt: string; setCloseAt: (v: string) => void
   timeLimit: string; setTimeLimit: (v: string) => void
   lockdown: boolean; setLockdown: (v: boolean) => void
   maxAttempts: string; setMaxAttempts: (v: string) => void
@@ -297,11 +312,27 @@ function QuizSettings({ dueDate, setDueDate, timeLimit, setTimeLimit, lockdown, 
 }) {
   return (
     <>
+      <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#F8F7F2', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.08)' }}>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '8px' }}>Auto Schedule (optional)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Opens at</div>
+            <input type="datetime-local" value={openAt} onChange={e => setOpenAt(e.target.value)}
+              style={{ ...formInputStyle, marginBottom: 0 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Closes at</div>
+            <input type="datetime-local" value={closeAt} onChange={e => { setCloseAt(e.target.value); setDueDate('') }}
+              style={{ ...formInputStyle, marginBottom: 0 }} />
+          </div>
+        </div>
+        <div style={{ fontSize: '11px', color: '#aaa', marginTop: '6px' }}>Students receive an email when it opens and a reminder 30 mins before it closes.</div>
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
         <div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Deadline (optional)</div>
-          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-            style={{ ...formInputStyle, marginBottom: 0 }} />
+          <input type="date" value={closeAt ? '' : dueDate} onChange={e => setDueDate(e.target.value)} disabled={!!closeAt}
+            style={{ ...formInputStyle, marginBottom: 0, opacity: closeAt ? 0.4 : 1 }} />
         </div>
         <div>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Time limit (optional)</div>
@@ -342,16 +373,34 @@ function QuizSettings({ dueDate, setDueDate, timeLimit, setTimeLimit, lockdown, 
   )
 }
 
-function NonQuizSettings({ dueDate, setDueDate, allowFileUpload, setAllowFileUpload }: {
+function NonQuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setCloseAt, allowFileUpload, setAllowFileUpload }: {
   dueDate: string; setDueDate: (v: string) => void
+  openAt: string; setOpenAt: (v: string) => void
+  closeAt: string; setCloseAt: (v: string) => void
   allowFileUpload: boolean; setAllowFileUpload: (v: boolean) => void
 }) {
   return (
     <div style={{ marginBottom: '12px' }}>
+      <div style={{ marginBottom: '8px', padding: '10px 12px', background: '#F8F7F2', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.08)' }}>
+        <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '8px' }}>Auto Schedule (optional)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Opens at</div>
+            <input type="datetime-local" value={openAt} onChange={e => setOpenAt(e.target.value)}
+              style={{ ...formInputStyle, marginBottom: 0 }} />
+          </div>
+          <div>
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Closes at</div>
+            <input type="datetime-local" value={closeAt} onChange={e => { setCloseAt(e.target.value); setDueDate('') }}
+              style={{ ...formInputStyle, marginBottom: 0 }} />
+          </div>
+        </div>
+        <div style={{ fontSize: '11px', color: '#aaa', marginTop: '6px' }}>Students receive an email when it opens and a reminder 30 mins before it closes.</div>
+      </div>
       <div style={{ marginBottom: '8px' }}>
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Deadline (optional)</div>
-        <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)}
-          style={{ ...formInputStyle, marginBottom: 0 }} />
+        <input type="date" value={closeAt ? '' : dueDate} onChange={e => setDueDate(e.target.value)} disabled={!!closeAt}
+          style={{ ...formInputStyle, marginBottom: 0, opacity: closeAt ? 0.4 : 1 }} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <Toggle value={allowFileUpload} onChange={setAllowFileUpload} />

@@ -62,9 +62,13 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
   const [courseId, setCourseId] = useState(initialQuiz?.course_id ?? '')
   const [gradeGroupId, setGradeGroupId] = useState(initialQuiz?.grade_group_id ?? '')
   const [dueDate, setDueDate] = useState(initialQuiz?.due_date ?? '')
+  const [openAt, setOpenAt] = useState(initialQuiz?.open_at?.slice(0, 16) ?? '')
+  const [closeAt, setCloseAt] = useState(initialQuiz?.close_at?.slice(0, 16) ?? '')
   const [maxAttempts, setMaxAttempts] = useState(initialQuiz?.max_attempts ?? 1)
   const [file, setFile] = useState<File | undefined>()
   const [fileError, setFileError] = useState('')
+  const [notifyStudents, setNotifyStudents] = useState(!initialQuiz)
+  const [instructions, setInstructions] = useState(initialQuiz?.instructions ?? '')
   const [saving, setSaving] = useState(false)
 
   const [keyRows, setKeyRows] = useState<KeyRow[]>(() => {
@@ -151,6 +155,7 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!courseId) { setFileError('A course must be selected before saving.'); return }
     if (!title.trim()) return
     if (keyRows.length === 0) return
 
@@ -160,8 +165,12 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
         title: title.trim(),
         courseId: courseId || null,
         gradeGroupId: gradeGroupId || null,
-        dueDate: dueDate || null,
+        dueDate: closeAt ? closeAt : (dueDate || null),
+        openAt: openAt || null,
+        closeAt: closeAt || null,
         maxAttempts: Number(maxAttempts) || 1,
+        notifyStudents,
+        instructions: instructions.trim() || null,
         answerKey: keyRows.map(r => ({
           question_number: r.question_number,
           question_type: r.question_type,
@@ -197,11 +206,20 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
         <input type="text" value={title} onChange={e => setTitle(e.target.value)}
           placeholder="e.g. Midterm Exam" required style={formInputStyle} />
 
+        <label style={labelStyle}>Instructions (optional)</label>
+        <textarea
+          value={instructions}
+          onChange={e => setInstructions(e.target.value)}
+          placeholder="e.g. Write T if the statement is true and F if it is false…"
+          rows={3}
+          style={{ ...formInputStyle, resize: 'vertical', lineHeight: '1.5' }}
+        />
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           <div>
-            <label style={labelStyle}>Course</label>
-            <select value={courseId} onChange={e => setCourseId(e.target.value)} style={formInputStyle}>
-              <option value="">All Courses</option>
+            <label style={labelStyle}>Course <span style={{ color: '#A32D2D' }}>*</span></label>
+            <select value={courseId} onChange={e => setCourseId(e.target.value)} style={{ ...formInputStyle, borderColor: !courseId ? '#A32D2D' : undefined }}>
+              <option value="">— Select a course —</option>
               {courses.map(c => <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>)}
             </select>
           </div>
@@ -214,13 +232,29 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
           </div>
           <div>
             <label style={labelStyle}>Due Date</label>
-            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={formInputStyle} />
+            <input type="date" value={closeAt ? '' : dueDate} onChange={e => setDueDate(e.target.value)}
+              disabled={!!closeAt} style={{ ...formInputStyle, opacity: closeAt ? 0.4 : 1 }} />
           </div>
           <div>
             <label style={labelStyle}>Max Attempts</label>
             <input type="number" min={1} max={10} value={maxAttempts}
               onChange={e => setMaxAttempts(Number(e.target.value))} style={formInputStyle} />
           </div>
+        </div>
+
+        <div style={{ marginBottom: '12px', padding: '10px 12px', background: '#F8F7F2', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.08)' }}>
+          <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', marginBottom: '8px' }}>Auto Schedule (optional)</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div>
+              <label style={labelStyle}>Opens at</label>
+              <input type="datetime-local" value={openAt} onChange={e => setOpenAt(e.target.value)} style={formInputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Closes at</label>
+              <input type="datetime-local" value={closeAt} onChange={e => { setCloseAt(e.target.value); setDueDate('') }} style={formInputStyle} />
+            </div>
+          </div>
+          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '6px' }}>Students receive an email when it opens and a reminder 30 mins before it closes.</div>
         </div>
 
         <label style={labelStyle}>PDF File (optional) <span style={{ fontWeight: 400, color: '#aaa' }}>· max 50 MB</span></label>
@@ -309,7 +343,11 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
         <Button type="button" onClick={addRow} style={{ marginTop: '8px' }}>+ Add Question</Button>
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#555', cursor: 'pointer' }}>
+          <input type="checkbox" checked={notifyStudents} onChange={e => setNotifyStudents(e.target.checked)} />
+          Notify students
+        </label>
         <Button type="button" onClick={onCancel}>Cancel</Button>
         <Button type="submit" variant="primary" disabled={saving}>
           {saving ? 'Saving…' : initialQuiz ? 'Save Changes' : 'Create PDF Quiz'}

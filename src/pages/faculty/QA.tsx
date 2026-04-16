@@ -6,7 +6,7 @@ import { QACard } from '../../components/qa/QACard'
 
 export default function FacultyQA() {
   const { profile } = useAuth()
-  const { questions, postQuestion, updateQuestion, toggleQuestion, postAnswer, endorseAnswer } = useQA()
+  const { questions, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer } = useQA()
 
   async function handlePost(title: string, body: string, tag: string) {
     if (!profile) return
@@ -35,6 +35,7 @@ export default function FacultyQA() {
               onEndorse={endorseAnswer}
               onUpdate={updateQuestion}
               onToggle={toggleQuestion}
+              onDelete={deleteQuestion}
             />
           ))
       }

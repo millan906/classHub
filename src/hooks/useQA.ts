@@ -31,7 +31,14 @@ export function useQA() {
   }
 
   async function updateQuestion(id: string, title: string, body: string, tag: string) {
-    await supabase.from('questions').update({ title, body, tag: tag || null }).eq('id', id)
+    await supabase.from('questions').update({ title, body, tag: tag || null, updated_at: new Date().toISOString() }).eq('id', id)
+    await fetchQuestions()
+  }
+
+  async function deleteQuestion(id: string) {
+    await supabase.from('answers').delete().eq('question_id', id)
+    const { error } = await supabase.from('questions').delete().eq('id', id)
+    if (error) console.error('Delete question error:', error)
     await fetchQuestions()
   }
 
@@ -51,5 +58,5 @@ export function useQA() {
     await fetchQuestions()
   }
 
-  return { questions, loading, postQuestion, updateQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
+  return { questions, loading, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
 }

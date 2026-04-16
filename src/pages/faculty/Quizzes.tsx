@@ -4,6 +4,7 @@ import { useQuizzes } from '../../hooks/useQuizzes'
 import { useSlides } from '../../hooks/useSlides'
 import { useStudents } from '../../hooks/useStudents'
 import { useCourses } from '../../hooks/useCourses'
+import { useAllEnrollments } from '../../hooks/useEnrollments'
 import { TYPE_ORDER } from '../../constants/itemTypes'
 import { useGradeBook } from '../../hooks/useGradeBook'
 import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
@@ -19,6 +20,7 @@ import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
 import { PdfQuizBuilder } from '../../components/pdfquizzes/PdfQuizBuilder'
 import { PdfQuizResults } from '../../components/pdfquizzes/PdfQuizResults'
 import { Toast } from '../../components/ui/Toast'
+import { sendNotificationsToStudents } from '../../hooks/useNotifications'
 import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } from '../../types'
 
 export default function FacultyQuizzes() {
@@ -27,6 +29,7 @@ export default function FacultyQuizzes() {
   const { slides } = useSlides()
   const { students } = useStudents()
   const { courses } = useCourses()
+  const { enrollments } = useAllEnrollments()
   const { groups, columns, entries, addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn, upsertEntry } = useGradeBook()
   const { pdfQuizzes, submissions: pdfSubmissions, fetchAllSubmissions: fetchAllPdfSubmissions, createPdfQuiz, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz, saveScannedAnswers, saveEssayScores: savePdfEssayScores, createEssaySubmission, downloadScoresCsv } = usePdfQuizzes()
   const [showBuilder, setShowBuilder] = useState(false)
@@ -86,7 +89,16 @@ export default function FacultyQuizzes() {
     syncToGradebook()
   }, [viewingResults?.id])
 
-  const enrolled = students.filter(s => s.status === 'approved')
+  const approvedStudents = students.filter(s => s.status === 'approved')
+
+  function enrolledForCourse(courseId: string | null | undefined) {
+    if (!courseId) return []
+    const ids = new Set(enrollments.filter(e => e.course_id === courseId).map(e => e.student_id))
+    return approvedStudents.filter(s => ids.has(s.id))
+  }
+
+  // For gradebook manual entries (not course-scoped)
+  const enrolled = approvedStudents
 
   function computeMaxScore(data: QuizFormData): number {
     return data.questions.length > 0
@@ -102,6 +114,9 @@ export default function FacultyQuizzes() {
     }
     setShowBuilder(false)
     showToast('Quiz created!')
+    if (data.notifyStudents) {
+      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `New assessment: ${data.title}`, data.description || `A new ${data.itemType || 'assessment'} has been posted.`, 'quiz_created', quizId)
+    }
   }
 
   async function handleUpdate(quizId: string, data: QuizFormData) {
@@ -121,6 +136,9 @@ export default function FacultyQuizzes() {
     }
     setEditingQuiz(null)
     showToast('Quiz updated!')
+    if (data.notifyStudents) {
+      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `Assessment updated: ${data.title}`, 'An assessment has been updated. Please review the details.', 'quiz_updated', quizId)
+    }
   }
 
   async function handleSaveEssayScores(
@@ -154,6 +172,9 @@ export default function FacultyQuizzes() {
     }
     setShowPdfBuilder(false)
     showToast('Assessment created!')
+    if (formData.notifyStudents) {
+      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `New assessment: ${formData.title}`, 'A new assessment has been posted.', 'quiz_created', quizId)
+    }
   }
 
   async function handleUpdatePdf(file: File | undefined, formData: PdfQuizFormData) {
@@ -161,6 +182,9 @@ export default function FacultyQuizzes() {
     await updatePdfQuiz(editingPdfQuiz.id, formData, file, profile.id)
     setEditingPdfQuiz(null)
     showToast('Assessment updated!')
+    if (formData.notifyStudents) {
+      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `Assessment updated: ${formData.title}`, 'An assessment has been updated. Please review the details.', 'quiz_updated', editingPdfQuiz.id)
+    }
   }
 
   async function syncPdfToGradebook(quiz: PdfQuiz, studentId: string, earned: number) {
@@ -209,13 +233,14 @@ export default function FacultyQuizzes() {
 
   if (viewingPdfResults) {
     const quizSubs = pdfSubmissions.filter(s => s.pdf_quiz_id === viewingPdfResults.id)
+    const pdfEnrolled = enrolledForCourse(viewingPdfResults.course_id)
     return (
       <PdfQuizResults
         quiz={viewingPdfResults}
         submissions={quizSubs}
-        enrolled={enrolled}
+        enrolled={pdfEnrolled}
         onBack={() => setViewingPdfResults(null)}
-        onDownloadCsv={() => downloadScoresCsv(viewingPdfResults, quizSubs, enrolled)}
+        onDownloadCsv={() => downloadScoresCsv(viewingPdfResults, quizSubs, pdfEnrolled)}
         onScanAnswers={handlePdfScanAnswers}
         onSaveEssayScores={handlePdfEssayScores}
       />
@@ -246,7 +271,7 @@ export default function FacultyQuizzes() {
       <QuizResults
         quiz={viewingResults}
         submissions={quizSubs}
-        enrolled={enrolled}
+        enrolled={enrolledForCourse(viewingResults.course_id)}
         fileSubmissions={fileSubmissions}
         onBack={() => setViewingResults(null)}
         onSaveEssayScores={handleSaveEssayScores}
@@ -376,7 +401,7 @@ export default function FacultyQuizzes() {
                     <QuizCard
                       quiz={quiz}
                       submissions={submissions.filter(s => s.quiz_id === quiz.id)}
-                      totalStudents={enrolled.length}
+                      totalStudents={enrolledForCourse(quiz.course_id).length}
                       isFaculty
                       onToggle={toggleQuiz}
                       onEdit={setEditingQuiz}
@@ -431,7 +456,7 @@ export default function FacultyQuizzes() {
                 <PdfQuizCard
                   quiz={quiz}
                   submissions={quizSubs}
-                  totalStudents={enrolled.length}
+                  totalStudents={enrolledForCourse(quiz.course_id).length}
                   isFaculty
                   onToggle={togglePdfQuiz}
                   onEdit={setEditingPdfQuiz}

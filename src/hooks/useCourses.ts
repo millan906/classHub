@@ -92,6 +92,12 @@ export function useCourses() {
     await fetchCourses()
   }
 
+  async function toggleGradesVisible(id: string, visible: boolean) {
+    const { error } = await supabase.from('courses').update({ grades_visible: visible }).eq('id', id)
+    if (error) throw error
+    await fetchCourses()
+  }
+
   async function uploadResource(courseId: string, file: File): Promise<{ file_path: string; file_name: string }> {
     if (file.size > 50 * 1024 * 1024) throw new Error('File too large. Maximum size is 50 MB.')
     const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
@@ -111,7 +117,7 @@ export function useCourses() {
 
   return {
     courses, loading,
-    createCourse, updateCourse, deleteCourse, toggleCourseStatus,
+    createCourse, updateCourse, deleteCourse, toggleCourseStatus, toggleGradesVisible,
     uploadResource, deleteResource, getResourceUrl,
   }
 }

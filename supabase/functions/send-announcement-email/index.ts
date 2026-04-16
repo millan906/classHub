@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
         .from('profiles')
         .select('email')
         .in('id', studentIds)
+        .eq('status', 'approved')
       emails = (profiles ?? []).map((p: any) => p.email).filter(Boolean)
     }
   } else {

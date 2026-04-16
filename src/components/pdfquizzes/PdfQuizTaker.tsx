@@ -161,6 +161,11 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
           <div style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
             {answeredCount}/{key.length} answered · {quiz.total_points} pts total
           </div>
+          {quiz.instructions && (
+            <div style={{ marginTop: '8px', fontSize: '12px', color: '#555', lineHeight: '1.6', whiteSpace: 'pre-wrap', background: '#F8F7F2', borderRadius: '7px', padding: '8px 10px' }}>
+              {quiz.instructions}
+            </div>
+          )}
         </div>
 
         {result ? (

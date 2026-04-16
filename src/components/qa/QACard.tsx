@@ -27,9 +27,10 @@ interface QACardProps {
   onEndorse?: (answerId: string) => Promise<void>
   onUpdate?: (id: string, title: string, body: string, tag: string) => Promise<void>
   onToggle?: (id: string, isAnswered: boolean) => Promise<void>
+  onDelete?: (id: string) => Promise<void>
 }
 
-export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate, onToggle }: QACardProps) {
+export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate, onToggle, onDelete }: QACardProps) {
   const [showReply, setShowReply] = useState(false)
   const [showAnswers, setShowAnswers] = useState(false)
   const [replyText, setReplyText] = useState('')
@@ -39,8 +40,12 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
   const [editBody, setEditBody] = useState(question.body)
   const [editTag, setEditTag] = useState(question.tag ?? '')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const isFaculty = currentProfile.role === 'faculty'
+  const isOwner = currentProfile.id === question.posted_by
+  const wasEdited = question.updated_at && question.updated_at !== question.created_at
   const borderColor = question.is_answered ? '#1D9E75' : '#EF9F27'
   const poster = question.poster
   const colors = poster ? getAvatarColors(poster.full_name) : { bg: '#E1F5EE', color: '#085041' }
@@ -75,6 +80,17 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
     setEditBody(question.body)
     setEditTag(question.tag ?? '')
     setEditing(false)
+  }
+
+  async function handleDelete() {
+    if (!onDelete) return
+    setDeleting(true)
+    try {
+      await onDelete(question.id)
+    } finally {
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
   }
 
   if (editing) {
@@ -113,6 +129,9 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
           <div style={{ fontSize: '13px', fontWeight: 600 }}>{question.title}</div>
           <div style={{ fontSize: '11px', color: '#888' }}>
             {poster?.full_name ?? 'Unknown'} · {timeAgo(question.created_at)}
+            {wasEdited && (
+              <span style={{ color: '#bbb', marginLeft: '4px' }}>· edited {timeAgo(question.updated_at!)}</span>
+            )}
           </div>
         </div>
         <Badge
@@ -141,13 +160,16 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
       </div>
 
       {/* Actions — all in one row */}
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
         {answerCount > 0 && (
           <Button onClick={() => setShowAnswers(v => !v)}>
             {showAnswers ? 'Hide responses' : 'View responses'}
           </Button>
         )}
         {isFaculty && onUpdate && (
+          <Button onClick={() => setEditing(true)}>Edit</Button>
+        )}
+        {!isFaculty && isOwner && onUpdate && (
           <Button onClick={() => setEditing(true)}>Edit</Button>
         )}
         {isFaculty && onToggle && (
@@ -165,6 +187,27 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
           <Button onClick={() => setShowReply(v => !v)}>
             {showReply ? 'Cancel' : 'Add a response'}
           </Button>
+        )}
+        {isFaculty && onDelete && !confirmDelete && (
+          <Button
+            onClick={() => setConfirmDelete(true)}
+            style={{ background: '#FEF0F0', color: '#A32D2D', borderColor: '#A32D2D' }}
+          >
+            Delete
+          </Button>
+        )}
+        {isFaculty && onDelete && confirmDelete && (
+          <>
+            <span style={{ fontSize: '12px', color: '#A32D2D' }}>Delete this question?</span>
+            <Button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{ background: '#A32D2D', color: '#fff', borderColor: '#A32D2D' }}
+            >
+              {deleting ? 'Deleting...' : 'Confirm'}
+            </Button>
+            <Button onClick={() => setConfirmDelete(false)}>Cancel</Button>
+          </>
         )}
       </div>
 

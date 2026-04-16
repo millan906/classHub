@@ -6,7 +6,7 @@ import { QACard } from '../../components/qa/QACard'
 
 export default function StudentQA() {
   const { profile } = useAuth()
-  const { questions, postQuestion, postAnswer } = useQA()
+  const { questions, postQuestion, updateQuestion, postAnswer } = useQA()
 
   async function handlePost(title: string, body: string, tag: string) {
     if (!profile) return
@@ -27,7 +27,7 @@ export default function StudentQA() {
       {questions.length === 0
         ? <div style={{ fontSize: '13px', color: '#888' }}>No questions yet. Be the first to ask!</div>
         : questions.map(q => (
-            <QACard key={q.id} question={q} currentProfile={profile!} onAnswer={handleAnswer} />
+            <QACard key={q.id} question={q} currentProfile={profile!} onAnswer={handleAnswer} onUpdate={updateQuestion} />
           ))
       }
     </div>

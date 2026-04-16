@@ -51,6 +51,8 @@ export function useQuizzes() {
         course_id: data.courseId,
         slide_id: data.slideId,
         due_date: data.dueDate,
+        open_at: data.openAt,
+        close_at: data.closeAt,
         time_limit_minutes: data.timeLimitMinutes,
         lockdown_enabled: data.lockdownEnabled,
         max_attempts: data.maxAttempts,
@@ -79,6 +81,10 @@ export function useQuizzes() {
       course_id: data.courseId,
       slide_id: data.slideId,
       due_date: data.dueDate,
+      open_at: data.openAt,
+      close_at: data.closeAt,
+      open_notif_sent: false,
+      reminder_notif_sent: false,
       time_limit_minutes: data.timeLimitMinutes,
       lockdown_enabled: data.lockdownEnabled,
       max_attempts: data.maxAttempts,
@@ -104,7 +110,31 @@ export function useQuizzes() {
   async function toggleQuiz(id: string, isOpen: boolean) {
     await supabase.from('quizzes').update({ is_open: isOpen }).eq('id', id)
     await fetchQuizzes()
+
+    if (!isOpen) return // only notify students when opening
+
+    const quiz = quizzes.find(q => q.id === id)
     const { data: { session } } = await supabase.auth.getSession()
+
+    // In-app notification
+    if (quiz?.course_id) {
+      const { data: enrollments } = await supabase
+        .from('course_enrollments').select('student_id').eq('course_id', quiz.course_id)
+      const ids = (enrollments ?? []).map((e: { student_id: string }) => e.student_id).filter(Boolean)
+      if (ids.length > 0) {
+        await supabase.from('notifications').insert(
+          ids.map(uid => ({
+            user_id: uid,
+            title: `${quiz.title} is now open`,
+            body: `A ${quiz.item_type ?? 'assessment'} is now available. Log in to begin.`,
+            type: 'quiz_open',
+            related_id: id,
+          }))
+        )
+      }
+    }
+
+    // Email notification
     if (session) {
       const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
       fetch(fnUrl, {
@@ -114,8 +144,10 @@ export function useQuizzes() {
           'Authorization': `Bearer ${session.access_token}`,
           'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
-        body: JSON.stringify({ type: isOpen ? 'quiz_open' : 'quiz_close', quizId: id }),
-      }).catch(err => console.error('[Email] Quiz toggle notification failed:', err))
+        body: JSON.stringify({ type: 'quiz_open', quizId: id }),
+      }).then(r => r.json())
+        .then(result => console.log('[Email] Quiz open result:', result))
+        .catch(err => console.error('[Email] Quiz open notification failed:', err))
     }
   }
 
@@ -180,19 +212,6 @@ export function useQuizzes() {
       score,
     }).eq('id', submissionId)
     await fetchAllSubmissions()
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
-      fetch(fnUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ type: 'essay_graded', submissionId, earnedPoints, totalPoints }),
-      }).catch(err => console.error('[Email] Essay graded notification failed:', err))
-    }
   }
 
   return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, fetchFileSubmissions, saveEssayScores }

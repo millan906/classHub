@@ -60,6 +60,7 @@ export interface Course {
   schedule?: CourseScheduleItem[]
   resources?: CourseResource[]
   grading_system?: GradingPeriod[]
+  grades_visible?: boolean
   created_by: string
   created_at: string
 }
@@ -91,6 +92,8 @@ export interface Quiz {
   title: string
   slide_id?: string
   due_date?: string
+  open_at?: string | null
+  close_at?: string | null
   is_open: boolean
   created_by: string
   created_at: string
@@ -139,6 +142,8 @@ export interface QuizFormData {
   courseId: string | null
   slideId: string | null
   dueDate: string | null
+  openAt: string | null
+  closeAt: string | null
   timeLimitMinutes: number | null
   lockdownEnabled: boolean
   maxAttempts: number
@@ -147,6 +152,7 @@ export interface QuizFormData {
   gradeGroupId: string | null
   allowFileUpload: boolean
   description: string | null
+  notifyStudents: boolean
 }
 
 export interface FileSubmission {
@@ -176,6 +182,7 @@ export interface Question {
   posted_by: string
   is_answered: boolean
   created_at: string
+  updated_at?: string
   poster?: Profile
   answers?: Answer[]
 }
@@ -217,12 +224,15 @@ export interface PdfQuiz {
   grade_group_id: string | null
   pdf_path: string | null
   due_date: string | null
+  open_at?: string | null
+  close_at?: string | null
   is_open: boolean
   max_attempts: number
   num_questions: number
   total_points: number
   created_by: string
   created_at: string
+  instructions?: string | null
   answer_key?: PdfQuizAnswerKeyEntry[]
   essay_rubrics?: PdfQuizEssayRubric[]
 }
@@ -245,7 +255,11 @@ export interface PdfQuizFormData {
   courseId: string | null
   gradeGroupId: string | null
   dueDate: string | null
+  openAt: string | null
+  closeAt: string | null
   maxAttempts: number
+  notifyStudents: boolean
+  instructions: string | null
   answerKey: {
     question_number: number
     question_type: PdfQuizQuestionType

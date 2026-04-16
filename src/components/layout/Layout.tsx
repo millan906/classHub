@@ -1,8 +1,19 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { Sidebar } from './Sidebar'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
+import { ChangePasswordModal } from '../ui/ChangePasswordModal'
+import { useNotifications } from '../../hooks/useNotifications'
 import type { Profile } from '../../types'
 
 interface LayoutProps {
@@ -16,6 +27,25 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
   const colors = getAvatarColors(profile.full_name)
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
+  const [showChangePw, setShowChangePw] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const avatarRef = useRef<HTMLDivElement>(null)
+  const notifRef = useRef<HTMLDivElement>(null)
+  const { notifications, unreadCount, markAllRead } = useNotifications(!isFaculty ? profile.id : null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarMenuOpen(false)
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [announcementBadge, setAnnouncementBadge] = useState(0)
   const location = useLocation()
@@ -107,44 +137,125 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
           {!isMobile && <div />}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Announcement bell */}
-            <button
-              onClick={() => navigate(isFaculty ? '/faculty/announcements' : '/student/announcements')}
-              style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', lineHeight: 1, fontSize: '18px' }}
-              title="Announcements"
-            >
-              🔔
-              {announcementBadge > 0 && (
-                <span style={{
-                  position: 'absolute', top: 0, right: 0,
-                  background: '#A32D2D', color: '#fff',
-                  fontSize: '9px', fontWeight: 700, borderRadius: '999px',
-                  minWidth: '15px', height: '15px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '0 3px', lineHeight: 1,
-                }}>
-                  {announcementBadge > 99 ? '99+' : announcementBadge}
-                </span>
-              )}
-            </button>
+            {/* Bell — faculty navigates to announcements; students open notification dropdown */}
+            {isFaculty ? (
+              <button
+                onClick={() => navigate('/faculty/announcements')}
+                style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', lineHeight: 1, fontSize: '18px' }}
+                title="Announcements"
+              >
+                🔔
+                {announcementBadge > 0 && (
+                  <span style={{
+                    position: 'absolute', top: 0, right: 0,
+                    background: '#A32D2D', color: '#fff',
+                    fontSize: '9px', fontWeight: 700, borderRadius: '999px',
+                    minWidth: '15px', height: '15px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 3px', lineHeight: 1,
+                  }}>
+                    {announcementBadge > 99 ? '99+' : announcementBadge}
+                  </span>
+                )}
+              </button>
+            ) : (
+              <div ref={notifRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => { setNotifOpen(o => !o); if (!notifOpen) markAllRead() }}
+                  style={{ position: 'relative', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', lineHeight: 1, fontSize: '18px' }}
+                  title="Notifications"
+                >
+                  🔔
+                  {(announcementBadge + unreadCount) > 0 && (
+                    <span style={{
+                      position: 'absolute', top: 0, right: 0,
+                      background: '#A32D2D', color: '#fff',
+                      fontSize: '9px', fontWeight: 700, borderRadius: '999px',
+                      minWidth: '15px', height: '15px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: '0 3px', lineHeight: 1,
+                    }}>
+                      {(announcementBadge + unreadCount) > 99 ? '99+' : (announcementBadge + unreadCount)}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div style={{
+                    position: 'absolute', top: '36px', right: 0, background: '#fff',
+                    border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '10px',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.1)', width: '280px', zIndex: 50,
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{ padding: '10px 14px 8px', borderBottom: '0.5px solid rgba(0,0,0,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Notifications</div>
+                      <button onClick={() => navigate('/student/announcements')} style={{ fontSize: '11px', color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                        Announcements →
+                      </button>
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: '14px', fontSize: '12px', color: '#aaa', textAlign: 'center' }}>No notifications yet.</div>
+                    ) : (
+                      <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                        {notifications.slice(0, 15).map(n => (
+                          <div key={n.id} style={{
+                            padding: '9px 14px',
+                            borderBottom: '0.5px solid rgba(0,0,0,0.05)',
+                            background: n.read ? 'transparent' : '#F6FFF9',
+                          }}>
+                            <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '1px' }}>{n.title}</div>
+                            {n.body && <div style={{ fontSize: '11px', color: '#888' }}>{n.body}</div>}
+                            <div style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{timeAgo(n.created_at)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-            <Avatar
-              initials={getInitials(profile.full_name)}
-              bg={isFaculty ? '#9FE1CB' : colors.bg}
-              color={isFaculty ? '#085041' : colors.color}
-              size={28}
-            />
-            <button
-              onClick={onSignOut}
-              style={{
-                fontSize: '12px', color: '#888', background: 'none',
-                border: '0.5px solid rgba(0,0,0,0.18)', borderRadius: '6px',
-                padding: '3px 10px', cursor: 'pointer',
-              }}
-            >
-              Sign out
-            </button>
+            {/* Avatar with dropdown */}
+            <div ref={avatarRef} style={{ position: 'relative' }}>
+              <div onClick={() => setAvatarMenuOpen(o => !o)} style={{ cursor: 'pointer' }}>
+                <Avatar
+                  initials={getInitials(profile.full_name)}
+                  bg={isFaculty ? '#9FE1CB' : colors.bg}
+                  color={isFaculty ? '#085041' : colors.color}
+                  size={28}
+                />
+              </div>
+              {avatarMenuOpen && (
+                <div style={{
+                  position: 'absolute', top: '36px', right: 0, background: '#fff',
+                  border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '10px',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.1)', minWidth: '170px', zIndex: 50,
+                  overflow: 'hidden',
+                }}>
+                  <div style={{ padding: '10px 14px 8px', borderBottom: '0.5px solid rgba(0,0,0,0.07)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{profile.full_name}</div>
+                    <div style={{ fontSize: '11px', color: '#aaa' }}>{profile.email}</div>
+                  </div>
+                  <button onClick={() => { setAvatarMenuOpen(false); setShowChangePw(true) }} style={{
+                    width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: '13px',
+                    background: 'none', border: 'none', cursor: 'pointer', color: '#333',
+                    borderBottom: '0.5px solid rgba(0,0,0,0.07)',
+                  }}>
+                    🔑 Change password
+                  </button>
+                  <button onClick={onSignOut} style={{
+                    width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: '13px',
+                    background: 'none', border: 'none', cursor: 'pointer', color: '#A32D2D',
+                  }}>
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+
+          {showChangePw && (
+            <ChangePasswordModal email={profile.email} onClose={() => setShowChangePw(false)} />
+          )}
         </div>
 
         {/* Page content */}

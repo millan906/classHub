@@ -93,28 +93,26 @@ Deno.serve(async (req) => {
 
   // ── Quiz opened / closed ────────────────────────────────────────────────────
   if (type === 'quiz_open' || type === 'quiz_close') {
-    const { quizId } = body
+    const { quizId, isPdf } = body
+    const table = isPdf ? 'pdf_quizzes' : 'quizzes'
 
     const { data: quiz } = await supabase
-      .from('quizzes').select('title, course_id, due_date, item_type').eq('id', quizId).single()
+      .from(table).select('title, course_id, due_date, item_type').eq('id', quizId).single()
     if (!quiz) return new Response(JSON.stringify({ error: 'Quiz not found' }), {
       status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 
-    // Get recipient emails
+    // Get recipient emails — only enrolled, approved students
     let emails: string[] = []
     if (quiz.course_id) {
       const { data: enrollments } = await supabase
         .from('course_enrollments').select('student_id').eq('course_id', quiz.course_id)
       const ids = (enrollments ?? []).map((e: any) => e.student_id).filter(Boolean)
       if (ids.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('email').in('id', ids)
+        const { data: profiles } = await supabase
+          .from('profiles').select('email').in('id', ids).eq('status', 'approved')
         emails = (profiles ?? []).map((p: any) => p.email).filter(Boolean)
       }
-    } else {
-      const { data } = await supabase
-        .from('profiles').select('email').eq('role', 'student').eq('status', 'approved')
-      emails = (data ?? []).map((r: any) => r.email).filter(Boolean)
     }
 
     if (emails.length === 0) {
@@ -243,6 +241,52 @@ Deno.serve(async (req) => {
 
     const html = baseTemplate('Grade Notification', colTitle, bodyHtml)
     const sent = await sendEmail(email, `[ClassHub] Your grade for ${columnRes.data?.title} has been posted`, html)
+    return new Response(JSON.stringify({ sent: sent ? 1 : 0 }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+
+  // ── Final grade published ────────────────────────────────────────────────────
+  if (type === 'final_grade_published') {
+    const { studentId, courseId, grade, gwa } = body
+
+    const [profileRes, courseRes] = await Promise.all([
+      supabase.from('profiles').select('email, full_name').eq('id', studentId).single(),
+      supabase.from('courses').select('name, section').eq('id', courseId).single(),
+    ])
+
+    const email = profileRes.data?.email
+    if (!email) return new Response(JSON.stringify({ sent: 0, reason: 'No email for student' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+
+    const name = escapeHtml(profileRes.data?.full_name ?? 'Student')
+    const courseName = escapeHtml(
+      courseRes.data
+        ? courseRes.data.name + (courseRes.data.section ? ` · Section ${courseRes.data.section}` : '')
+        : 'your course'
+    )
+    const gradeStr = escapeHtml(String(grade))
+    const gwaStr = escapeHtml(String(gwa))
+    const gwaColor = gwa === '5.0' ? '#ef4444' : parseFloat(gwa) <= 2.0 ? '#1D9E75' : '#f59e0b'
+
+    const bodyHtml = `
+      <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#1a1a1a;">Your final grade has been published</h1>
+      <p style="margin:0 0 24px;font-size:14px;color:#666;">${courseName}</p>
+      <table cellpadding="0" cellspacing="0" style="background:#f8f8f8;border-radius:8px;padding:20px;width:100%;">
+        <tr>
+          <td style="font-size:13px;color:#666;">Grade</td>
+          <td align="right" style="font-size:22px;font-weight:700;color:#1a1a1a;">${gradeStr}%</td>
+        </tr>
+        <tr>
+          <td style="font-size:13px;color:#666;padding-top:4px;">GWA</td>
+          <td align="right" style="font-size:22px;font-weight:700;color:${gwaColor};padding-top:4px;">${gwaStr}</td>
+        </tr>
+      </table>
+      <p style="margin:20px 0 0;font-size:15px;color:#444;line-height:1.7;">Hi ${name}, log in to ClassHub to view your grades.</p>`
+
+    const html = baseTemplate(`Final Grade — ${courseName}`, '', bodyHtml)
+    const sent = await sendEmail(email, `[ClassHub] Your final grade for ${courseRes.data?.name ?? 'your course'} has been posted`, html)
     return new Response(JSON.stringify({ sent: sent ? 1 : 0 }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
