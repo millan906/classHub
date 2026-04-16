@@ -196,17 +196,29 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
                       <div style={{ padding: '14px', fontSize: '12px', color: '#aaa', textAlign: 'center' }}>No notifications yet.</div>
                     ) : (
                       <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                        {notifications.slice(0, 15).map(n => (
-                          <div key={n.id} style={{
-                            padding: '9px 14px',
-                            borderBottom: '0.5px solid rgba(0,0,0,0.05)',
-                            background: n.read ? 'transparent' : '#F6FFF9',
-                          }}>
-                            <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '1px' }}>{n.title}</div>
-                            {n.body && <div style={{ fontSize: '11px', color: '#888' }}>{n.body}</div>}
-                            <div style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{timeAgo(n.created_at)}</div>
-                          </div>
-                        ))}
+                        {notifications.slice(0, 15).map(n => {
+                          const dest = n.type === 'final_grade_published' ? '/student/grades'
+                            : n.type?.startsWith('announcement') ? '/student/announcements'
+                            : ['quiz_created', 'quiz_updated', 'quiz_open', 'quiz_reminder'].includes(n.type ?? '') ? '/student/quizzes'
+                            : null
+                          return (
+                            <div
+                              key={n.id}
+                              onClick={() => { if (dest) { setNotifOpen(false); navigate(dest) } }}
+                              style={{
+                                padding: '9px 14px',
+                                borderBottom: '0.5px solid rgba(0,0,0,0.05)',
+                                background: n.read ? 'transparent' : '#F6FFF9',
+                                cursor: dest ? 'pointer' : 'default',
+                              }}
+                            >
+                              <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '1px' }}>{n.title}</div>
+                              {n.body && <div style={{ fontSize: '11px', color: '#888' }}>{n.body}</div>}
+                              <div style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{timeAgo(n.created_at)}</div>
+                              {dest && <div style={{ fontSize: '10px', color: '#1D9E75', marginTop: '2px' }}>Tap to view →</div>}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
