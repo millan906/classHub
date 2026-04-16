@@ -9,6 +9,18 @@ import type { GradeGroup } from '../../hooks/useGradeBook'
 
 export type { ItemType } from '../../types'
 
+// Convert a UTC ISO string to local datetime-local input value (YYYY-MM-DDTHH:MM)
+function toLocalInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Convert a datetime-local string (local time) to UTC ISO string
+function toUTCIso(local: string): string {
+  return new Date(local).toISOString()
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export const TYPE_CONFIG: Record<ItemType, { label: string; color: string; groupName: string }> = {
   quiz:       { label: 'Quiz',       color: '#185FA5', groupName: 'Quizzes' },
@@ -56,8 +68,8 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
   const [courseId, setCourseId] = useState(initialQuiz?.course_id ?? '')
   const [slideId, setSlideId] = useState(initialQuiz?.slide_id ?? '')
   const [dueDate, setDueDate] = useState(initialQuiz?.due_date?.slice(0, 10) ?? '')
-  const [openAt, setOpenAt] = useState(initialQuiz?.open_at?.slice(0, 16) ?? '')
-  const [closeAt, setCloseAt] = useState(initialQuiz?.close_at?.slice(0, 16) ?? '')
+  const [openAt, setOpenAt] = useState(initialQuiz?.open_at ? toLocalInput(initialQuiz.open_at) : '')
+  const [closeAt, setCloseAt] = useState(initialQuiz?.close_at ? toLocalInput(initialQuiz.close_at) : '')
   const [timeLimit, setTimeLimit] = useState<string>(initialQuiz?.time_limit_minutes?.toString() ?? '')
   const [lockdown, setLockdown] = useState(initialQuiz?.lockdown_enabled ?? false)
   const [maxAttempts, setMaxAttempts] = useState<string>(initialQuiz?.max_attempts?.toString() ?? '1')
@@ -126,8 +138,8 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       courseId: courseId || null,
       slideId: isQuiz ? (slideId || null) : null,
       dueDate: closeAt ? closeAt : (dueDate || null),
-      openAt: openAt || null,
-      closeAt: closeAt || null,
+      openAt: openAt ? toUTCIso(openAt) : null,
+      closeAt: closeAt ? toUTCIso(closeAt) : null,
       timeLimitMinutes: isQuiz ? (timeLimit ? parseInt(timeLimit, 10) : null) : null,
       lockdownEnabled: isQuiz ? lockdown : false,
       maxAttempts: isQuiz ? (parseInt(maxAttempts) || 1) : 1,

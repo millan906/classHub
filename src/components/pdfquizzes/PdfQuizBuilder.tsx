@@ -5,6 +5,13 @@ import type { PdfQuiz, PdfQuizFormData, PdfQuizQuestionType } from '../../types'
 import type { GradeGroup } from '../../hooks/useGradeBook'
 import type { Course } from '../../types'
 
+function toLocalInput(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+function toUTCIso(local: string): string { return new Date(local).toISOString() }
+
 interface RubricCategory { category_name: string; max_points: number }
 
 interface KeyRow {
@@ -62,8 +69,8 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
   const [courseId, setCourseId] = useState(initialQuiz?.course_id ?? '')
   const [gradeGroupId, setGradeGroupId] = useState(initialQuiz?.grade_group_id ?? '')
   const [dueDate, setDueDate] = useState(initialQuiz?.due_date ?? '')
-  const [openAt, setOpenAt] = useState(initialQuiz?.open_at?.slice(0, 16) ?? '')
-  const [closeAt, setCloseAt] = useState(initialQuiz?.close_at?.slice(0, 16) ?? '')
+  const [openAt, setOpenAt] = useState(initialQuiz?.open_at ? toLocalInput(initialQuiz.open_at) : '')
+  const [closeAt, setCloseAt] = useState(initialQuiz?.close_at ? toLocalInput(initialQuiz.close_at) : '')
   const [maxAttempts, setMaxAttempts] = useState(initialQuiz?.max_attempts ?? 1)
   const [file, setFile] = useState<File | undefined>()
   const [fileError, setFileError] = useState('')
@@ -166,8 +173,8 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
         courseId: courseId || null,
         gradeGroupId: gradeGroupId || null,
         dueDate: closeAt ? closeAt : (dueDate || null),
-        openAt: openAt || null,
-        closeAt: closeAt || null,
+        openAt: openAt ? toUTCIso(openAt) : null,
+        closeAt: closeAt ? toUTCIso(closeAt) : null,
         maxAttempts: Number(maxAttempts) || 1,
         notifyStudents,
         instructions: instructions.trim() || null,
