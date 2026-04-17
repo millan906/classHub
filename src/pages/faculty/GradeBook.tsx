@@ -444,23 +444,26 @@ export default function FacultyGradeBook() {
     s.status === 'approved' && (!courseStudentIds || courseStudentIds.has(s.id))
   )
 
+  // Only show groups that have at least one column (after course filtering)
+  const visibleGroups = groups.filter(g => columns.some(c => c.group_id === g.id))
+
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
     const entry = entryMap.get(`${studentId}:${col.id}`)
     return entry !== undefined && entry.score !== null ? entry.score : null
   }
 
   function getWeightedGrade(studentId: string): number | null {
-    return computeWeightedGrade(studentId, groups, columns, getColumnScore)
+    return computeWeightedGrade(studentId, visibleGroups, columns, getColumnScore)
   }
 
-  const totalWeight = groups.reduce((s, g) => s + g.weight_percent, 0)
+  const totalWeight = visibleGroups.reduce((s, g) => s + g.weight_percent, 0)
 
   const exportFilename = selectedCourse
     ? `gradebook-${selectedCourse.name.toLowerCase().replace(/\s+/g, '-')}`
     : 'gradebook'
 
   const exportParams: GradeBookExportParams = {
-    students: enrolled, groups, columns,
+    students: enrolled, groups: visibleGroups, columns,
     getColumnScore, getWeightedGrade,
     filename: exportFilename,
   }
@@ -611,7 +614,7 @@ export default function FacultyGradeBook() {
               {/* Group header row */}
               <tr style={{ background: '#FAFAF8' }}>
                 <th colSpan={2} style={{ ...thStyle, textAlign: 'left' }} />
-                {groups.map(g => {
+                {visibleGroups.map(g => {
                   const cols = columns.filter(c => c.group_id === g.id)
                   if (cols.length === 0) return null
                   return (
@@ -627,7 +630,7 @@ export default function FacultyGradeBook() {
               <tr style={{ background: '#F5F5F3' }}>
                 <th style={{ ...thStyle, textAlign: 'left', width: '32px' }}>#</th>
                 <th style={{ ...thStyle, textAlign: 'left', minWidth: '120px' }}>Student Name</th>
-                {groups.flatMap(g =>
+                {visibleGroups.flatMap(g =>
                   columns.filter(c => c.group_id === g.id).map(c => (
                     <ColHeader key={c.id} col={c} onDeleteClick={setConfirmDeleteCol} />
                   ))
@@ -646,7 +649,7 @@ export default function FacultyGradeBook() {
                       {student.full_name}
                     </td>
 
-                    {groups.flatMap(g =>
+                    {visibleGroups.flatMap(g =>
                       columns.filter(c => c.group_id === g.id).map(c => (
                         <td key={c.id} style={tdStyle}>
                           <ScoreCell
