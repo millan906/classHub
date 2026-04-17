@@ -51,7 +51,9 @@ export function Sidebar({ profile, onNavigate }: SidebarProps) {
           <SidebarItem icon="💬" text="Q&A" path={`${base}/qa`} isActive={isActive(`${base}/qa`)} navigate={go} />
           {isFaculty && <SidebarItem icon="📊" text="Grade Book" path="/faculty/gradebook" isActive={isActive('/faculty/gradebook')} navigate={go} />}
           {isFaculty && <SidebarItem icon="🎓" text="Final Grades" path="/faculty/final-grades" isActive={isActive('/faculty/final-grades')} navigate={go} />}
+          {isFaculty && <SidebarItem icon="📋" text="Attendance" path="/faculty/attendance" isActive={isActive('/faculty/attendance')} navigate={go} />}
           {!isFaculty && <SidebarItem icon="📊" text="My Grades" path="/student/grades" isActive={isActive('/student/grades')} navigate={go} />}
+          {!isFaculty && <SidebarItem icon="📋" text="Attendance" path="/student/attendance" isActive={isActive('/student/attendance')} navigate={go} />}
         </SidebarGroup>
 
         {isFaculty && (

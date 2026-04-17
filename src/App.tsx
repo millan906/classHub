@@ -19,6 +19,7 @@ import FacultyGradeBook from './pages/faculty/GradeBook'
 import FacultyCourses from './pages/faculty/Courses'
 import FacultySettings from './pages/faculty/Settings'
 import FacultyFinalGrades from './pages/faculty/FinalGrades'
+import FacultyAttendance from './pages/faculty/Attendance'
 
 import StudentDashboard from './pages/student/Dashboard'
 import StudentCourses from './pages/student/Courses'
@@ -28,6 +29,7 @@ import StudentQA from './pages/student/QA'
 import StudentAnnouncements from './pages/student/Announcements'
 import StudentGrades from './pages/student/Grades'
 import StudentProfile from './pages/student/Profile'
+import StudentAttendance from './pages/student/Attendance'
 
 function AppRoutes() {
   const { profile, loading, signOut } = useAuth()
@@ -99,6 +101,7 @@ function AppRoutes() {
             <Route path="/faculty/courses" element={<FacultyCourses />} />
             <Route path="/faculty/settings" element={<FacultySettings />} />
             <Route path="/faculty/final-grades" element={<FacultyFinalGrades />} />
+            <Route path="/faculty/attendance" element={<FacultyAttendance />} />
             <Route path="*" element={<Navigate to="/faculty/dashboard" replace />} />
           </>
         ) : (
@@ -111,6 +114,7 @@ function AppRoutes() {
             <Route path="/student/courses" element={<StudentCourses />} />
             <Route path="/student/grades" element={<StudentGrades />} />
             <Route path="/student/profile" element={<StudentProfile />} />
+            <Route path="/student/attendance" element={<StudentAttendance />} />
             <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
           </>
         )}

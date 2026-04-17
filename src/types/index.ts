@@ -276,3 +276,22 @@ export interface PdfQuizFormData {
     categories: { category_name: string; max_points: number; order_index: number }[]
   }[]
 }
+
+export type AttendanceStatus = 'present' | 'late' | 'absent' | 'excused'
+
+export interface AttendanceSession {
+  id: string
+  course_id: string
+  label: string
+  date: string
+  created_by: string
+  created_at: string
+}
+
+export interface AttendanceRecord {
+  id: string
+  session_id: string
+  student_id: string
+  status: AttendanceStatus
+  created_at: string
+}
