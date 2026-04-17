@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Announcement } from '../types'
 
-export function useAnnouncements() {
+export function useAnnouncements(institutionId?: string | null) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
 
   async function fetchAnnouncements() {
-    const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false })
+    let query = supabase.from('announcements').select('*').order('created_at', { ascending: false })
+    if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
+    const { data } = await query
     setAnnouncements(data || [])
     setLoading(false)
   }
@@ -15,18 +17,18 @@ export function useAnnouncements() {
   useEffect(() => {
     fetchAnnouncements()
     const channel = supabase
-      .channel('announcements-changes')
+      .channel(`announcements-changes-${institutionId ?? 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAnnouncements)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [institutionId])
 
   async function postAnnouncement(title: string, body: string, userId: string, courseId: string | null) {
     const { data: { session } } = await supabase.auth.getSession()
 
     const { data } = await supabase
       .from('announcements')
-      .insert({ title, body, posted_by: userId, course_id: courseId })
+      .insert({ title, body, posted_by: userId, course_id: courseId, institution_id: institutionId ?? null })
       .select()
       .single()
 

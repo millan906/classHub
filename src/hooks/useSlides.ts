@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Slide } from '../types'
 
-export function useSlides() {
+export function useSlides(institutionId?: string | null) {
   const [slides, setSlides] = useState<Slide[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -10,16 +10,18 @@ export function useSlides() {
   useEffect(() => {
     fetchSlides()
     const channel = supabase
-      .channel('slides-changes')
+      .channel(`slides-changes-${institutionId ?? 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'slides' }, fetchSlides)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [institutionId])
 
   async function fetchSlides() {
     try {
       setError(null)
-      const { data, error: err } = await supabase.from('slides').select('*').order('created_at', { ascending: false })
+      let query = supabase.from('slides').select('*').order('created_at', { ascending: false })
+      if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
+      const { data, error: err } = await query
       if (err) throw err
       setSlides(data || [])
     } catch (err) {
@@ -42,6 +44,7 @@ export function useSlides() {
       slide_count: null,
       uploaded_by: userId,
       course_id: courseId,
+      institution_id: institutionId ?? null,
     })
     if (error) throw error
     await fetchSlides()

@@ -1,4 +1,5 @@
 import { useAuth } from '../../hooks/useAuth'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useAnnouncements } from '../../hooks/useAnnouncements'
 import { useCourses } from '../../hooks/useCourses'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
@@ -7,7 +8,8 @@ import { AnnouncementCard } from '../../components/announcements/AnnouncementCar
 
 export default function StudentAnnouncements() {
   const { profile } = useAuth()
-  const { announcements } = useAnnouncements()
+  const { institution } = useInstitutionContext()
+  const { announcements } = useAnnouncements(institution?.id)
   const { courses } = useCourses()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
 

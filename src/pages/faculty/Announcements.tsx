@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useAnnouncements } from '../../hooks/useAnnouncements'
 import { useCourses } from '../../hooks/useCourses'
 import { PageHeader } from '../../components/ui/Card'
@@ -10,7 +11,8 @@ import type { Announcement } from '../../types'
 
 export default function FacultyAnnouncements() {
   const { profile } = useAuth()
-  const { announcements, postAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements()
+  const { institution } = useInstitutionContext()
+  const { announcements, postAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(institution?.id)
   const { courses } = useCourses()
   const [confirmDelete, setConfirmDelete] = useState<Announcement | null>(null)
 

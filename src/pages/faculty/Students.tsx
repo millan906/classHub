@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useStudents } from '../../hooks/useStudents'
 import { useCourses } from '../../hooks/useCourses'
 import { useAllEnrollments } from '../../hooks/useEnrollments'
@@ -14,7 +15,8 @@ import type { Profile, Course } from '../../types'
 
 export default function FacultyStudents() {
   const { profile } = useAuth()
-  const { students, approveWithCourses, rejectStudent } = useStudents()
+  const { institution } = useInstitutionContext()
+  const { students, approveWithCourses, rejectStudent } = useStudents(institution?.id)
   const { courses } = useCourses()
   const { enrollments, refetch: refetchEnrollments, unenrollStudent } = useAllEnrollments()
   const { quizzes, submissions } = useQuizzes()

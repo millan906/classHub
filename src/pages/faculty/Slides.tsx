@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useSlides } from '../../hooks/useSlides'
 import { useCourses } from '../../hooks/useCourses'
 import { PageHeader } from '../../components/ui/Card'
@@ -11,7 +12,8 @@ import type { Slide } from '../../types'
 
 export default function FacultySlides() {
   const { profile } = useAuth()
-  const { slides, loading, error, uploadSlide, deleteSlide, getDownloadUrl, refetch } = useSlides()
+  const { institution } = useInstitutionContext()
+  const { slides, loading, error, uploadSlide, deleteSlide, getDownloadUrl, refetch } = useSlides(institution?.id)
   const { courses } = useCourses()
   const [confirmDelete, setConfirmDelete] = useState<Slide | null>(null)
   const [pageError, setPageError] = useState('')

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useSlides } from '../../hooks/useSlides'
 import { useCourses } from '../../hooks/useCourses'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
@@ -10,7 +11,8 @@ import type { Slide } from '../../types'
 
 export default function StudentSlides() {
   const { profile } = useAuth()
-  const { slides, loading, error, getDownloadUrl, refetch } = useSlides()
+  const { institution } = useInstitutionContext()
+  const { slides, loading, error, getDownloadUrl, refetch } = useSlides(institution?.id)
   const { courses } = useCourses()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')

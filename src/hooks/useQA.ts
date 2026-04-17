@@ -2,15 +2,17 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Question } from '../types'
 
-export function useQA() {
+export function useQA(institutionId?: string | null) {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
 
   async function fetchQuestions() {
-    const { data } = await supabase
+    let query = supabase
       .from('questions')
       .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
       .order('created_at', { ascending: false })
+    if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
+    const { data } = await query
     setQuestions(data || [])
     setLoading(false)
   }
@@ -18,15 +20,15 @@ export function useQA() {
   useEffect(() => {
     fetchQuestions()
     const channel = supabase
-      .channel('qa-changes')
+      .channel(`qa-changes-${institutionId ?? 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, fetchQuestions)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'answers' }, fetchQuestions)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [institutionId])
 
   async function postQuestion(title: string, body: string, tag: string, userId: string) {
-    await supabase.from('questions').insert({ title, body, tag: tag || null, posted_by: userId })
+    await supabase.from('questions').insert({ title, body, tag: tag || null, posted_by: userId, institution_id: institutionId ?? null })
     await fetchQuestions()
   }
 

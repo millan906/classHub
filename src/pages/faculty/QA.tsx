@@ -1,4 +1,5 @@
 import { useAuth } from '../../hooks/useAuth'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useQA } from '../../hooks/useQA'
 import { PageHeader } from '../../components/ui/Card'
 import { PostQuestion } from '../../components/qa/PostQuestion'
@@ -6,7 +7,8 @@ import { QACard } from '../../components/qa/QACard'
 
 export default function FacultyQA() {
   const { profile } = useAuth()
-  const { questions, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer } = useQA()
+  const { institution } = useInstitutionContext()
+  const { questions, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer } = useQA(institution?.id)
 
   async function handlePost(title: string, body: string, tag: string) {
     if (!profile) return

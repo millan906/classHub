@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useCourses } from '../../hooks/useCourses'
 import { useStudents } from '../../hooks/useStudents'
 import { useCourseEnrollments } from '../../hooks/useEnrollments'
@@ -473,8 +474,9 @@ function CourseInfoPanel({ course, getResourceUrl }: { course: Course; getResour
 // ─── CourseStudentsPanel ──────────────────────────────────────────────────────
 
 function CourseStudentsPanel({ course, facultyId }: { course: Course; facultyId: string }) {
+  const { institution } = useInstitutionContext()
   const { enrollments, enrollStudent, unenrollStudent, refetch } = useCourseEnrollments(course.id)
-  const { students } = useStudents()
+  const { students } = useStudents(institution?.id)
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [inviting, setInviting] = useState(false)
   const [error, setError] = useState('')
@@ -631,7 +633,8 @@ function CourseRow({ course, facultyId, courses, onEdit, onDelete, onToggle, onC
 
 export default function FacultyCourses() {
   const { profile } = useAuth()
-  const { courses, createCourse, updateCourse, deleteCourse, toggleCourseStatus, uploadResource, deleteResource, getResourceUrl, copyCourseInfo } = useCourses()
+  const { institution } = useInstitutionContext()
+  const { courses, createCourse, updateCourse, deleteCourse, toggleCourseStatus, uploadResource, deleteResource, getResourceUrl, copyCourseInfo } = useCourses(institution?.id)
   const [showForm, setShowForm] = useState(false)
   const [newCourseId] = useState(() => crypto.randomUUID())
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
@@ -641,7 +644,7 @@ export default function FacultyCourses() {
   if (!profile) return null
 
   async function handleCreate(name: string, section: string, gradingSystem: GradingPeriod[], schedule: CourseScheduleItem[], resources: CourseResource[], syllabus: SyllabusRow[]) {
-    await createCourse(newCourseId, name, section, profile!.id, [], gradingSystem, schedule, resources, syllabus)
+    await createCourse(newCourseId, name, section, profile!.id, [], gradingSystem, schedule, resources, syllabus, institution?.id)
     setShowForm(false)
   }
 
