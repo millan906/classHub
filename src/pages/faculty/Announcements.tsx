@@ -29,7 +29,10 @@ export default function FacultyAnnouncements() {
         <ConfirmDialog
           title="Delete announcement"
           message={`Delete "${confirmDelete.title}"? This cannot be undone.`}
-          onConfirm={async () => { await deleteAnnouncement(confirmDelete.id); setConfirmDelete(null) }}
+          onConfirm={async () => {
+            try { await deleteAnnouncement(confirmDelete.id); setConfirmDelete(null) }
+            catch { /* deletion failed silently — dialog stays open */ }
+          }}
           onCancel={() => setConfirmDelete(null)}
         />
       )}

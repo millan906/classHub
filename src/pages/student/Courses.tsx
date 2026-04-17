@@ -156,8 +156,8 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
                 <tr>
-                  {['Week', 'Lesson / Topic', 'Readings', 'Assignments', 'Laboratory'].map(h => (
-                    <th key={h} style={{ background: '#F1EFE8', padding: '8px 10px', border: '0.5px solid #ddd', textAlign: 'left', fontWeight: 600, fontSize: '11px', whiteSpace: 'nowrap' }}>
+                  {(['Week', 'Lesson / Topic', 'Readings', 'Assignments', 'Laboratory'] as const).map(h => (
+                    <th key={h} style={{ background: '#F1EFE8', padding: '8px 10px', border: '0.5px solid #ddd', textAlign: 'left', fontWeight: 600, fontSize: '11px', whiteSpace: 'nowrap', width: h === 'Week' ? '60px' : h === 'Lesson / Topic' ? '22%' : undefined }}>
                       {h}
                     </th>
                   ))}

@@ -7,7 +7,7 @@ const INACTIVITY_THRESHOLD_MS = 60_000
 
 interface QuizTakerProps {
   quiz: Quiz
-  onSubmit: (answers: Record<string, string>, earnedPoints: number, totalPoints: number, autoSubmitted?: boolean) => Promise<void>
+  onSubmit: (answers: Record<string, string>, earnedPoints: number, totalPoints: number, autoSubmitted?: boolean, keystrokeCount?: number, startedAt?: string, answerTimestamps?: Record<string, string>) => Promise<void>
   onCancel: () => void
   onLogEvent?: (eventType: string, severity: 'low' | 'medium' | 'high') => void
   onFileUpload?: (file: File) => Promise<void>
@@ -81,13 +81,14 @@ function FullscreenWarningModal({ onReturn }: { onReturn: () => void }) {
   )
 }
 
-function SubmitResult({ earnedPoints, autoTotal, allEssay, hasEssay }: {
+function SubmitResult({ earnedPoints, autoTotal, allEssay, hasEssay, resultsVisible }: {
   earnedPoints: number
   autoTotal: number
   allEssay: boolean
   hasEssay: boolean
+  resultsVisible: boolean
 }) {
-  if (allEssay) {
+  if (!resultsVisible || allEssay) {
     return (
       <div style={{
         padding: '16px 18px', borderRadius: '8px', background: '#FEF3CD',
@@ -95,7 +96,9 @@ function SubmitResult({ earnedPoints, autoTotal, allEssay, hasEssay }: {
       }}>
         <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Submitted</div>
         <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
-          Your answers have been submitted successfully. Your instructor will review and grade your work — check back later for your score.
+          {allEssay
+            ? 'Your answers have been submitted successfully. Your instructor will review and grade your work — check back later for your score.'
+            : 'Your answers have been submitted. Results will be released by your instructor.'}
         </div>
       </div>
     )
@@ -138,6 +141,30 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
   const autoTotal = questions.reduce((sum, q) => q.type !== 'essay' ? sum + (q.points ?? 1) : sum, 0)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
 
+  // Always-on: block copy/paste/right-click/devtools shortcuts during quiz
+  useEffect(() => {
+    if (submitted) return
+    const noContext = (e: MouseEvent) => e.preventDefault()
+    const noCopy = (e: ClipboardEvent) => e.preventDefault()
+    const noKeys = (e: KeyboardEvent) => {
+      if (e.key === 'F12') { e.preventDefault(); return }
+      if (e.ctrlKey && ['u', 'p'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
+      if (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
+    }
+    document.addEventListener('contextmenu', noContext)
+    document.addEventListener('copy', noCopy)
+    document.addEventListener('cut', noCopy)
+    document.addEventListener('paste', noCopy)
+    document.addEventListener('keydown', noKeys)
+    return () => {
+      document.removeEventListener('contextmenu', noContext)
+      document.removeEventListener('copy', noCopy)
+      document.removeEventListener('cut', noCopy)
+      document.removeEventListener('paste', noCopy)
+      document.removeEventListener('keydown', noKeys)
+    }
+  }, [submitted])
+
   const lockdownEnabled = quiz.lockdown_enabled ?? false
   const [lockdownAccepted, setLockdownAccepted] = useState(!lockdownEnabled)
   const [showFullscreenWarning, setShowFullscreenWarning] = useState(false)
@@ -145,6 +172,9 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
   const submittedRef = useRef(false)
   const lastActivityRef = useRef(Date.now())
   const activeRef = useRef(active)
+  const keystrokeCountRef = useRef(0)
+  const startedAtRef = useRef(new Date().toISOString())
+  const answerTimestampsRef = useRef<Record<string, string>>({})
   activeRef.current = active
 
   function handleEvent(type: string, severity: 'low' | 'medium' | 'high') {
@@ -161,11 +191,13 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
     const onVisibility = () => { if (document.hidden && !submittedRef.current && !activeRef.current) handleEventRef.current('tab_switch', 'medium') }
     const onBlur = () => { if (!submittedRef.current && !activeRef.current) handleEventRef.current('focus_loss', 'low') }
     const onActivity = () => { lastActivityRef.current = Date.now() }
+    const onKeystroke = () => { if (!submittedRef.current) keystrokeCountRef.current++ }
 
     document.addEventListener('visibilitychange', onVisibility)
     window.addEventListener('blur', onBlur)
     document.addEventListener('mousemove', onActivity)
     document.addEventListener('keydown', onActivity)
+    document.addEventListener('keydown', onKeystroke)
     document.addEventListener('mousedown', onActivity)
 
     const inactivityInterval = setInterval(() => {
@@ -180,6 +212,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
       window.removeEventListener('blur', onBlur)
       document.removeEventListener('mousemove', onActivity)
       document.removeEventListener('keydown', onActivity)
+      document.removeEventListener('keydown', onKeystroke)
       document.removeEventListener('mousedown', onActivity)
       clearInterval(inactivityInterval)
     }
@@ -187,6 +220,9 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
 
   function selectAnswer(questionId: string, option: string) {
     if (submitted) return
+    if (!answerTimestampsRef.current[questionId]) {
+      answerTimestampsRef.current[questionId] = new Date().toISOString()
+    }
     setAnswers(a => ({ ...a, [questionId]: option }))
   }
 
@@ -206,7 +242,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
     setSubmitted(true)
     try {
       if (pendingFile && onFileUpload) await onFileUpload(pendingFile)
-      await onSubmit(answers, earned, total, auto)
+      await onSubmit(answers, earned, total, auto, keystrokeCountRef.current, startedAtRef.current, answerTimestampsRef.current)
     } finally {
       setSubmitting(false)
     }
@@ -214,8 +250,13 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
 
   function getOptionState(q: QuizQuestion, label: string): 'default' | 'selected' | 'correct' | 'wrong' {
     if (!submitted) return answers[q.id] === label ? 'selected' : 'default'
-    if (label === q.correct_option) return 'correct'
-    if (answers[q.id] === label && answers[q.id] !== q.correct_option) return 'wrong'
+    // Only reveal correct/wrong when results are visible — otherwise just show what the student picked
+    if (quiz.results_visible) {
+      if (label === q.correct_option) return 'correct'
+      if (answers[q.id] === label && answers[q.id] !== q.correct_option) return 'wrong'
+    } else {
+      if (answers[q.id] === label) return 'selected'
+    }
     return 'default'
   }
 
@@ -231,7 +272,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
   }
 
   return (
-    <div>
+    <div style={{ userSelect: 'none' }}>
       {active && (
         <div style={{ background: '#FCEBEB', color: '#A32D2D', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 500, marginBottom: '12px' }}>
           🔒 Lockdown mode active — fullscreen enforced, tab switching is monitored
@@ -278,7 +319,13 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
             <>
               <textarea
                 value={answers[q.id] ?? ''}
-                onChange={e => !submitted && setAnswers(a => ({ ...a, [q.id]: e.target.value }))}
+                onChange={e => {
+                  if (submitted) return
+                  if (!answerTimestampsRef.current[q.id]) {
+                    answerTimestampsRef.current[q.id] = new Date().toISOString()
+                  }
+                  setAnswers(a => ({ ...a, [q.id]: e.target.value }))
+                }}
                 disabled={submitted}
                 placeholder="Type your answer here…"
                 rows={5}
@@ -288,6 +335,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
                   fontFamily: 'Inter, sans-serif', lineHeight: '1.5', resize: 'vertical',
                   boxSizing: 'border-box', outline: 'none', color: '#1a1a1a',
                   background: submitted ? '#F8F7F2' : '#fff',
+                  userSelect: 'text',
                 }}
               />
               {submitted && (
@@ -354,7 +402,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
 
       {submitted && (
         <>
-          <SubmitResult earnedPoints={earnedPoints} autoTotal={autoTotal} allEssay={allEssay} hasEssay={hasEssay} />
+          <SubmitResult earnedPoints={earnedPoints} autoTotal={autoTotal} allEssay={allEssay} hasEssay={hasEssay} resultsVisible={quiz.results_visible ?? false} />
           {hasEssay && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
               <Button variant="primary" onClick={onCancel}>Back to quizzes</Button>

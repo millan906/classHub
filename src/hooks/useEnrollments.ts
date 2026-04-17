@@ -65,6 +65,12 @@ export function useAllEnrollments() {
     setEnrollments(data || [])
   }
 
+  async function unenrollStudent(courseId: string, studentId: string) {
+    await supabase.from('course_enrollments').delete()
+      .eq('course_id', courseId).eq('student_id', studentId)
+    await fetchAll()
+  }
+
   useEffect(() => {
     fetchAll()
     const channel = supabase
@@ -74,7 +80,7 @@ export function useAllEnrollments() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  return { enrollments, refetch: fetchAll }
+  return { enrollments, refetch: fetchAll, unenrollStudent }
 }
 
 // For students: get enrolled course IDs

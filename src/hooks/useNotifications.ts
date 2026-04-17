@@ -58,6 +58,23 @@ export function useNotifications(userId: string | null) {
   return { notifications, unreadCount, markAllRead, refetch: fetchNotifications }
 }
 
+/** Fire-and-forget: sends a quiz-open email via the edge function. Never throws. */
+export function fireQuizOpenEmail(accessToken: string, quizId: string, isPdf = false): void {
+  const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
+  fetch(fnUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ type: 'quiz_open', quizId, isPdf }),
+  })
+    .then(r => r.json())
+    .then(result => console.log('[Email] Quiz open result:', result))
+    .catch(err => console.error('[Email] Quiz open notification failed:', err))
+}
+
 export async function sendNotificationsToStudents(
   studentIds: string[],
   title: string,

@@ -21,21 +21,46 @@ async function sendEmail(to: string, subject: string, html: string) {
   return res.ok
 }
 
-function emailTemplate(bodyHtml: string) {
-  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
+const APP_URL = 'https://classhub.work'
+
+function emailTemplate(bodyHtml: string, ctaLabel: string, ctaUrl: string) {
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:48px 0;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <tr><td style="background:#1D9E75;padding:28px 32px;">
-          <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">ClassHub</p>
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#1D9E75 0%,#158A63 100%);padding:32px 40px;">
+          <p style="margin:0;font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:2px;text-transform:uppercase;">ClassHub</p>
+          <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Learning Management System</p>
         </td></tr>
-        <tr><td style="padding:32px;">${bodyHtml}</td></tr>
-        <tr><td style="padding:20px 32px;border-top:1px solid #f0f0f0;background:#fafafa;">
-          <p style="margin:0;font-size:12px;color:#aaa;">Please do not reply to this email.</p>
+
+        <!-- Body -->
+        <tr><td style="padding:40px;">
+          ${bodyHtml}
+
+          <!-- CTA Button -->
+          <table cellpadding="0" cellspacing="0" style="margin-top:32px;">
+            <tr><td style="background:#1D9E75;border-radius:10px;">
+              <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:-0.2px;">${ctaLabel}</a>
+            </td></tr>
+          </table>
+
+          <p style="margin:20px 0 0;font-size:12px;color:#aaa;">If the button doesn't work, copy this link into your browser:<br>
+            <a href="${ctaUrl}" style="color:#1D9E75;word-break:break-all;">${ctaUrl}</a>
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 40px;border-top:1px solid #f0f0f0;background:#fafafa;">
+          <p style="margin:0;font-size:12px;color:#bbb;">You're receiving this because you're enrolled in this course on ClassHub. Please do not reply to this email.</p>
         </td></tr>
       </table>
     </td></tr>
-  </table></body></html>`
+  </table>
+</body></html>`
 }
 
 async function getEnrolledEmails(supabase: ReturnType<typeof createClient>, courseId: string | null): Promise<string[]> {
@@ -93,7 +118,8 @@ Deno.serve(async (req) => {
       .not('open_at', 'is', null)
 
     for (const quiz of toOpen ?? []) {
-      await supabase.from(table).update({ is_open: true, open_notif_sent: true }).eq('id', quiz.id)
+      // Open the quiz first — mark open_notif_sent only after emails succeed
+      await supabase.from(table).update({ is_open: true }).eq('id', quiz.id)
       stats.opened++
 
       const [emails, studentIds, course] = await Promise.all([
@@ -105,14 +131,18 @@ Deno.serve(async (req) => {
       const courseName = course ? course.name + (course.section ? ` · ${course.section}` : '') : 'Your Course'
       const itemType = escapeHtml((quiz as any).item_type ?? 'Assessment')
       const title = escapeHtml(quiz.title)
-      const closeStr = quiz.close_at ? `<p style="margin:8px 0 0;font-size:14px;color:#666;">Closes: <strong>${escapeHtml(new Date(quiz.close_at).toLocaleString())}</strong></p>` : ''
+      const closeStr = quiz.close_at
+        ? `<p style="margin:6px 0 0;font-size:13px;color:#888;">Closes: <strong style="color:#555;">${new Date(quiz.close_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}</strong></p>`
+        : ''
 
       const html = emailTemplate(`
-        <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#1a1a1a;">${title} is now open</h1>
-        <p style="margin:0 0 4px;font-size:14px;color:#666;">${itemType} &nbsp;·&nbsp; ${escapeHtml(courseName)}</p>
+        <p style="margin:0 0 20px;font-size:13px;color:#1D9E75;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${escapeHtml(courseName)}</p>
+        <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px;">${title}</h1>
+        <p style="margin:0 0 4px;font-size:14px;color:#888;">${itemType} &nbsp;·&nbsp; Now open</p>
         ${closeStr}
-        <p style="margin:20px 0 0;font-size:15px;color:#444;line-height:1.7;">Log in to ClassHub to begin.</p>
-      `)
+        <hr style="margin:24px 0;border:none;border-top:1px solid #f0f0f0;">
+        <p style="margin:0;font-size:15px;color:#444;line-height:1.8;">Your instructor has opened this assessment. Click the button below to go directly to your assessments page and begin.</p>
+      `, 'Open Assessment →', `${APP_URL}/student/quizzes`)
 
       // In-app notifications
       if (studentIds.length > 0) {
@@ -127,9 +157,13 @@ Deno.serve(async (req) => {
         )
       }
 
-      // Emails
+      // Emails — mark notif sent only after successful send
       const results = await Promise.all(emails.map(e => sendEmail(e, `[ClassHub] ${quiz.title} is now open`, html)))
-      stats.emailsSent += results.filter(Boolean).length
+      const sentCount = results.filter(Boolean).length
+      stats.emailsSent += sentCount
+      if (emails.length === 0 || sentCount > 0) {
+        await supabase.from(table).update({ open_notif_sent: true }).eq('id', quiz.id)
+      }
     }
 
     // ── 2. 30-min reminder ────────────────────────────────────────────────────
@@ -142,7 +176,6 @@ Deno.serve(async (req) => {
       .not('close_at', 'is', null)
 
     for (const quiz of toRemind ?? []) {
-      await supabase.from(table).update({ reminder_notif_sent: true }).eq('id', quiz.id)
       stats.reminded++
 
       const [emails, studentIds, course] = await Promise.all([
@@ -154,13 +187,19 @@ Deno.serve(async (req) => {
       const courseName = course ? course.name + (course.section ? ` · ${course.section}` : '') : 'Your Course'
       const title = escapeHtml(quiz.title)
       const itemType = escapeHtml((quiz as any).item_type ?? 'Assessment')
+      const closeTimeStr = quiz.close_at
+        ? new Date(quiz.close_at).toLocaleString('en-US', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+        : ''
 
       const html = emailTemplate(`
-        <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#E65100;">⏰ 30 minutes left!</h1>
-        <p style="margin:0 0 4px;font-size:16px;font-weight:500;color:#1a1a1a;">${title}</p>
-        <p style="margin:0 0 4px;font-size:14px;color:#666;">${itemType} &nbsp;·&nbsp; ${escapeHtml(courseName)}</p>
-        <p style="margin:20px 0 0;font-size:15px;color:#444;line-height:1.7;">This assessment closes in 30 minutes. Log in to ClassHub now to submit.</p>
-      `)
+        <p style="margin:0 0 20px;font-size:13px;color:#E65100;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${escapeHtml(courseName)}</p>
+        <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px;">⏰ 30 Minutes Left</h1>
+        <p style="margin:0 0 4px;font-size:16px;font-weight:600;color:#333;">${title}</p>
+        <p style="margin:0 0 4px;font-size:14px;color:#888;">${itemType}</p>
+        ${closeTimeStr ? `<p style="margin:6px 0 0;font-size:13px;color:#E65100;font-weight:600;">Closes at: ${escapeHtml(closeTimeStr)}</p>` : ''}
+        <hr style="margin:24px 0;border:none;border-top:1px solid #f0f0f0;">
+        <p style="margin:0;font-size:15px;color:#444;line-height:1.8;">This assessment closes in <strong>30 minutes</strong>. Log in now and submit your answers before time runs out.</p>
+      `, 'Submit Now →', `${APP_URL}/student/quizzes`)
 
       // In-app notifications
       if (studentIds.length > 0) {
@@ -175,8 +214,13 @@ Deno.serve(async (req) => {
         )
       }
 
+      // Mark reminder sent only after successful send
       const results = await Promise.all(emails.map(e => sendEmail(e, `[ClassHub] 30 minutes left: ${quiz.title}`, html)))
-      stats.emailsSent += results.filter(Boolean).length
+      const sentCount = results.filter(Boolean).length
+      stats.emailsSent += sentCount
+      if (emails.length === 0 || sentCount > 0) {
+        await supabase.from(table).update({ reminder_notif_sent: true }).eq('id', quiz.id)
+      }
     }
 
     // ── 3. Auto-close ─────────────────────────────────────────────────────────

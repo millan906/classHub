@@ -134,46 +134,49 @@ Deno.serve(async (req) => {
   const safeFaculty = escapeHtml(facultyName)
   const safeCourse = escapeHtml(courseName)
 
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <body style="margin:0; padding:0; background:#f4f4f5; font-family: 'Helvetica Neue', Arial, sans-serif;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5; padding: 40px 0;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:12px; overflow:hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">
+  const appUrl = 'https://classhub.work'
+  const ctaUrl = `${appUrl}/student/announcements`
 
-                <!-- Header -->
-                <tr>
-                  <td style="background:#1D9E75; padding: 28px 32px;">
-                    <p style="margin:0; font-size:20px; font-weight:700; color:#ffffff; letter-spacing:-0.3px;">ClassHub</p>
-                    <p style="margin:6px 0 0; font-size:13px; color:rgba(255,255,255,0.85);">Faculty: <strong>${safeFaculty}</strong> &nbsp;·&nbsp; Course: <strong>${safeCourse}</strong></p>
-                  </td>
-                </tr>
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:48px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
 
-                <!-- Body -->
-                <tr>
-                  <td style="padding: 32px;">
-                    <h1 style="margin:0 0 12px; font-size:22px; font-weight:600; color:#1a1a1a;">${safeTitle}</h1>
-                    <p style="margin:0 0 24px; font-size:13px; color:#aaa;">Announcement for <strong style="color:#555;">${safeCourse}</strong></p>
-                    <p style="margin:0; font-size:15px; color:#444; line-height:1.7; white-space:pre-wrap;">${safeBody}</p>
-                  </td>
-                </tr>
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#1D9E75 0%,#158A63 100%);padding:32px 40px;">
+          <p style="margin:0;font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:2px;text-transform:uppercase;">ClassHub</p>
+          <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">Learning Management System</p>
+        </td></tr>
 
-                <!-- Footer -->
-                <tr>
-                  <td style="padding: 20px 32px; border-top: 1px solid #f0f0f0; background:#fafafa;">
-                    <p style="margin:0; font-size:12px; color:#aaa;">Posted by Faculty <strong>${safeFaculty}</strong> via ClassHub. You received this because you are enrolled in <strong>${safeCourse}</strong>. Please do not reply to this email.</p>
-                  </td>
-                </tr>
+        <!-- Body -->
+        <tr><td style="padding:40px;">
+          <p style="margin:0 0 20px;font-size:13px;color:#1D9E75;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${safeCourse}</p>
+          <h1 style="margin:0 0 6px;font-size:24px;font-weight:700;color:#1a1a1a;letter-spacing:-0.4px;">${safeTitle}</h1>
+          <p style="margin:0 0 24px;font-size:13px;color:#aaa;">Posted by <strong style="color:#555;">${safeFaculty}</strong></p>
+          <hr style="margin:0 0 24px;border:none;border-top:1px solid #f0f0f0;">
+          <p style="margin:0;font-size:15px;color:#444;line-height:1.8;white-space:pre-wrap;">${safeBody}</p>
 
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-    </html>
-  `
+          <!-- CTA -->
+          <table cellpadding="0" cellspacing="0" style="margin-top:32px;">
+            <tr><td style="background:#1D9E75;border-radius:10px;">
+              <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:-0.2px;">View Announcement →</a>
+            </td></tr>
+          </table>
+          <p style="margin:16px 0 0;font-size:12px;color:#aaa;">If the button doesn't work, copy this link:<br>
+            <a href="${ctaUrl}" style="color:#1D9E75;">${ctaUrl}</a>
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 40px;border-top:1px solid #f0f0f0;background:#fafafa;">
+          <p style="margin:0;font-size:12px;color:#bbb;">You're receiving this because you're enrolled in <strong>${safeCourse}</strong> on ClassHub. Please do not reply to this email.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
 
   const results = await Promise.all(emails.map(async email => {
     const res = await fetch('https://api.resend.com/emails', {

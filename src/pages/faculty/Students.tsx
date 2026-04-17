@@ -7,7 +7,6 @@ import { useQuizzes } from '../../hooks/useQuizzes'
 import { useGradeBook } from '../../hooks/useGradeBook'
 import { PageHeader, Divider } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { StudentRow } from '../../components/students/StudentRow'
 import { Avatar, getInitials, getAvatarColors } from '../../components/ui/Avatar'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { Badge } from '../../components/ui/Badge'
@@ -17,7 +16,7 @@ export default function FacultyStudents() {
   const { profile } = useAuth()
   const { students, approveWithCourses, rejectStudent } = useStudents()
   const { courses } = useCourses()
-  const { enrollments, refetch: refetchEnrollments } = useAllEnrollments()
+  const { enrollments, refetch: refetchEnrollments, unenrollStudent } = useAllEnrollments()
   const { quizzes, submissions } = useQuizzes()
   const { groups, columns, entries } = useGradeBook()
 
@@ -179,6 +178,69 @@ export default function FacultyStudents() {
               <AssessmentRow key={q.id} title={q.title} itemType={q.item_type ?? 'quiz'} dueDate={q.due_date} status="missed" />
             ))
         }
+
+        <Divider />
+
+        {/* Submissions */}
+        <SectionHeader label={`Submissions (${studentSubs.length})`} />
+        {studentSubs.length === 0
+          ? <EmptyNote text="No submissions yet." />
+          : studentSubs.map(sub => {
+              const quiz = quizzes.find(q => q.id === sub.quiz_id)
+              const timeTaken = sub.started_at && sub.submitted_at
+                ? Math.round((new Date(sub.submitted_at).getTime() - new Date(sub.started_at).getTime()) / 60000)
+                : null
+              const questions = (quiz?.questions ?? []).slice().sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
+              const hasTimestamps = sub.answer_timestamps && Object.keys(sub.answer_timestamps).length > 0
+              return (
+                <div key={sub.id} style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 600 }}>{quiz?.title ?? 'Unknown'}</div>
+                      <div style={{ fontSize: '11px', color: '#888', marginTop: '1px', textTransform: 'capitalize' }}>{quiz?.item_type ?? 'quiz'}</div>
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: scoreBarColor(sub.score) }}>{sub.score}%</span>
+                  </div>
+                  {/* Time stats */}
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', fontSize: '11px', color: '#888', marginBottom: hasTimestamps ? '10px' : 0 }}>
+                    {sub.started_at && <span>Started: <strong style={{ color: '#555' }}>{new Date(sub.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>}
+                    {sub.submitted_at && <span>Submitted: <strong style={{ color: '#555' }}>{new Date(sub.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></span>}
+                    {timeTaken !== null && <span>Time: <strong style={{ color: '#555' }}>{timeTaken} min{timeTaken !== 1 ? 's' : ''}</strong></span>}
+                    {sub.keystroke_count != null && sub.keystroke_count > 0 && <span>Keystrokes: <strong style={{ color: '#555' }}>{sub.keystroke_count}</strong></span>}
+                  </div>
+                  {/* Per-question timing */}
+                  {questions.length > 0 && hasTimestamps && (
+                    <div style={{ borderTop: '0.5px solid #F1EFE8', paddingTop: '8px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Per-question timing</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {questions.map((q, i) => {
+                          const ts = sub.answer_timestamps?.[q.id]
+                          const relSecs = ts && sub.started_at
+                            ? Math.round((new Date(ts).getTime() - new Date(sub.started_at).getTime()) / 1000)
+                            : null
+                          const relStr = relSecs !== null
+                            ? relSecs < 60 ? `${relSecs}s` : `${Math.floor(relSecs / 60)}m ${relSecs % 60}s`
+                            : null
+                          return (
+                            <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
+                              <span style={{ color: '#aaa', minWidth: '24px', fontWeight: 600 }}>Q{i + 1}</span>
+                              <span style={{ flex: 1, color: '#555', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {q.question_text.length > 55 ? q.question_text.slice(0, 55) + '…' : q.question_text}
+                              </span>
+                              <span style={{ flexShrink: 0, color: relStr ? '#1D9E75' : '#ddd', fontWeight: relStr ? 600 : 400 }}>
+                                {relStr ? `@ ${relStr}` : '—'}
+                              </span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })
+        }
       </div>
     )
   }
@@ -239,6 +301,7 @@ export default function FacultyStudents() {
                 student={s}
                 assignedCourses={getStudentCourses(s.id)}
                 onClick={() => setViewingStudent(s)}
+                onUnenroll={courseId => unenrollStudent(courseId, s.id)}
               />
             ))
       })()}
@@ -250,7 +313,22 @@ export default function FacultyStudents() {
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '8px', color: '#A32D2D' }}>
             Rejected ({rejected.length})
           </div>
-          {rejected.map(s => <StudentRow key={s.id} student={s} />)}
+          {rejected.map(s => (
+            <PendingStudentCard
+              key={s.id}
+              student={s}
+              openCourses={openCourses}
+              isExpanded={approvingId === s.id}
+              selectedCourses={selectedCourses}
+              saving={saving}
+              onStartApproving={() => startApproving(s.id)}
+              onToggleCourse={toggleCourse}
+              onApprove={handleApprove}
+              onCancel={cancelApproving}
+              badgeLabel="Rejected"
+              borderColor="rgba(163,45,45,0.25)"
+            />
+          ))}
         </>
       )}
     </div>
@@ -299,6 +377,7 @@ function AssessmentRow({ title, itemType, dueDate, status }: {
 function PendingStudentCard({
   student, openCourses, isExpanded, selectedCourses, saving,
   onStartApproving, onToggleCourse, onApprove, onCancel, onReject,
+  badgeLabel = 'Pending', borderColor = '#EF9F27',
 }: {
   student: Profile
   openCourses: Course[]
@@ -309,7 +388,9 @@ function PendingStudentCard({
   onToggleCourse: (id: string) => void
   onApprove: () => void
   onCancel: () => void
-  onReject: () => void
+  onReject?: () => void
+  badgeLabel?: string
+  borderColor?: string
 }) {
   const colors = getAvatarColors(student.full_name)
   const approveLabel = selectedCourses.length > 0
@@ -321,7 +402,7 @@ function PendingStudentCard({
       <div style={{
         display: 'flex', alignItems: 'center', gap: '10px',
         padding: '9px', background: '#fff',
-        border: '0.5px solid #EF9F27',
+        border: `0.5px solid ${borderColor}`,
         borderRadius: isExpanded ? '12px 12px 0 0' : '12px',
       }}>
         <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
@@ -329,18 +410,18 @@ function PendingStudentCard({
           <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
           <div style={{ fontSize: '12px', color: '#888' }}>{student.email}</div>
         </div>
-        <Badge label="Pending" color="amber" />
+        <Badge label={badgeLabel} color={badgeLabel === 'Rejected' ? 'red' : 'amber'} />
         {!isExpanded && (
           <>
             <Button variant="primary" onClick={onStartApproving}>Approve</Button>
-            <Button variant="danger" onClick={onReject}>Reject</Button>
+            {onReject && <Button variant="danger" onClick={onReject}>Reject</Button>}
           </>
         )}
       </div>
 
       {isExpanded && (
         <div style={{
-          border: '0.5px solid #EF9F27', borderTop: 'none',
+          border: `0.5px solid ${borderColor}`, borderTop: 'none',
           borderRadius: '0 0 12px 12px', padding: '12px 14px',
           background: '#FEFDF7',
         }}>
@@ -373,7 +454,7 @@ function PendingStudentCard({
               {saving ? 'Saving…' : approveLabel}
             </Button>
             <Button onClick={onCancel}>Cancel</Button>
-            <Button variant="danger" onClick={onReject}>Reject</Button>
+            {onReject && <Button variant="danger" onClick={onReject}>Reject</Button>}
           </div>
         </div>
       )}
@@ -383,10 +464,11 @@ function PendingStudentCard({
 
 // ─── EnrolledStudentCard ──────────────────────────────────────────────────────
 
-function EnrolledStudentCard({ student, assignedCourses, onClick }: {
+function EnrolledStudentCard({ student, assignedCourses, onClick, onUnenroll }: {
   student: Profile
   assignedCourses: Course[]
   onClick: () => void
+  onUnenroll: (courseId: string) => void
 }) {
   const colors = getAvatarColors(student.full_name)
   return (
@@ -409,10 +491,20 @@ function EnrolledStudentCard({ student, assignedCourses, onClick }: {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '5px' }}>
             {assignedCourses.map(c => (
               <span key={c.id} style={{
-                fontSize: '11px', fontWeight: 500, padding: '2px 8px',
+                fontSize: '11px', fontWeight: 500, padding: '2px 6px 2px 8px',
                 borderRadius: '999px', background: '#E6F1FB', color: '#185FA5',
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
               }}>
                 {c.name}{c.section ? ` · ${c.section}` : ''}
+                <button
+                  onClick={e => { e.stopPropagation(); onUnenroll(c.id) }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#185FA5', fontSize: '13px', lineHeight: 1,
+                    padding: '0', display: 'flex', alignItems: 'center',
+                  }}
+                  title="Unenroll from this course"
+                >×</button>
               </span>
             ))}
           </div>

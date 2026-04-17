@@ -24,8 +24,9 @@ export function useStudents() {
   async function approveWithCourses(studentId: string, courseIds: string[], facultyId: string) {
     await supabase.from('profiles').update({ status: 'approved' }).eq('id', studentId)
     if (courseIds.length > 0) {
-      await supabase.from('course_enrollments').insert(
-        courseIds.map(cid => ({ course_id: cid, student_id: studentId, invited_by: facultyId }))
+      await supabase.from('course_enrollments').upsert(
+        courseIds.map(cid => ({ course_id: cid, student_id: studentId, invited_by: facultyId })),
+        { onConflict: 'student_id,course_id', ignoreDuplicates: true }
       )
     }
     await fetchStudents()

@@ -1,13 +1,17 @@
+import { useState } from 'react'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import type { Quiz, QuizSubmission } from '../../types'
+import type { Quiz, QuizSubmission, Course } from '../../types'
 
 interface QuizCardProps {
   quiz: Quiz
   submissions?: QuizSubmission[]
   totalStudents?: number
   isFaculty?: boolean
+  courses?: Course[]
   onToggle?: (id: string, isOpen: boolean) => void
+  onReleaseResults?: (id: string, visible: boolean) => void
+  onCopy?: (quizId: string, targetCourseId: string) => Promise<void>
   onViewResults?: (quiz: Quiz) => void
   onEdit?: (quiz: Quiz) => void
   onDelete?: (quiz: Quiz) => void
@@ -20,7 +24,11 @@ const TYPE_ICONS: Record<string, string> = {
   quiz: '📝', lab: '🧪', assignment: '📋', project: '📁', exam: '📄'
 }
 
-export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onToggle, onViewResults, onEdit, onDelete, onTake, mySubmission, attemptsUsed }: QuizCardProps) {
+export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, courses = [], onToggle, onReleaseResults, onCopy, onViewResults, onEdit, onDelete, onTake, mySubmission, attemptsUsed }: QuizCardProps) {
+  const [copying, setCopying] = useState(false)
+  const [copyTarget, setCopyTarget] = useState('')
+  const [copyLoading, setCopyLoading] = useState(false)
+  const otherCourses = courses.filter(c => c.id !== quiz.course_id)
   const questionCount = quiz.questions?.length ?? 0
   const submittedCount = submissions?.length ?? 0
   const submissionPct = totalStudents > 0 ? Math.round((submittedCount / totalStudents) * 100) : 0
@@ -73,12 +81,47 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onTo
 
       {/* Bottom row: action buttons */}
       {isFaculty && (
-        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button onClick={() => onEdit?.(quiz)}>Edit</Button>
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}
           </Button>
           <Button onClick={() => onViewResults?.(quiz)}>Submissions</Button>
+          <Button
+            onClick={() => onReleaseResults?.(quiz.id, !quiz.results_visible)}
+            style={{ background: quiz.results_visible ? '#E1F5EE' : undefined, color: quiz.results_visible ? '#0F6E56' : undefined }}
+          >
+            {quiz.results_visible ? 'Results visible' : 'Release results'}
+          </Button>
+          {otherCourses.length > 0 && !copying && (
+            <Button onClick={() => { setCopying(true); setCopyTarget(otherCourses[0].id) }}>Copy to...</Button>
+          )}
+          {copying && (
+            <>
+              <select
+                value={copyTarget}
+                onChange={e => setCopyTarget(e.target.value)}
+                style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.2)' }}
+              >
+                {otherCourses.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>
+                ))}
+              </select>
+              <Button
+                variant="primary"
+                disabled={copyLoading}
+                onClick={async () => {
+                  setCopyLoading(true)
+                  try { await onCopy?.(quiz.id, copyTarget) } finally {
+                    setCopyLoading(false); setCopying(false)
+                  }
+                }}
+              >
+                {copyLoading ? 'Copying...' : 'Copy'}
+              </Button>
+              <Button onClick={() => setCopying(false)}>Cancel</Button>
+            </>
+          )}
           <Button variant="danger" onClick={() => onDelete?.(quiz)}>Delete</Button>
         </div>
       )}
@@ -91,9 +134,12 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, onTo
           )}
           {mySubmission && (
             <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
-                {mySubmission.earned_points ?? mySubmission.score} {mySubmission.total_points ? `/ ${mySubmission.total_points} pts` : '%'}
-              </div>
+              {quiz.results_visible
+                ? <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
+                    {mySubmission.earned_points ?? mySubmission.score} {mySubmission.total_points ? `/ ${mySubmission.total_points} pts` : '%'}
+                  </div>
+                : <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic' }}>Results pending</div>
+              }
               <div style={{ fontSize: '11px', color: '#888' }}>
                 {attemptsUsed ?? 0}/{quiz.max_attempts ?? 1} attempt{(quiz.max_attempts ?? 1) !== 1 ? 's' : ''}
               </div>

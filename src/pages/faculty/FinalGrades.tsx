@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../../hooks/useAuth'
 import { useCourses } from '../../hooks/useCourses'
 import { useFinalGrades } from '../../hooks/useFinalGrades'
 import { useStudents } from '../../hooks/useStudents'
@@ -7,12 +8,14 @@ import { PageHeader } from '../../components/ui/Card'
 import { percentageToGWA, gwaColor } from '../../utils/gwaConversion'
 
 export default function FacultyFinalGrades() {
-  const { courses } = useCourses()
+  const { profile } = useAuth()
+  const { courses: allCourses } = useCourses()
+  const courses = allCourses.filter(c => c.created_by === profile?.id)
   const { finalGrades, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse } = useFinalGrades()
   const { students: allStudents } = useStudents()
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const { enrollments } = useCourseEnrollments(selectedCourseId)
-  const [inputs, setInputs] = useState<Record<string, string>>({})
+  const [inputs, setInputs] = useState<Record<string, { midterm: string; final: string }>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [publishing, setPublishing] = useState<Record<string, boolean>>({})
   const [publishingAll, setPublishingAll] = useState(false)
@@ -36,8 +39,11 @@ export default function FacultyFinalGrades() {
       const next = { ...prev }
       for (const s of students) {
         const existing = finalGrades.find(g => g.student_id === s.id && g.course_id === selectedCourseId)
-        if (existing?.grade != null && !(s.id in next)) {
-          next[s.id] = String(existing.grade)
+        if (!(s.id in next)) {
+          next[s.id] = {
+            midterm: existing?.midterm_grade != null ? String(existing.midterm_grade) : '',
+            final: existing?.grade != null ? String(existing.grade) : '',
+          }
         }
       }
       return next
@@ -45,11 +51,13 @@ export default function FacultyFinalGrades() {
   }, [students.length, finalGrades.length, selectedCourseId])
 
   async function handleSave(studentId: string) {
-    const raw = inputs[studentId] ?? ''
-    const grade = parseFloat(raw)
-    if (isNaN(grade) || grade < 0 || grade > 100) return
+    const inp = inputs[studentId] ?? { midterm: '', final: '' }
+    const midterm = inp.midterm !== '' ? parseFloat(inp.midterm) : null
+    const final = inp.final !== '' ? parseFloat(inp.final) : null
+    if (midterm !== null && (isNaN(midterm) || midterm < 0 || midterm > 100)) return
+    if (final !== null && (isNaN(final) || final < 0 || final > 100)) return
     setSaving(prev => ({ ...prev, [studentId]: true }))
-    await upsertGrade(studentId, selectedCourseId!, grade)
+    await upsertGrade(studentId, selectedCourseId!, midterm, final)
     setSaving(prev => ({ ...prev, [studentId]: false }))
   }
 
@@ -75,35 +83,34 @@ export default function FacultyFinalGrades() {
 
   const unpublishedWithGrade = students.filter(s => {
     const g = courseGrades.find(fg => fg.student_id === s.id)
-    return g?.grade != null && !g.published
+    return (g?.midterm_grade != null || g?.grade != null) && !g?.published
   })
 
   return (
     <div>
       <PageHeader title="Final Grades" subtitle="Enter and publish final grades per student per course." />
 
-      {/* Course tabs */}
+      {/* Course selector */}
       {courses.length === 0 ? (
         <div style={{ fontSize: '13px', color: '#aaa' }}>No courses found.</div>
       ) : (
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
-          {courses.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCourseId(c.id)}
-              style={{
-                padding: '5px 14px', fontSize: '12px', borderRadius: '999px',
-                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                border: '0.5px solid',
-                borderColor: selectedCourseId === c.id ? '#1D9E75' : 'rgba(0,0,0,0.15)',
-                background: selectedCourseId === c.id ? '#E1F5EE' : 'transparent',
-                color: selectedCourseId === c.id ? '#0F6E56' : '#555',
-                fontWeight: selectedCourseId === c.id ? 600 : 400,
-              }}
-            >
-              {c.name}
-            </button>
-          ))}
+        <div style={{ marginBottom: '14px' }}>
+          <select
+            value={selectedCourseId ?? ''}
+            onChange={e => setSelectedCourseId(e.target.value)}
+            style={{
+              padding: '7px 12px', fontSize: '13px', borderRadius: '8px',
+              border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff',
+              fontFamily: 'Inter, sans-serif', cursor: 'pointer', outline: 'none',
+              minWidth: '220px',
+            }}
+          >
+            {courses.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}{c.section ? ` — ${c.section}` : ''}
+              </option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -138,7 +145,7 @@ export default function FacultyFinalGrades() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                 <thead>
                   <tr>
-                    {['Student', 'Grade (%)', 'GWA', 'Status', 'Actions'].map(h => (
+                    {['Student', 'Midterm (%)', 'Final (%)', 'Course Grade', 'GWA', 'Status', 'Actions'].map(h => (
                       <th key={h} style={{ background: '#F1EFE8', padding: '7px 12px', textAlign: 'left', border: '0.5px solid #ddd', fontWeight: 600, fontSize: '12px', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -146,17 +153,29 @@ export default function FacultyFinalGrades() {
                 <tbody>
                   {students.map(student => {
                     const existing = courseGrades.find(g => g.student_id === student.id)
-                    const inputVal = inputs[student.id] ?? ''
-                    const parsedGrade = parseFloat(inputVal)
-                    const gwa = !isNaN(parsedGrade) && parsedGrade >= 0 && parsedGrade <= 100
-                      ? percentageToGWA(parsedGrade)
-                      : '—'
+                    const inp = inputs[student.id] ?? { midterm: '', final: '' }
+
+                    const parsedMidterm = inp.midterm !== '' ? parseFloat(inp.midterm) : null
+                    const parsedFinal = inp.final !== '' ? parseFloat(inp.final) : null
+                    const courseGrade = parsedMidterm !== null && parsedFinal !== null && !isNaN(parsedMidterm) && !isNaN(parsedFinal)
+                      ? (parsedMidterm + parsedFinal) / 2
+                      : null
+                    const gwa = courseGrade !== null ? percentageToGWA(courseGrade) : '—'
+
                     const isPublished = existing?.published ?? false
-                    const hasGrade = existing?.grade != null
+                    const hasGrade = existing?.midterm_grade != null || existing?.grade != null
                     const isSaving = saving[student.id] ?? false
                     const isPublishing = publishing[student.id] ?? false
-                    const savedVal = existing?.grade != null ? String(existing.grade) : ''
-                    const isDirty = inputVal !== savedVal && inputVal !== ''
+
+                    const savedMidterm = existing?.midterm_grade != null ? String(existing.midterm_grade) : ''
+                    const savedFinal = existing?.grade != null ? String(existing.grade) : ''
+                    const isDirty = inp.midterm !== savedMidterm || inp.final !== savedFinal
+
+                    const inputStyle = {
+                      width: '80px', padding: '4px 8px', borderRadius: '6px',
+                      border: '0.5px solid #ddd', fontSize: '13px',
+                      fontFamily: 'Inter, sans-serif',
+                    }
 
                     return (
                       <tr key={student.id}>
@@ -165,36 +184,33 @@ export default function FacultyFinalGrades() {
                           <div style={{ fontSize: '11px', color: '#aaa' }}>{student.email}</div>
                         </td>
                         <td style={{ padding: '8px 12px', border: '0.5px solid #eee' }}>
+                          <input
+                            type="number" min="0" max="100" step="0.1"
+                            value={inp.midterm}
+                            onChange={e => setInputs(prev => ({ ...prev, [student.id]: { ...prev[student.id] ?? { midterm: '', final: '' }, midterm: e.target.value } }))}
+                            placeholder="e.g. 88"
+                            style={inputStyle}
+                          />
+                        </td>
+                        <td style={{ padding: '8px 12px', border: '0.5px solid #eee' }}>
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.1"
-                              value={inputVal}
-                              onChange={e => setInputs(prev => ({ ...prev, [student.id]: e.target.value }))}
-                              placeholder="e.g. 92.2"
-                              style={{
-                                width: '90px', padding: '4px 8px', borderRadius: '6px',
-                                border: '0.5px solid #ddd', fontSize: '13px',
-                                fontFamily: 'Inter, sans-serif',
-                              }}
+                              type="number" min="0" max="100" step="0.1"
+                              value={inp.final}
+                              onChange={e => setInputs(prev => ({ ...prev, [student.id]: { ...prev[student.id] ?? { midterm: '', final: '' }, final: e.target.value } }))}
+                              placeholder="e.g. 92"
+                              style={inputStyle}
                             />
                             {isDirty && (
-                              <button
-                                onClick={() => handleSave(student.id)}
-                                disabled={isSaving}
-                                style={{
-                                  fontSize: '11px', padding: '3px 8px', borderRadius: '5px',
-                                  background: '#185FA5', color: '#fff', border: 'none',
-                                  cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                                  opacity: isSaving ? 0.6 : 1,
-                                }}
-                              >
+                              <button onClick={() => handleSave(student.id)} disabled={isSaving}
+                                style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '5px', background: '#185FA5', color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: isSaving ? 0.6 : 1 }}>
                                 {isSaving ? '...' : 'Save'}
                               </button>
                             )}
                           </div>
+                        </td>
+                        <td style={{ padding: '8px 12px', border: '0.5px solid #eee', fontWeight: 600, color: courseGrade !== null ? gwaColor(percentageToGWA(courseGrade)) : '#ccc' }}>
+                          {courseGrade !== null ? `${courseGrade.toFixed(1)}%` : '—'}
                         </td>
                         <td style={{ padding: '8px 12px', border: '0.5px solid #eee', fontWeight: 600, color: gwa === '—' ? '#ccc' : gwaColor(gwa) }}>
                           {gwa}
@@ -210,31 +226,13 @@ export default function FacultyFinalGrades() {
                         <td style={{ padding: '8px 12px', border: '0.5px solid #eee' }}>
                           {hasGrade && (
                             isPublished ? (
-                              <button
-                                onClick={() => handleUnpublish(student.id)}
-                                disabled={isPublishing}
-                                style={{
-                                  fontSize: '11px', padding: '3px 8px', borderRadius: '5px',
-                                  background: '#FFF3E0', color: '#C87000',
-                                  border: '0.5px solid #C87000',
-                                  cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                                  opacity: isPublishing ? 0.6 : 1,
-                                }}
-                              >
+                              <button onClick={() => handleUnpublish(student.id)} disabled={isPublishing}
+                                style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '5px', background: '#FFF3E0', color: '#C87000', border: '0.5px solid #C87000', cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: isPublishing ? 0.6 : 1 }}>
                                 {isPublishing ? '...' : 'Unpublish'}
                               </button>
                             ) : (
-                              <button
-                                onClick={() => handlePublish(student.id)}
-                                disabled={isPublishing}
-                                style={{
-                                  fontSize: '11px', padding: '3px 8px', borderRadius: '5px',
-                                  background: '#E1F5EE', color: '#0F6E56',
-                                  border: '0.5px solid #1D9E75',
-                                  cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                                  opacity: isPublishing ? 0.6 : 1,
-                                }}
-                              >
+                              <button onClick={() => handlePublish(student.id)} disabled={isPublishing}
+                                style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '5px', background: '#E1F5EE', color: '#0F6E56', border: '0.5px solid #1D9E75', cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: isPublishing ? 0.6 : 1 }}>
                                 {isPublishing ? '...' : 'Publish'}
                               </button>
                             )

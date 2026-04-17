@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { calcScore } from '../utils/gradeCalculations'
+import { fireQuizOpenEmail } from './useNotifications'
 import type { PdfQuiz, PdfQuizSubmission, PdfQuizFormData, Profile } from '../types'
 import * as XLSX from 'xlsx'
 
@@ -151,16 +153,20 @@ export function usePdfQuizzes() {
   async function deletePdfQuiz(id: string) {
     const quiz = pdfQuizzes.find(q => q.id === id)
     if (quiz?.pdf_path) await supabase.storage.from('pdf-quizzes').remove([quiz.pdf_path])
+    await supabase.from('grade_columns').delete().eq('linked_quiz_id', id)
     await supabase.from('pdf_quizzes').delete().eq('id', id)
     await fetchPdfQuizzes()
   }
 
   async function togglePdfQuiz(id: string, isOpen: boolean) {
-    await supabase.from('pdf_quizzes').update({ is_open: isOpen }).eq('id', id)
+    const quiz = pdfQuizzes.find(q => q.id === id)
+    const updates: Record<string, unknown> = { is_open: isOpen }
+    if (isOpen && quiz?.close_at && new Date(quiz.close_at) <= new Date()) {
+      updates.close_at = null
+    }
+    await supabase.from('pdf_quizzes').update(updates).eq('id', id)
     await fetchPdfQuizzes()
     if (!isOpen) return // only notify students when opening
-
-    const quiz = pdfQuizzes.find(q => q.id === id)
     const { data: { session } } = await supabase.auth.getSession()
 
     // In-app notification
@@ -182,20 +188,7 @@ export function usePdfQuizzes() {
     }
 
     // Email notification
-    if (session) {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
-      fetch(fnUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ type: 'quiz_open', quizId: id, isPdf: true }),
-      }).then(r => r.json())
-        .then(result => console.log('[Email] PDF quiz open result:', result))
-        .catch(err => console.error('[Email] PDF quiz open notification failed:', err))
-    }
+    if (session) fireQuizOpenEmail(session.access_token, id, true)
   }
 
   // Used by students taking the quiz online
@@ -208,7 +201,7 @@ export function usePdfQuizzes() {
     const key = (quiz?.answer_key ?? []).filter(k => k.question_type !== 'essay')
     const { earned } = scoreObjective(key, answers)
     const total = quiz?.total_points ?? 0
-    const score = total > 0 ? Math.round((earned / total) * 100) : 0
+    const score = calcScore(earned, total)
 
     const { data: prior } = await supabase
       .from('pdf_quiz_submissions').select('id')
@@ -235,7 +228,7 @@ export function usePdfQuizzes() {
 
     // total for now is just objective (essay not yet graded)
     const total = quiz?.total_points ?? 0
-    const score = total > 0 ? Math.round((earned / total) * 100) : 0
+    const score = calcScore(earned, total)
 
     const { data: prior } = await supabase
       .from('pdf_quiz_submissions').select('id')
@@ -391,12 +384,68 @@ export function usePdfQuizzes() {
     XLSX.writeFile(wb, `${pdfQuiz.title.replace(/[^a-z0-9]/gi, '_')}_scores.csv`, { bookType: 'csv' })
   }
 
+  async function releaseResults(id: string, visible: boolean) {
+    await supabase.from('pdf_quizzes').update({ results_visible: visible }).eq('id', id)
+    await fetchPdfQuizzes()
+  }
+
+  async function copyPdfQuiz(quizId: string, targetCourseId: string, userId: string) {
+    const quiz = pdfQuizzes.find(q => q.id === quizId)
+    if (!quiz) throw new Error('PDF Quiz not found')
+    const { data: newQuiz, error } = await supabase
+      .from('pdf_quizzes')
+      .insert({
+        title: quiz.title,
+        course_id: targetCourseId,
+        grade_group_id: quiz.grade_group_id,
+        instructions: quiz.instructions ?? null,
+        pdf_path: quiz.pdf_path,
+        due_date: null,
+        open_at: null,
+        close_at: null,
+        max_attempts: quiz.max_attempts,
+        num_questions: quiz.num_questions,
+        total_points: quiz.total_points,
+        created_by: userId,
+        is_open: false,
+        results_visible: false,
+      })
+      .select().single()
+    if (error) throw error
+    const key = quiz.answer_key ?? []
+    if (key.length > 0) {
+      await supabase.from('pdf_quiz_answer_key').insert(
+        key.map(k => ({
+          pdf_quiz_id: newQuiz.id,
+          question_number: k.question_number,
+          question_type: k.question_type,
+          correct_answer: k.correct_answer,
+          points: k.points,
+        }))
+      )
+    }
+    const rubrics = quiz.essay_rubrics ?? []
+    if (rubrics.length > 0) {
+      await supabase.from('pdf_quiz_essay_rubric').insert(
+        rubrics.map(r => ({
+          pdf_quiz_id: newQuiz.id,
+          question_number: r.question_number,
+          category_name: r.category_name,
+          max_points: r.max_points,
+          order_index: r.order_index,
+        }))
+      )
+    }
+    await fetchPdfQuizzes()
+    return newQuiz.id
+  }
+
   return {
     pdfQuizzes, submissions, loading, error,
     fetchAllSubmissions, fetchMySubmissions,
     createPdfQuiz, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz,
     submitPdfQuiz, saveScannedAnswers, saveEssayScores, createEssaySubmission,
-    getPdfUrl, downloadScoresCsv,
+    getPdfUrl, downloadScoresCsv, releaseResults, copyPdfQuiz,
   }
 }
 

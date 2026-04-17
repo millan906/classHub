@@ -49,7 +49,10 @@ export default function Login() {
         <form onSubmit={handleLogin}>
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Email</div>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={inputStyle} required />
-          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Password</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+            <div style={{ fontSize: '12px', color: '#888' }}>Password</div>
+            <Link to="/forgot-password" style={{ fontSize: '12px', color: '#1D9E75', textDecoration: 'none' }}>Forgot password?</Link>
+          </div>
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} required />
           {error && <div style={{ fontSize: '12px', color: '#A32D2D', marginBottom: '10px' }}>{error}</div>}
           <button type="submit" disabled={loading} style={{

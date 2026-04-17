@@ -9,6 +9,12 @@ export function useLockdown(enabled: boolean, onEvent: (type: string, severity: 
     document.addEventListener('copy', noCopy)
     document.addEventListener('paste', noCopy)
     document.addEventListener('cut', noCopy)
+    const noKeys = (e: KeyboardEvent) => {
+      if (e.key === 'F12') { e.preventDefault(); return }
+      if (e.ctrlKey && ['u', 'p'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
+      if (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
+    }
+    document.addEventListener('keydown', noKeys)
     const onVisibility = () => { if (document.hidden) onEvent('tab_switch', 'medium') }
     document.addEventListener('visibilitychange', onVisibility)
     const onBlur = () => onEvent('focus_loss', 'low')
@@ -21,6 +27,7 @@ export function useLockdown(enabled: boolean, onEvent: (type: string, severity: 
       document.removeEventListener('copy', noCopy)
       document.removeEventListener('paste', noCopy)
       document.removeEventListener('cut', noCopy)
+      document.removeEventListener('keydown', noKeys)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('blur', onBlur)
       document.removeEventListener('fullscreenchange', onFullscreen)

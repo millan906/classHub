@@ -92,6 +92,20 @@ export function useCourses() {
     await fetchCourses()
   }
 
+  async function copyCourseInfo(sourceId: string, targetId: string) {
+    const source = courses.find(c => c.id === sourceId)
+    if (!source) throw new Error('Source course not found')
+    const { error } = await supabase.from('courses').update({
+      topics: source.topics ?? [],
+      grading_system: source.grading_system ?? [],
+      schedule: source.schedule ?? [],
+      resources: source.resources ?? [],
+      syllabus: source.syllabus ?? [],
+    }).eq('id', targetId)
+    if (error) throw error
+    await fetchCourses()
+  }
+
   async function toggleGradesVisible(id: string, visible: boolean) {
     const { error } = await supabase.from('courses').update({ grades_visible: visible }).eq('id', id)
     if (error) throw error
@@ -118,6 +132,6 @@ export function useCourses() {
   return {
     courses, loading,
     createCourse, updateCourse, deleteCourse, toggleCourseStatus, toggleGradesVisible,
-    uploadResource, deleteResource, getResourceUrl,
+    uploadResource, deleteResource, getResourceUrl, copyCourseInfo,
   }
 }

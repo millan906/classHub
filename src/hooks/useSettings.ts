@@ -19,15 +19,18 @@ export function useSettings(facultyId: string | null) {
   }, [facultyId])
 
   async function load() {
-    const { data } = await supabase
-      .from('faculty_settings')
-      .select('*')
-      .eq('faculty_id', facultyId!)
-      .maybeSingle()
-    if (data) {
-      setSettings({ notify_before_due: data.notify_before_due ?? true })
+    try {
+      const { data } = await supabase
+        .from('faculty_settings')
+        .select('*')
+        .eq('faculty_id', facultyId!)
+        .maybeSingle()
+      if (data) {
+        setSettings({ notify_before_due: data.notify_before_due ?? true })
+      }
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   async function updateSettings(updates: Partial<FacultySettings>) {
@@ -50,16 +53,19 @@ export function useGradesVisible(studentId: string | null) {
 
   useEffect(() => {
     if (!studentId) { setLoading(false); return }
-    supabase
-      .from('course_enrollments')
-      .select('course_id, courses!inner(grades_visible)')
-      .eq('student_id', studentId)
-      .eq('courses.grades_visible', true)
-      .limit(1)
-      .then(({ data }) => {
+    ;(async () => {
+      try {
+        const { data } = await supabase
+          .from('course_enrollments')
+          .select('course_id, courses!inner(grades_visible)')
+          .eq('student_id', studentId)
+          .eq('courses.grades_visible', true)
+          .limit(1)
         setGradesVisible((data?.length ?? 0) > 0)
+      } finally {
         setLoading(false)
-      })
+      }
+    })()
   }, [studentId])
 
   return { gradesVisible, loading }

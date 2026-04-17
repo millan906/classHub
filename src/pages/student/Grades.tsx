@@ -52,20 +52,41 @@ export default function StudentGrades() {
 
       {/* Final Grades — always visible when published */}
       {finalGrades.length > 0 && (
-        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
+        <div style={{ marginBottom: '16px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
             Final Grades
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {finalGrades.map(fg => {
-              const gwa = fg.grade != null ? percentageToGWA(fg.grade) : '—'
-              const color = fg.grade != null ? gwaColor(gwa) : '#ccc'
+              const courseGrade = fg.midterm_grade != null && fg.grade != null
+                ? (fg.midterm_grade + fg.grade) / 2
+                : fg.grade ?? fg.midterm_grade ?? null
+              const gwa = courseGrade != null ? percentageToGWA(courseGrade) : '—'
+              const color = courseGrade != null ? gwaColor(gwa) : '#ccc'
+              const rows = [
+                { label: 'Midterm Grade', value: fg.midterm_grade },
+                { label: 'Final Grade', value: fg.grade },
+                { label: 'Course Grade', value: courseGrade, bold: true },
+              ]
               return (
-                <div key={fg.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#FAFAF8', borderRadius: '9px', border: '0.5px solid rgba(0,0,0,0.07)' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 500 }}>{fg.course_name}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '13px', color: '#888' }}>{fg.grade?.toFixed(1)}%</div>
-                    <div style={{ fontSize: '15px', fontWeight: 700, color, minWidth: '36px', textAlign: 'right' }}>{gwa}</div>
+                <div key={fg.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{fg.course_name}</div>
+                    <div style={{ fontSize: '11px', color: '#aaa' }}>GWA: <span style={{ fontSize: '15px', fontWeight: 700, color }}>{gwa}</span></div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {rows.map(({ label, value, bold }, i) => (
+                      <div key={label} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '8px 0',
+                        borderTop: i > 0 ? '0.5px solid #F1EFE8' : undefined,
+                      }}>
+                        <span style={{ fontSize: '13px', color: bold ? '#333' : '#666', fontWeight: bold ? 600 : 400 }}>{label}</span>
+                        <span style={{ fontSize: '13px', fontWeight: bold ? 700 : 500, color: value != null ? (bold ? color : '#444') : '#ccc' }}>
+                          {value != null ? `${value.toFixed(1)}%` : '—'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )

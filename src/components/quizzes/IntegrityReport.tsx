@@ -125,6 +125,20 @@ export function IntegrityReport({ quizId, enrolledStudents, submissions }: Integ
                   {summarizeEvents(sLogs)}
                   {sub ? ` · Score: ${sub.score}%` : ''}
                 </div>
+                {sub && (
+                  <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                    {sub.submitted_at && (
+                      <span>Submitted {new Date(sub.submitted_at).toLocaleTimeString()}</span>
+                    )}
+                    {sub.submitted_at && sub.started_at && (() => {
+                      const mins = Math.round((new Date(sub.submitted_at).getTime() - new Date(sub.started_at).getTime()) / 60000)
+                      return <span> · {mins} min{mins !== 1 ? 's' : ''}</span>
+                    })()}
+                    {sub.keystroke_count != null && (
+                      <span> · {sub.keystroke_count} keystrokes</span>
+                    )}
+                  </div>
+                )}
               </div>
               <span style={{
                 fontSize: '11px', fontWeight: 500, padding: '2px 8px',

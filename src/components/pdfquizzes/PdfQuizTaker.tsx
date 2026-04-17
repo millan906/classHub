@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '../ui/Button'
 import { scoreBarColor } from '../../utils/scoreColors'
 import type { PdfQuiz, PdfQuizAnswerKeyEntry } from '../../types'
@@ -88,6 +88,30 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
   const [scanError, setScanError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // Always-on: block copy/paste/right-click/devtools shortcuts during quiz
+  useEffect(() => {
+    if (result) return
+    const noContext = (e: MouseEvent) => e.preventDefault()
+    const noCopy = (e: ClipboardEvent) => e.preventDefault()
+    const noKeys = (e: KeyboardEvent) => {
+      if (e.key === 'F12') { e.preventDefault(); return }
+      if (e.ctrlKey && ['u', 'p'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
+      if (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) { e.preventDefault(); return }
+    }
+    document.addEventListener('contextmenu', noContext)
+    document.addEventListener('copy', noCopy)
+    document.addEventListener('cut', noCopy)
+    document.addEventListener('paste', noCopy)
+    document.addEventListener('keydown', noKeys)
+    return () => {
+      document.removeEventListener('contextmenu', noContext)
+      document.removeEventListener('copy', noCopy)
+      document.removeEventListener('cut', noCopy)
+      document.removeEventListener('paste', noCopy)
+      document.removeEventListener('keydown', noKeys)
+    }
+  }, [result])
+
   function setAnswer(qNum: number, val: string) {
     setAnswers(prev => ({ ...prev, [String(qNum)]: val }))
   }
@@ -142,7 +166,7 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
   const scoreColor = result ? scoreBarColor(result.score) : '#1D9E75'
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 56px)', overflow: 'hidden', userSelect: 'none' }}>
       {/* Left: PDF viewer (only if PDF exists) */}
       {pdfUrl && (
         <div style={{ flex: '1 1 58%', borderRight: '0.5px solid rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -171,40 +195,51 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
         {result ? (
           /* Score result */
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', gap: '16px' }}>
-            <div style={{ fontSize: '40px', fontWeight: 700, color: scoreColor }}>{result.score}%</div>
-            <div style={{ fontSize: '16px', fontWeight: 500 }}>{result.earned} / {result.total} points</div>
-            <div style={{ width: '100%', maxWidth: '220px', height: '8px', background: '#F1EFE8', borderRadius: '999px' }}>
-              <div style={{ height: '100%', width: result.score + '%', background: scoreColor, borderRadius: '999px' }} />
-            </div>
-            <div style={{ width: '100%', marginTop: '8px', overflowY: 'auto', maxHeight: '260px' }}>
-              {key.map(entry => {
-                const given = (answers[String(entry.question_number)] ?? '').trim()
-                const correct = entry.correct_answer.trim()
-                const isCorrect = given.toLowerCase() === correct.toLowerCase()
-                return (
-                  <div key={entry.question_number} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '6px 10px', borderRadius: '6px', marginBottom: '4px',
-                    background: isCorrect ? '#E1F5EE' : '#FCEBEB',
-                  }}>
-                    <div>
-                      <span style={{ fontSize: '12px', fontWeight: 500 }}>Q{entry.question_number}</span>
-                      <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>
-                        Your answer: <strong>{given || '—'}</strong>
-                      </span>
-                      {!isCorrect && (
-                        <span style={{ fontSize: '12px', color: '#666', marginLeft: '6px' }}>
-                          · Correct: <strong>{correct}</strong>
+            {quiz.results_visible ? (
+              <>
+                <div style={{ fontSize: '40px', fontWeight: 700, color: scoreColor }}>{result.score}%</div>
+                <div style={{ fontSize: '16px', fontWeight: 500 }}>{result.earned} / {result.total} points</div>
+                <div style={{ width: '100%', maxWidth: '220px', height: '8px', background: '#F1EFE8', borderRadius: '999px' }}>
+                  <div style={{ height: '100%', width: result.score + '%', background: scoreColor, borderRadius: '999px' }} />
+                </div>
+                <div style={{ width: '100%', marginTop: '8px', overflowY: 'auto', maxHeight: '260px' }}>
+                  {key.map(entry => {
+                    const given = (answers[String(entry.question_number)] ?? '').trim()
+                    const correct = entry.correct_answer.trim()
+                    const isCorrect = given.toLowerCase() === correct.toLowerCase()
+                    return (
+                      <div key={entry.question_number} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '6px 10px', borderRadius: '6px', marginBottom: '4px',
+                        background: isCorrect ? '#E1F5EE' : '#FCEBEB',
+                      }}>
+                        <div>
+                          <span style={{ fontSize: '12px', fontWeight: 500 }}>Q{entry.question_number}</span>
+                          <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px' }}>
+                            Your answer: <strong>{given || '—'}</strong>
+                          </span>
+                          {!isCorrect && (
+                            <span style={{ fontSize: '12px', color: '#666', marginLeft: '6px' }}>
+                              · Correct: <strong>{correct}</strong>
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '12px', fontWeight: 600, color: isCorrect ? '#0F6E56' : '#A32D2D' }}>
+                          {isCorrect ? `+${entry.points}` : '0'} / {entry.points}
                         </span>
-                      )}
-                    </div>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: isCorrect ? '#0F6E56' : '#A32D2D' }}>
-                      {isCorrect ? `+${entry.points}` : '0'} / {entry.points}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            ) : (
+              <div style={{ padding: '20px 24px', borderRadius: '10px', background: '#FEF3CD', border: '0.5px solid #E5C100', textAlign: 'center', maxWidth: '320px' }}>
+                <div style={{ fontSize: '20px', fontWeight: 700, color: '#7A4F00', marginBottom: '8px' }}>Submitted</div>
+                <div style={{ fontSize: '13px', color: '#7A4F00', lineHeight: '1.6' }}>
+                  Your answers have been submitted. Results will be released by your instructor.
+                </div>
+              </div>
+            )}
             <Button onClick={onClose} style={{ marginTop: '8px' }}>Back to Quizzes</Button>
           </div>
         ) : (

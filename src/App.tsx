@@ -5,6 +5,8 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 
 import FacultyDashboard from './pages/faculty/Dashboard'
 import FacultySlides from './pages/faculty/Slides'
@@ -41,6 +43,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )

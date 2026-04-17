@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { calcScore } from '../utils/gradeCalculations'
+import { fireQuizOpenEmail } from './useNotifications'
 import type { Quiz, QuizSubmission, FileSubmission, QuizFormData } from '../types'
 
 export function useQuizzes() {
@@ -103,17 +105,24 @@ export function useQuizzes() {
 
   async function deleteQuiz(id: string) {
     await supabase.from('quiz_questions').delete().eq('quiz_id', id)
+    await supabase.from('grade_columns').delete().eq('linked_quiz_id', id)
     await supabase.from('quizzes').delete().eq('id', id)
     await fetchQuizzes()
   }
 
   async function toggleQuiz(id: string, isOpen: boolean) {
-    await supabase.from('quizzes').update({ is_open: isOpen }).eq('id', id)
+    const quiz = quizzes.find(q => q.id === id)
+    const updates: Record<string, unknown> = { is_open: isOpen }
+    // If manually reopening after the deadline has passed, clear close_at so the
+    // scheduler doesn't auto-close it again within the next minute.
+    if (isOpen && quiz?.close_at && new Date(quiz.close_at) <= new Date()) {
+      updates.close_at = null
+    }
+    await supabase.from('quizzes').update(updates).eq('id', id)
     await fetchQuizzes()
 
     if (!isOpen) return // only notify students when opening
 
-    const quiz = quizzes.find(q => q.id === id)
     const { data: { session } } = await supabase.auth.getSession()
 
     // In-app notification
@@ -135,20 +144,7 @@ export function useQuizzes() {
     }
 
     // Email notification
-    if (session) {
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification-email`
-      fetch(fnUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ type: 'quiz_open', quizId: id }),
-      }).then(r => r.json())
-        .then(result => console.log('[Email] Quiz open result:', result))
-        .catch(err => console.error('[Email] Quiz open notification failed:', err))
-    }
+    if (session) fireQuizOpenEmail(session.access_token, id)
   }
 
   async function submitQuiz(
@@ -157,7 +153,10 @@ export function useQuizzes() {
     answers: Record<string, string>,
     earnedPoints: number,
     totalPoints: number,
-    autoSubmitted = false
+    autoSubmitted = false,
+    keystrokeCount = 0,
+    startedAt?: string,
+    answerTimestamps?: Record<string, string>,
   ) {
     const { count } = await supabase
       .from('quiz_submissions')
@@ -165,7 +164,7 @@ export function useQuizzes() {
       .eq('quiz_id', quizId)
       .eq('student_id', studentId)
     const attemptNumber = (count ?? 0) + 1
-    const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0
+    const score = calcScore(earnedPoints, totalPoints)
     await supabase.from('quiz_submissions').insert({
       quiz_id: quizId,
       student_id: studentId,
@@ -175,6 +174,9 @@ export function useQuizzes() {
       total_points: totalPoints,
       attempt_number: attemptNumber,
       auto_submitted: autoSubmitted,
+      keystroke_count: keystrokeCount,
+      started_at: startedAt ?? null,
+      answer_timestamps: answerTimestamps ?? {},
     })
     await fetchMySubmissions(studentId)
   }
@@ -205,7 +207,7 @@ export function useQuizzes() {
     earnedPoints: number,
     totalPoints: number,
   ) {
-    const score = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0
+    const score = calcScore(earnedPoints, totalPoints)
     await supabase.from('quiz_submissions').update({
       essay_scores: essayScores,
       earned_points: earnedPoints,
@@ -214,5 +216,55 @@ export function useQuizzes() {
     await fetchAllSubmissions()
   }
 
-  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, fetchFileSubmissions, saveEssayScores }
+  async function releaseResults(id: string, visible: boolean) {
+    await supabase.from('quizzes').update({ results_visible: visible }).eq('id', id)
+    await fetchQuizzes()
+  }
+
+  async function copyQuiz(quizId: string, targetCourseId: string, userId: string) {
+    const quiz = quizzes.find(q => q.id === quizId)
+    if (!quiz) throw new Error('Quiz not found')
+    const { data: newQuiz, error } = await supabase
+      .from('quizzes')
+      .insert({
+        title: quiz.title,
+        course_id: targetCourseId,
+        slide_id: quiz.slide_id ?? null,
+        due_date: null,
+        open_at: null,
+        close_at: null,
+        time_limit_minutes: quiz.time_limit_minutes ?? null,
+        lockdown_enabled: quiz.lockdown_enabled ?? false,
+        max_attempts: quiz.max_attempts ?? 1,
+        created_by: userId,
+        item_type: quiz.item_type ?? 'quiz',
+        grade_group_id: quiz.grade_group_id ?? null,
+        allow_file_upload: quiz.allow_file_upload ?? false,
+        description: quiz.description ?? null,
+        is_open: false,
+        results_visible: false,
+      })
+      .select().single()
+    if (error) throw error
+    const questions = quiz.questions ?? []
+    if (questions.length > 0) {
+      await supabase.from('quiz_questions').insert(
+        questions.map((q, i) => ({
+          quiz_id: newQuiz.id,
+          question_text: q.question_text,
+          options: q.options,
+          correct_option: q.correct_option,
+          order_index: i,
+          type: q.type ?? 'mcq',
+          code_snippet: q.code_snippet ?? null,
+          code_language: q.code_language ?? null,
+          points: q.points ?? 1,
+        }))
+      )
+    }
+    await fetchQuizzes()
+    return newQuiz.id
+  }
+
+  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz }
 }

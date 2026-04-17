@@ -8,6 +8,7 @@ export interface GradeGroup {
   weight_percent: number
   created_by: string
   created_at: string
+  course_id?: string | null
 }
 
 export interface GradeColumn {
@@ -21,6 +22,7 @@ export interface GradeColumn {
   description: string | null
   created_by: string
   created_at: string
+  course_id?: string | null
 }
 
 export interface GradeEntry {
@@ -30,7 +32,7 @@ export interface GradeEntry {
   score: number | null
 }
 
-export function useGradeBook() {
+export function useGradeBook(courseId?: string | null) {
   const [groups, setGroups] = useState<GradeGroup[]>([])
   const [columns, setColumns] = useState<GradeColumn[]>([])
   const [entries, setEntries] = useState<GradeEntry[]>([])
@@ -46,14 +48,20 @@ export function useGradeBook() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'grade_entries' }, fetchAll)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [courseId])
 
   async function fetchAll() {
     try {
       setError(null)
+      let groupsQuery = supabase.from('grade_groups').select('*').order('created_at', { ascending: true })
+      let colsQuery = supabase.from('grade_columns').select('*').order('created_at', { ascending: true })
+      if (courseId) {
+        groupsQuery = groupsQuery.eq('course_id', courseId) as typeof groupsQuery
+        colsQuery = colsQuery.eq('course_id', courseId) as typeof colsQuery
+      }
       const [groupsRes, colsRes, entsRes] = await Promise.all([
-        supabase.from('grade_groups').select('*').order('created_at', { ascending: true }),
-        supabase.from('grade_columns').select('*').order('created_at', { ascending: true }),
+        groupsQuery,
+        colsQuery,
         supabase.from('grade_entries').select('*'),
       ])
       if (groupsRes.error) throw groupsRes.error
@@ -71,7 +79,7 @@ export function useGradeBook() {
 
   async function addGroup(name: string, weightPercent: number, userId: string) {
     const { error } = await supabase.from('grade_groups').insert({
-      name, weight_percent: weightPercent, created_by: userId,
+      name, weight_percent: weightPercent, created_by: userId, course_id: courseId ?? null,
     })
     if (error) throw error
     await fetchAll()
@@ -109,6 +117,7 @@ export function useGradeBook() {
       category: null,
       linked_quiz_id: linkedQuizId,
       description: description ?? null,
+      course_id: courseId ?? null,
     }).select('id').single()
     if (error) throw error
     await fetchAll()
@@ -121,6 +130,7 @@ export function useGradeBook() {
     groupId: string,
     maxScore: number,
     userId: string,
+    quizCourseId?: string | null,
   ): Promise<GradeColumn> {
     const { data: existing } = await supabase
       .from('grade_columns')
@@ -139,6 +149,7 @@ export function useGradeBook() {
         category: null,
         linked_quiz_id: quizId,
         description: null,
+        course_id: quizCourseId ?? null,
       })
       .select('*')
       .single()

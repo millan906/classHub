@@ -9,7 +9,8 @@ export interface FinalGrade {
   id: string
   student_id: string
   course_id: string
-  grade: number | null
+  midterm_grade: number | null
+  grade: number | null  // Final exam grade
   published: boolean
   created_at: string
   updated_at: string
@@ -39,9 +40,9 @@ export function useFinalGrades() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  async function upsertGrade(studentId: string, courseId: string, grade: number) {
+  async function upsertGrade(studentId: string, courseId: string, midtermGrade: number | null, finalGrade: number | null) {
     const { error } = await supabase.from('final_grades').upsert(
-      { student_id: studentId, course_id: courseId, grade, updated_at: new Date().toISOString() },
+      { student_id: studentId, course_id: courseId, midterm_grade: midtermGrade, grade: finalGrade, updated_at: new Date().toISOString() },
       { onConflict: 'student_id,course_id' }
     )
     if (error) console.error('Upsert grade error:', error)
@@ -55,9 +56,13 @@ export function useFinalGrades() {
       .eq('course_id', courseId)
     if (error) { console.error('Publish grade error:', error); return }
     await fetchAll()
-    // Send email notification to student
-    const grade = finalGrades.find(g => g.student_id === studentId && g.course_id === courseId)?.grade
-    if (grade != null) {
+    // Send email notification to student — use course grade (avg of midterm + final)
+    const rec = finalGrades.find(g => g.student_id === studentId && g.course_id === courseId)
+    const courseGrade = rec?.midterm_grade != null && rec?.grade != null
+      ? (rec.midterm_grade + rec.grade) / 2
+      : rec?.grade ?? rec?.midterm_grade ?? null
+    if (courseGrade != null) {
+      const grade = courseGrade
       const gwa = percentageToGWA(grade)
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
@@ -87,7 +92,7 @@ export function useFinalGrades() {
     const { error } = await supabase.from('final_grades')
       .update({ published: true, updated_at: new Date().toISOString() })
       .eq('course_id', courseId)
-      .not('grade', 'is', null)
+      .or('midterm_grade.not.is.null,grade.not.is.null')
     if (error) console.error('Publish all error:', error)
     await fetchAll()
   }

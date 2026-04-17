@@ -1,13 +1,17 @@
+import { useState } from 'react'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import type { PdfQuiz, PdfQuizSubmission } from '../../types'
+import type { PdfQuiz, PdfQuizSubmission, Course } from '../../types'
 
 interface PdfQuizCardProps {
   quiz: PdfQuiz
   submissions?: PdfQuizSubmission[]
   totalStudents?: number
   isFaculty?: boolean
+  courses?: Course[]
   onToggle?: (id: string, isOpen: boolean) => void
+  onReleaseResults?: (id: string, visible: boolean) => void
+  onCopy?: (quizId: string, targetCourseId: string) => Promise<void>
   onEdit?: (quiz: PdfQuiz) => void
   onDelete?: (quiz: PdfQuiz) => void
   onViewResults?: (quiz: PdfQuiz) => void
@@ -18,9 +22,13 @@ interface PdfQuizCardProps {
 
 export function PdfQuizCard({
   quiz, submissions, totalStudents = 0, isFaculty,
-  onToggle, onEdit, onDelete, onViewResults, onTake,
+  courses = [], onToggle, onReleaseResults, onCopy, onEdit, onDelete, onViewResults, onTake,
   mySubmission, attemptsUsed,
 }: PdfQuizCardProps) {
+  const [copying, setCopying] = useState(false)
+  const [copyTarget, setCopyTarget] = useState('')
+  const [copyLoading, setCopyLoading] = useState(false)
+  const otherCourses = courses.filter(c => c.id !== quiz.course_id)
   const submittedCount = submissions?.length ?? 0
   const submissionPct = totalStudents > 0 ? Math.round((submittedCount / totalStudents) * 100) : 0
   const progressPct = isFaculty ? submissionPct : (mySubmission?.score ?? 0)
@@ -62,12 +70,47 @@ export function PdfQuizCard({
 
       {/* Bottom row: action buttons */}
       {isFaculty && (
-        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button onClick={() => onEdit?.(quiz)}>Edit</Button>
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}
           </Button>
           <Button onClick={() => onViewResults?.(quiz)}>Submissions</Button>
+          <Button
+            onClick={() => onReleaseResults?.(quiz.id, !quiz.results_visible)}
+            style={{ background: quiz.results_visible ? '#E1F5EE' : undefined, color: quiz.results_visible ? '#0F6E56' : undefined }}
+          >
+            {quiz.results_visible ? 'Results visible' : 'Release results'}
+          </Button>
+          {otherCourses.length > 0 && !copying && (
+            <Button onClick={() => { setCopying(true); setCopyTarget(otherCourses[0].id) }}>Copy to...</Button>
+          )}
+          {copying && (
+            <>
+              <select
+                value={copyTarget}
+                onChange={e => setCopyTarget(e.target.value)}
+                style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.2)' }}
+              >
+                {otherCourses.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>
+                ))}
+              </select>
+              <Button
+                variant="primary"
+                disabled={copyLoading}
+                onClick={async () => {
+                  setCopyLoading(true)
+                  try { await onCopy?.(quiz.id, copyTarget) } finally {
+                    setCopyLoading(false); setCopying(false)
+                  }
+                }}
+              >
+                {copyLoading ? 'Copying...' : 'Copy'}
+              </Button>
+              <Button onClick={() => setCopying(false)}>Cancel</Button>
+            </>
+          )}
           <Button variant="danger" onClick={() => onDelete?.(quiz)}>Delete</Button>
         </div>
       )}
@@ -81,9 +124,12 @@ export function PdfQuizCard({
           )}
           {mySubmission && (
             <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
-                {mySubmission.earned_points} / {quiz.total_points} pts
-              </div>
+              {quiz.results_visible
+                ? <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
+                    {mySubmission.earned_points} / {quiz.total_points} pts
+                  </div>
+                : <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic' }}>Results pending</div>
+              }
               <div style={{ fontSize: '11px', color: '#888' }}>
                 {attemptsUsed ?? 0}/{quiz.max_attempts} attempt{quiz.max_attempts !== 1 ? 's' : ''}
               </div>

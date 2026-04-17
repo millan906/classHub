@@ -25,13 +25,13 @@ import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } fro
 
 export default function FacultyQuizzes() {
   const { profile } = useAuth()
-  const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores } = useQuizzes()
+  const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz } = useQuizzes()
   const { slides } = useSlides()
   const { students } = useStudents()
   const { courses } = useCourses()
   const { enrollments } = useAllEnrollments()
   const { groups, columns, entries, addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn, upsertEntry } = useGradeBook()
-  const { pdfQuizzes, submissions: pdfSubmissions, fetchAllSubmissions: fetchAllPdfSubmissions, createPdfQuiz, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz, saveScannedAnswers, saveEssayScores: savePdfEssayScores, createEssaySubmission, downloadScoresCsv } = usePdfQuizzes()
+  const { pdfQuizzes, submissions: pdfSubmissions, fetchAllSubmissions: fetchAllPdfSubmissions, createPdfQuiz, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz, saveScannedAnswers, saveEssayScores: savePdfEssayScores, createEssaySubmission, downloadScoresCsv, releaseResults: releasePdfResults, copyPdfQuiz } = usePdfQuizzes()
   const [showBuilder, setShowBuilder] = useState(false)
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null)
   const [viewingResults, setViewingResults] = useState<Quiz | null>(null)
@@ -318,7 +318,10 @@ export default function FacultyQuizzes() {
         <ConfirmDialog
           title="Delete quiz"
           message={`Delete "${confirmDelete.title}"? This will also remove all student submissions and cannot be undone.`}
-          onConfirm={async () => { await deleteQuiz(confirmDelete.id); setConfirmDelete(null); showToast('Deleted.') }}
+          onConfirm={async () => {
+            try { await deleteQuiz(confirmDelete.id); setConfirmDelete(null); showToast('Deleted.') }
+            catch { showToast('Failed to delete. Please try again.', 'error') }
+          }}
           onCancel={() => setConfirmDelete(null)}
         />
       )}
@@ -326,7 +329,10 @@ export default function FacultyQuizzes() {
         <ConfirmDialog
           title="Delete PDF quiz"
           message={`Delete "${confirmDeletePdf.title}"? This will also remove the PDF file and all student submissions and cannot be undone.`}
-          onConfirm={async () => { await deletePdfQuiz(confirmDeletePdf.id); setConfirmDeletePdf(null); showToast('Deleted.') }}
+          onConfirm={async () => {
+            try { await deletePdfQuiz(confirmDeletePdf.id); setConfirmDeletePdf(null); showToast('Deleted.') }
+            catch { showToast('Failed to delete. Please try again.', 'error') }
+          }}
           onCancel={() => setConfirmDeletePdf(null)}
         />
       )}
@@ -403,7 +409,13 @@ export default function FacultyQuizzes() {
                       submissions={submissions.filter(s => s.quiz_id === quiz.id)}
                       totalStudents={enrolledForCourse(quiz.course_id).length}
                       isFaculty
+                      courses={courses}
                       onToggle={toggleQuiz}
+                      onReleaseResults={releaseResults}
+                      onCopy={async (quizId, targetCourseId) => {
+                        await copyQuiz(quizId, targetCourseId, profile!.id)
+                        showToast('Quiz copied successfully')
+                      }}
                       onEdit={setEditingQuiz}
                       onDelete={setConfirmDelete}
                       onViewResults={setViewingResults}
@@ -458,7 +470,13 @@ export default function FacultyQuizzes() {
                   submissions={quizSubs}
                   totalStudents={enrolledForCourse(quiz.course_id).length}
                   isFaculty
+                  courses={courses}
                   onToggle={togglePdfQuiz}
+                  onReleaseResults={releasePdfResults}
+                  onCopy={async (quizId, targetCourseId) => {
+                    await copyPdfQuiz(quizId, targetCourseId, profile!.id)
+                    showToast('PDF Quiz copied successfully')
+                  }}
                   onEdit={setEditingPdfQuiz}
                   onDelete={setConfirmDeletePdf}
                   onViewResults={setViewingPdfResults}

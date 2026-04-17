@@ -478,6 +478,7 @@ function CourseStudentsPanel({ course, facultyId }: { course: Course; facultyId:
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [inviting, setInviting] = useState(false)
   const [error, setError] = useState('')
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; name: string } | null>(null)
 
   const approved = students.filter(s => s.status === 'approved')
   const enrolledIds = new Set(enrollments.map(e => e.student_id))
@@ -494,6 +495,19 @@ function CourseStudentsPanel({ course, facultyId }: { course: Course; facultyId:
 
   return (
     <div style={{ borderTop: '0.5px solid rgba(0,0,0,0.08)', marginTop: '10px', paddingTop: '10px' }}>
+      {confirmRemove && (
+        <ConfirmDialog
+          title="Remove student"
+          message={`Remove ${confirmRemove.name} from this course? They will lose access to all course content.`}
+          confirmLabel="Remove"
+          onConfirm={async () => {
+            try { await unenrollStudent(course.id, confirmRemove.id); await refetch(course.id) }
+            catch (err: unknown) { setError(err instanceof Error ? err.message : 'Failed to remove student') }
+            finally { setConfirmRemove(null) }
+          }}
+          onCancel={() => setConfirmRemove(null)}
+        />
+      )}
       <div style={{ fontSize: '12px', color: '#888', fontWeight: 500, marginBottom: '8px' }}>Enrolled students ({enrolledStudents.length})</div>
       {enrolledStudents.length === 0 && <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '8px' }}>No students enrolled yet.</div>}
       {enrolledStudents.map(s => {
@@ -505,7 +519,7 @@ function CourseStudentsPanel({ course, facultyId }: { course: Course; facultyId:
               <div style={{ fontSize: '12px', fontWeight: 500 }}>{s.full_name}</div>
               <div style={{ fontSize: '11px', color: '#888' }}>{s.email}</div>
             </div>
-            <Button variant="danger" onClick={() => unenrollStudent(course.id, s.id).then(() => refetch(course.id))} style={{ fontSize: '11px', padding: '2px 8px' }}>Remove</Button>
+            <Button variant="danger" onClick={() => setConfirmRemove({ id: s.id, name: s.full_name })} style={{ fontSize: '11px', padding: '2px 8px' }}>Remove</Button>
           </div>
         )
       })}
@@ -527,16 +541,32 @@ function CourseStudentsPanel({ course, facultyId }: { course: Course; facultyId:
 
 // ─── CourseRow ────────────────────────────────────────────────────────────────
 
-function CourseRow({ course, facultyId, onEdit, onDelete, onToggle, getResourceUrl }: {
-  course: Course; facultyId: string
+function CourseRow({ course, facultyId, courses, onEdit, onDelete, onToggle, onCopyInfo, getResourceUrl }: {
+  course: Course; facultyId: string; courses: Course[]
   onEdit: (c: Course) => void; onDelete: (c: Course) => void
   onToggle: (id: string, s: 'open' | 'closed') => void
+  onCopyInfo: (sourceId: string, targetId: string) => Promise<void>
   getResourceUrl: (p: string) => string
 }) {
   const isOpen = course.status === 'open'
   const [panel, setPanel] = useState<'none' | 'info' | 'students'>('none')
+  const [confirmClose, setConfirmClose] = useState(false)
+  const [copying, setCopying] = useState(false)
+  const [copyLoading, setCopyLoading] = useState(false)
+  const otherCourses = courses.filter(c => c.id !== course.id)
+  const [copySource, setCopySource] = useState(otherCourses[0]?.id ?? '')
+  const courseName = `${course.name}${course.section ? ` · Section ${course.section}` : ''}`
   return (
     <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px' }}>
+      {confirmClose && (
+        <ConfirmDialog
+          title="Close course"
+          message={`Close "${courseName}"? Students will no longer be able to access or submit assessments until you reopen it.`}
+          confirmLabel="Close course"
+          onConfirm={async () => { await onToggle(course.id, 'closed'); setConfirmClose(false) }}
+          onCancel={() => setConfirmClose(false)}
+        />
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
         <span style={{ fontSize: '14px', fontWeight: 500 }}>{course.name}</span>
         {course.section && <span style={{ fontSize: '12px', color: '#888' }}>· Section {course.section}</span>}
@@ -544,7 +574,7 @@ function CourseRow({ course, facultyId, onEdit, onDelete, onToggle, getResourceU
           {isOpen ? 'Open' : 'Closed'}
         </span>
       </div>
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
         <Button onClick={() => setPanel(p => p === 'info' ? 'none' : 'info')} style={{ fontSize: '12px', background: panel === 'info' ? '#F1EFE8' : undefined }}>
           {panel === 'info' ? 'Hide info' : 'Course info'}
         </Button>
@@ -552,7 +582,40 @@ function CourseRow({ course, facultyId, onEdit, onDelete, onToggle, getResourceU
           {panel === 'students' ? 'Hide students' : 'Students'}
         </Button>
         <Button onClick={() => onEdit(course)}>Edit</Button>
-        <Button onClick={() => onToggle(course.id, isOpen ? 'closed' : 'open')}
+        {otherCourses.length > 0 && !copying && (
+          <Button onClick={() => { setCopying(true); setCopySource(otherCourses[0].id) }} style={{ fontSize: '12px' }}>
+            Fill from another course
+          </Button>
+        )}
+        {copying && (
+          <>
+            <span style={{ fontSize: '12px', color: '#555', whiteSpace: 'nowrap' }}>Copy syllabus & info from:</span>
+            <select
+              value={copySource}
+              onChange={e => setCopySource(e.target.value)}
+              style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '6px', border: '0.5px solid rgba(0,0,0,0.2)' }}
+            >
+              {otherCourses.map(c => (
+                <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>
+              ))}
+            </select>
+            <Button
+              variant="primary"
+              disabled={copyLoading}
+              onClick={async () => {
+                setCopyLoading(true)
+                try { await onCopyInfo(copySource, course.id) } finally {
+                  setCopyLoading(false); setCopying(false)
+                }
+              }}
+            >
+              {copyLoading ? 'Copying...' : 'Apply'}
+            </Button>
+            <Button onClick={() => setCopying(false)}>Cancel</Button>
+          </>
+        )}
+        <Button
+          onClick={() => isOpen ? setConfirmClose(true) : onToggle(course.id, 'open')}
           style={isOpen ? { background: '#FEF3CD', color: '#D4900A', borderColor: '#D4900A' } : { background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56' }}>
           {isOpen ? 'Close' : 'Open'}
         </Button>
@@ -568,11 +631,12 @@ function CourseRow({ course, facultyId, onEdit, onDelete, onToggle, getResourceU
 
 export default function FacultyCourses() {
   const { profile } = useAuth()
-  const { courses, createCourse, updateCourse, deleteCourse, toggleCourseStatus, uploadResource, deleteResource, getResourceUrl } = useCourses()
+  const { courses, createCourse, updateCourse, deleteCourse, toggleCourseStatus, uploadResource, deleteResource, getResourceUrl, copyCourseInfo } = useCourses()
   const [showForm, setShowForm] = useState(false)
   const [newCourseId] = useState(() => crypto.randomUUID())
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Course | null>(null)
+  const [pageError, setPageError] = useState('')
 
   if (!profile) return null
 
@@ -593,11 +657,19 @@ export default function FacultyCourses() {
         <ConfirmDialog
           title="Delete course"
           message={`Delete "${confirmDelete.name}${confirmDelete.section ? ` · Section ${confirmDelete.section}` : ''}"? All enrolled students and uploaded files will be removed. This cannot be undone.`}
-          onConfirm={async () => { await deleteCourse(confirmDelete.id); setConfirmDelete(null) }}
+          onConfirm={async () => {
+            try { await deleteCourse(confirmDelete.id); setConfirmDelete(null) }
+            catch (err: unknown) { setPageError(err instanceof Error ? err.message : 'Failed to delete course') }
+          }}
           onCancel={() => setConfirmDelete(null)}
         />
       )}
       <PageHeader title="Courses" subtitle="Manage your courses, syllabus, and enrolled students." />
+      {pageError && (
+        <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '12px' }}>
+          {pageError} <button onClick={() => setPageError('')} style={{ marginLeft: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#A32D2D', fontWeight: 600 }}>✕</button>
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
         {!showForm && !editingCourse && (
           <Button variant="primary" onClick={() => setShowForm(true)}>+ New course</Button>
@@ -628,8 +700,10 @@ export default function FacultyCourses() {
             />
           ) : (
             <CourseRow key={course.id} course={course} facultyId={profile.id}
+              courses={courses}
               onEdit={setEditingCourse} onDelete={setConfirmDelete}
               onToggle={toggleCourseStatus} getResourceUrl={getResourceUrl}
+              onCopyInfo={copyCourseInfo}
             />
           )
         )

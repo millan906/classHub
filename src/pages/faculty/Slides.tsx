@@ -14,6 +14,7 @@ export default function FacultySlides() {
   const { slides, loading, error, uploadSlide, deleteSlide, getDownloadUrl, refetch } = useSlides()
   const { courses } = useCourses()
   const [confirmDelete, setConfirmDelete] = useState<Slide | null>(null)
+  const [pageError, setPageError] = useState('')
 
   async function handleUpload(file: File, title: string, courseId: string | null) {
     if (!profile) return
@@ -40,11 +41,19 @@ export default function FacultySlides() {
         <ConfirmDialog
           title="Delete slide"
           message={`Delete "${confirmDelete.title}"? This cannot be undone.`}
-          onConfirm={async () => { await deleteSlide(confirmDelete); setConfirmDelete(null) }}
+          onConfirm={async () => {
+            try { await deleteSlide(confirmDelete); setConfirmDelete(null) }
+            catch (err: unknown) { setPageError(err instanceof Error ? err.message : 'Failed to delete slide') }
+          }}
           onCancel={() => setConfirmDelete(null)}
         />
       )}
       <PageHeader title="Slides" subtitle="Upload and manage course materials." />
+      {pageError && (
+        <div style={{ background: '#FCEBEB', color: '#A32D2D', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', marginBottom: '12px' }}>
+          {pageError} <button onClick={() => setPageError('')} style={{ marginLeft: '8px', background: 'none', border: 'none', cursor: 'pointer', color: '#A32D2D', fontWeight: 600 }}>✕</button>
+        </div>
+      )}
       <UploadZone courses={courses} onUpload={handleUpload} />
       <SlideGrid slides={slides} courses={courses} isFaculty onDelete={setConfirmDelete} onView={handleView} onDownload={handleDownload} />
     </div>

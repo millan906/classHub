@@ -26,30 +26,37 @@ async function sendEmail(to: string, subject: string, html: string) {
   return res.ok
 }
 
-function baseTemplate(headerLine1: string, headerLine2: string, bodyHtml: string) {
+const APP_URL = 'https://classhub.work'
+
+function baseTemplate(headerLine1: string, _headerLine2: string, bodyHtml: string, ctaLabel = 'Go to ClassHub →', ctaUrl = APP_URL) {
   return `<!DOCTYPE html>
-<html>
-  <body style="margin:0;padding:0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
-      <tr><td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-          <tr>
-            <td style="background:#1D9E75;padding:28px 32px;">
-              <p style="margin:0;font-size:20px;font-weight:700;color:#fff;letter-spacing:-0.3px;">ClassHub</p>
-              <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.85);">${headerLine1}${headerLine2 ? ` &nbsp;·&nbsp; ${headerLine2}` : ''}</p>
-            </td>
-          </tr>
-          <tr><td style="padding:32px;">${bodyHtml}</td></tr>
-          <tr>
-            <td style="padding:20px 32px;border-top:1px solid #f0f0f0;background:#fafafa;">
-              <p style="margin:0;font-size:12px;color:#aaa;">Please do not reply to this email.</p>
-            </td>
-          </tr>
-        </table>
-      </td></tr>
-    </table>
-  </body>
-</html>`
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f2f5;padding:48px 0;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:linear-gradient(135deg,#1D9E75 0%,#158A63 100%);padding:32px 40px;">
+          <p style="margin:0;font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:2px;text-transform:uppercase;">ClassHub</p>
+          <p style="margin:8px 0 0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;">${escapeHtml(headerLine1)}</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          ${bodyHtml}
+          <table cellpadding="0" cellspacing="0" style="margin-top:32px;">
+            <tr><td style="background:#1D9E75;border-radius:10px;">
+              <a href="${ctaUrl}" style="display:inline-block;padding:14px 32px;font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:-0.2px;">${ctaLabel}</a>
+            </td></tr>
+          </table>
+          <p style="margin:16px 0 0;font-size:12px;color:#aaa;">If the button doesn't work, copy this link:<br>
+            <a href="${ctaUrl}" style="color:#1D9E75;word-break:break-all;">${ctaUrl}</a>
+          </p>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #f0f0f0;background:#fafafa;">
+          <p style="margin:0;font-size:12px;color:#bbb;">You're receiving this because you're a student on ClassHub. Please do not reply to this email.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`
 }
 
 Deno.serve(async (req) => {
@@ -138,15 +145,21 @@ Deno.serve(async (req) => {
       : ''
 
     const bodyHtml = isOpen
-      ? `<h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#1a1a1a;">${safeTitle} is now open</h1>
-         <p style="margin:0 0 4px;font-size:14px;color:#666;">${safeType} &nbsp;·&nbsp; ${safeCourse}</p>
+      ? `<p style="margin:0 0 20px;font-size:13px;color:#1D9E75;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${safeCourse}</p>
+         <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px;">${safeTitle}</h1>
+         <p style="margin:0 0 4px;font-size:14px;color:#888;">${safeType} &nbsp;·&nbsp; Now open</p>
          ${dueLine}
-         <p style="margin:20px 0 0;font-size:15px;color:#444;line-height:1.7;">Log in to ClassHub to begin.</p>`
-      : `<h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#1a1a1a;">${safeTitle} has closed</h1>
-         <p style="margin:0;font-size:14px;color:#666;">${safeType} &nbsp;·&nbsp; ${safeCourse}</p>
-         <p style="margin:20px 0 0;font-size:15px;color:#444;line-height:1.7;">Submissions are no longer accepted.</p>`
+         <hr style="margin:24px 0;border:none;border-top:1px solid #f0f0f0;">
+         <p style="margin:0;font-size:15px;color:#444;line-height:1.8;">Your instructor has opened this assessment. Click the button below to go directly to your assessments page and begin.</p>`
+      : `<p style="margin:0 0 20px;font-size:13px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${safeCourse}</p>
+         <h1 style="margin:0 0 8px;font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px;">${safeTitle}</h1>
+         <p style="margin:0 0 4px;font-size:14px;color:#888;">${safeType} &nbsp;·&nbsp; Closed</p>
+         <hr style="margin:24px 0;border:none;border-top:1px solid #f0f0f0;">
+         <p style="margin:0;font-size:15px;color:#444;line-height:1.8;">This assessment is now closed. Submissions are no longer accepted.</p>`
 
-    const html = baseTemplate(`Course: ${safeCourse}`, '', bodyHtml)
+    const html = isOpen
+      ? baseTemplate('Assessment Now Open', '', bodyHtml, 'Open Assessment →', `${APP_URL}/student/quizzes`)
+      : baseTemplate('Assessment Closed', '', bodyHtml, 'Go to ClassHub →', `${APP_URL}/student/quizzes`)
     const subject = isOpen ? `[ClassHub] ${quiz.title} is now open` : `[ClassHub] ${quiz.title} has closed`
 
     const results = await Promise.all(emails.map(e => sendEmail(e, subject, html)))
@@ -271,21 +284,23 @@ Deno.serve(async (req) => {
     const gwaColor = gwa === '5.0' ? '#ef4444' : parseFloat(gwa) <= 2.0 ? '#1D9E75' : '#f59e0b'
 
     const bodyHtml = `
-      <h1 style="margin:0 0 8px;font-size:22px;font-weight:600;color:#1a1a1a;">Your final grade has been published</h1>
-      <p style="margin:0 0 24px;font-size:14px;color:#666;">${courseName}</p>
-      <table cellpadding="0" cellspacing="0" style="background:#f8f8f8;border-radius:8px;padding:20px;width:100%;">
+      <p style="margin:0 0 20px;font-size:13px;color:#1D9E75;font-weight:600;text-transform:uppercase;letter-spacing:1px;">${courseName}</p>
+      <h1 style="margin:0 0 6px;font-size:26px;font-weight:700;color:#1a1a1a;letter-spacing:-0.5px;">Your Final Grade</h1>
+      <p style="margin:0 0 24px;font-size:14px;color:#888;">Hi ${name}, your instructor has published your final grade.</p>
+      <hr style="margin:0 0 24px;border:none;border-top:1px solid #f0f0f0;">
+      <table cellpadding="0" cellspacing="0" style="background:#f8f7f2;border-radius:12px;padding:24px 28px;width:100%;">
         <tr>
-          <td style="font-size:13px;color:#666;">Grade</td>
-          <td align="right" style="font-size:22px;font-weight:700;color:#1a1a1a;">${gradeStr}%</td>
+          <td style="font-size:13px;color:#888;font-weight:500;">Grade</td>
+          <td align="right" style="font-size:32px;font-weight:700;color:#1a1a1a;letter-spacing:-1px;">${gradeStr}%</td>
         </tr>
         <tr>
-          <td style="font-size:13px;color:#666;padding-top:4px;">GWA</td>
-          <td align="right" style="font-size:22px;font-weight:700;color:${gwaColor};padding-top:4px;">${gwaStr}</td>
+          <td style="font-size:13px;color:#888;font-weight:500;padding-top:8px;">GWA Equivalent</td>
+          <td align="right" style="font-size:32px;font-weight:700;color:${gwaColor};padding-top:8px;letter-spacing:-1px;">${gwaStr}</td>
         </tr>
       </table>
-      <p style="margin:20px 0 0;font-size:15px;color:#444;line-height:1.7;">Hi ${name}, log in to ClassHub to view your grades.</p>`
+      <p style="margin:20px 0 0;font-size:14px;color:#888;line-height:1.8;">Click the button below to view your full grades on ClassHub.</p>`
 
-    const html = baseTemplate(`Final Grade — ${courseName}`, '', bodyHtml)
+    const html = baseTemplate('Final Grade Published', '', bodyHtml, 'View My Grades →', `${APP_URL}/student/grades`)
     const sent = await sendEmail(email, `[ClassHub] Your final grade for ${courseRes.data?.name ?? 'your course'} has been posted`, html)
     return new Response(JSON.stringify({ sent: sent ? 1 : 0 }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

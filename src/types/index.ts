@@ -107,6 +107,7 @@ export interface Quiz {
   allow_file_upload?: boolean
   description?: string | null
   grade_group_id?: string | null
+  results_visible?: boolean
 }
 
 export interface QuizQuestion {
@@ -135,6 +136,8 @@ export interface QuizSubmission {
   earned_points?: number
   total_points?: number
   essay_scores?: Record<string, number>
+  keystroke_count?: number
+  answer_timestamps?: Record<string, string>
 }
 
 export interface QuizFormData {
@@ -235,6 +238,7 @@ export interface PdfQuiz {
   instructions?: string | null
   answer_key?: PdfQuizAnswerKeyEntry[]
   essay_rubrics?: PdfQuizEssayRubric[]
+  results_visible?: boolean
 }
 
 export interface PdfQuizSubmission {

@@ -1,5 +1,10 @@
 import type { GradeGroup, GradeColumn } from '../hooks/useGradeBook'
 
+/** Returns percentage score (0–100), safe for zero-total edge case. */
+export function calcScore(earned: number, total: number): number {
+  return total > 0 ? Math.round((earned / total) * 100) : 0
+}
+
 export function computeWeightedGrade(
   studentId: string,
   groups: GradeGroup[],

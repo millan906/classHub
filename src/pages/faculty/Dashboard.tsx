@@ -30,38 +30,42 @@ export default function FacultyDashboard() {
   const pending = students.filter(s => s.status === 'pending')
   const openQuestions = questions.filter(q => !q.is_answered).length
 
-  // ── Essays pending grading ────────────────────────────────────────────────
-  const essayPendingCount = submissions.filter(sub => {
-    const quiz = quizzes.find(q => q.id === sub.quiz_id)
-    if (!quiz) return false
-    return (quiz.questions ?? []).some(q => q.type === 'essay') && !sub.essay_scores
-  }).length
-
-  // ── Assessments closing soon (within 48 hrs) ─────────────────────────────
-  const now = Date.now()
-  const in48h = now + 48 * 60 * 60 * 1000
-  const closingSoon = quizzes.filter(q =>
-    q.is_open && q.due_date &&
-    new Date(q.due_date).getTime() <= in48h &&
-    new Date(q.due_date).getTime() > now
-  )
-
-  // ── Students with no submissions at all ──────────────────────────────────
-  const submittedStudentIds = new Set(submissions.map(s => s.student_id))
-  const noSubmissionStudents = enrolled.filter(s => !submittedStudentIds.has(s.id))
-
-  // ── Course-scoped helpers ─────────────────────────────────────────────────
-  // Students enrolled in the selected course (or all enrolled if "all")
+  // ── Course-scoped helpers (defined first — used by all calculations below) ─
   const courseStudentIds: Set<string> = selectedCourseId === 'all'
     ? new Set(enrolled.map(s => s.id))
     : new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.student_id))
 
   const courseEnrolledCount = courseStudentIds.size
 
-  // Quizzes for the selected course
   const courseQuizzes = selectedCourseId === 'all'
     ? quizzes
     : quizzes.filter(q => q.course_id === selectedCourseId)
+
+  // ── Essays pending grading (scoped to selected course) ────────────────────
+  const courseQuizIds = new Set(courseQuizzes.map(q => q.id))
+  const essayPendingCount = submissions.filter(sub => {
+    if (!courseQuizIds.has(sub.quiz_id)) return false
+    const quiz = quizzes.find(q => q.id === sub.quiz_id)
+    if (!quiz) return false
+    return (quiz.questions ?? []).some(q => q.type === 'essay') && !sub.essay_scores
+  }).length
+
+  // ── Assessments closing soon within 48 hrs (scoped to selected course) ────
+  const now = Date.now()
+  const in48h = now + 48 * 60 * 60 * 1000
+  const closingSoon = courseQuizzes.filter(q =>
+    q.is_open && q.due_date &&
+    new Date(q.due_date).getTime() <= in48h &&
+    new Date(q.due_date).getTime() > now
+  )
+
+  // ── Students with no submissions in the selected course ───────────────────
+  const submittedInCourseIds = new Set(
+    submissions.filter(s => courseQuizIds.has(s.quiz_id)).map(s => s.student_id)
+  )
+  const noSubmissionStudents = enrolled.filter(s =>
+    courseStudentIds.has(s.id) && !submittedInCourseIds.has(s.id)
+  )
 
   // Latest assessment for selected course
   const latestQuiz = courseQuizzes[0] ?? null
@@ -132,7 +136,7 @@ export default function FacultyDashboard() {
 
       {/* Top metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '8px', marginBottom: '1rem' }}>
-        <MetricCard label="Enrolled students" value={enrolled.length} />
+        <MetricCard label="Enrolled students" value={selectedCourseId === 'all' ? enrolled.length : courseEnrolledCount} />
         <MetricCard label="Pending approvals" value={pending.length} valueColor={pending.length > 0 ? '#854F0B' : '#1a1a1a'} />
         <MetricCard label="Open questions" value={openQuestions} valueColor={openQuestions > 0 ? '#854F0B' : '#1a1a1a'} />
         <MetricCard label="Essays to grade" value={essayPendingCount} valueColor={essayPendingCount > 0 ? '#854F0B' : '#1a1a1a'} />

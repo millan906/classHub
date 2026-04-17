@@ -40,9 +40,9 @@ export default function StudentQuizzes() {
     q.course_id == null || enrolledCourseIds.includes(q.course_id)
   )
 
-  async function handleSubmit(answers: Record<string, string>, earnedPoints: number, totalPoints: number, autoSubmitted = false) {
+  async function handleSubmit(answers: Record<string, string>, earnedPoints: number, totalPoints: number, autoSubmitted = false, keystrokeCount = 0, startedAt?: string, answerTimestamps?: Record<string, string>) {
     if (!profile || !takingQuiz) return
-    await submitQuiz(takingQuiz.id, profile.id, answers, earnedPoints, totalPoints, autoSubmitted)
+    await submitQuiz(takingQuiz.id, profile.id, answers, earnedPoints, totalPoints, autoSubmitted, keystrokeCount, startedAt, answerTimestamps)
     const hasEssay = (takingQuiz.questions ?? []).some(q => q.type === 'essay')
     if (!hasEssay) setTimeout(() => setTakingQuiz(null), 3000)
   }

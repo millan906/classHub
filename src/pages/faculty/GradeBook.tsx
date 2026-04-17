@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuizzes } from '../../hooks/useQuizzes'
 import { supabase } from '../../lib/supabase'
@@ -343,22 +343,48 @@ function downloadCSV(params: GradeBookExportParams) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+// ─── ColHeader ────────────────────────────────────────────────────────────────
+
+function ColHeader({ col, onDeleteClick }: { col: GradeColumn; onDeleteClick: (col: GradeColumn) => void }) {
+  return (
+    <th style={{ ...thStyle, position: 'relative', minWidth: '70px' }}>
+      <div>{col.title}</div>
+      <div style={{ fontSize: '10px', color: '#bbb' }}>
+        /{col.max_score}
+        {col.entry_type === 'quiz_linked' && (
+          <span title="Auto-filled from submissions" style={{ marginLeft: '3px', color: '#1D9E75' }}>⟳</span>
+        )}
+      </div>
+      <button
+        onClick={() => onDeleteClick(col)}
+        style={{
+          position: 'absolute', top: '3px', right: '3px',
+          background: 'none', border: 'none', cursor: 'pointer',
+          fontSize: '10px', color: '#ddd', padding: 0, lineHeight: 1,
+        }}
+        title="Remove column"
+      >✕</button>
+    </th>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function FacultyGradeBook() {
   const { profile } = useAuth()
   const { quizzes, submissions, fetchAllSubmissions } = useQuizzes()
   const { students } = useStudents()
-  const { groups, columns, entries, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, findOrCreateLinkedColumn } = useGradeBook()
   const { courses } = useCourses()
   const { enrollments } = useAllEnrollments()
 
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const [showAddColumn, setShowAddColumn] = useState(false)
   const [showManageGroups, setShowManageGroups] = useState(false)
   const [confirmDeleteCol, setConfirmDeleteCol] = useState<GradeColumn | null>(null)
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<GradeGroup | null>(null)
   const [pageError, setPageError] = useState('')
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+
+  const { groups, columns, entries, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
 
   useEffect(() => {
     fetchAllSubmissions()
@@ -384,7 +410,7 @@ export default function FacultyGradeBook() {
         const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
         if (quizSubs.length === 0) continue
         try {
-          const col = await findOrCreateLinkedColumn(quiz.id, quiz.title, quiz.grade_group_id!, quizTotal, profile!.id)
+          const col = await findOrCreateLinkedColumn(quiz.id, quiz.title, quiz.grade_group_id!, quizTotal, profile!.id, quiz.course_id)
           if (col.max_score !== quizTotal) await updateColumnMaxScore(col.id, quizTotal)
           for (const sub of quizSubs) {
             if (hasEssay && !sub.essay_scores) continue
@@ -401,6 +427,12 @@ export default function FacultyGradeBook() {
     syncQuizScores()
   }, [profile?.id, submissions.length])
 
+  // Must be before any early return — hooks must always be called in the same order
+  const entryMap = useMemo(
+    () => new Map(entries.map(e => [`${e.student_id}:${e.column_id}`, e])),
+    [entries]
+  )
+
   if (!profile) return null
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
@@ -412,9 +444,6 @@ export default function FacultyGradeBook() {
     s.status === 'approved' && (!courseStudentIds || courseStudentIds.has(s.id))
   )
 
-  // Single source of truth: grade_entries only
-  const entryMap = new Map(entries.map(e => [`${e.student_id}:${e.column_id}`, e]))
-
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
     const entry = entryMap.get(`${studentId}:${col.id}`)
     return entry !== undefined && entry.score !== null ? entry.score : null
@@ -422,29 +451,6 @@ export default function FacultyGradeBook() {
 
   function getWeightedGrade(studentId: string): number | null {
     return computeWeightedGrade(studentId, groups, columns, getColumnScore)
-  }
-
-  function ColHeader({ col }: { col: GradeColumn }) {
-    return (
-      <th style={{ ...thStyle, position: 'relative', minWidth: '70px' }}>
-        <div>{col.title}</div>
-        <div style={{ fontSize: '10px', color: '#bbb' }}>
-          /{col.max_score}
-          {col.entry_type === 'quiz_linked' && (
-            <span title="Auto-filled from submissions" style={{ marginLeft: '3px', color: '#1D9E75' }}>⟳</span>
-          )}
-        </div>
-        <button
-          onClick={() => setConfirmDeleteCol(col)}
-          style={{
-            position: 'absolute', top: '3px', right: '3px',
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: '10px', color: '#ddd', padding: 0, lineHeight: 1,
-          }}
-          title="Remove column"
-        >✕</button>
-      </th>
-    )
   }
 
   const totalWeight = groups.reduce((s, g) => s + g.weight_percent, 0)
@@ -623,7 +629,7 @@ export default function FacultyGradeBook() {
                 <th style={{ ...thStyle, textAlign: 'left', minWidth: '120px' }}>Student Name</th>
                 {groups.flatMap(g =>
                   columns.filter(c => c.group_id === g.id).map(c => (
-                    <ColHeader key={c.id} col={c} />
+                    <ColHeader key={c.id} col={c} onDeleteClick={setConfirmDeleteCol} />
                   ))
                 )}
                 <th style={{ ...thStyle, color: '#0F6E56', fontWeight: 600, minWidth: '80px' }}>Grade</th>
