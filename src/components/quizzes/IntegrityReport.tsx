@@ -127,8 +127,11 @@ export function IntegrityReport({ quizId, enrolledStudents, submissions }: Integ
                 </div>
                 {sub && (
                   <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                    {sub.started_at && (
+                      <span>Started {new Date(sub.started_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} · </span>
+                    )}
                     {sub.submitted_at && (
-                      <span>Submitted {new Date(sub.submitted_at).toLocaleTimeString()}</span>
+                      <span>Submitted {new Date(sub.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                     )}
                     {sub.submitted_at && sub.started_at && (() => {
                       const mins = Math.round((new Date(sub.submitted_at).getTime() - new Date(sub.started_at).getTime()) / 60000)
