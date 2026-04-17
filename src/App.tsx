@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { Layout } from './components/layout/Layout'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { ThemeProvider } from './contexts/ThemeContext'
 
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
@@ -26,6 +27,7 @@ import StudentQuizzes from './pages/student/Quizzes'
 import StudentQA from './pages/student/QA'
 import StudentAnnouncements from './pages/student/Announcements'
 import StudentGrades from './pages/student/Grades'
+import StudentProfile from './pages/student/Profile'
 
 function AppRoutes() {
   const { profile, loading, signOut } = useAuth()
@@ -108,6 +110,7 @@ function AppRoutes() {
             <Route path="/student/announcements" element={<StudentAnnouncements />} />
             <Route path="/student/courses" element={<StudentCourses />} />
             <Route path="/student/grades" element={<StudentGrades />} />
+            <Route path="/student/profile" element={<StudentProfile />} />
             <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
           </>
         )}
@@ -119,9 +122,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

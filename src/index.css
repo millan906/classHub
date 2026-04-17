@@ -4,7 +4,78 @@
 @tailwind utilities;
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Inter', sans-serif; font-size: 14px; background: #F5F5F3; color: #1a1a1a; }
+
+:root {
+  --color-page: #F5F5F3;
+  --color-surface: #ffffff;
+  --color-sidebar: #ffffff;
+  --color-topbar: #ffffff;
+  --color-border: rgba(0,0,0,0.10);
+  --color-border-strong: rgba(0,0,0,0.25);
+  --color-text: #1a1a1a;
+  --color-text-muted: #888888;
+  --color-text-faint: #aaaaaa;
+  --color-input-bg: #ffffff;
+}
+
+[data-theme="dark"] {
+  --color-page: #111213;
+  --color-surface: #1c1f21;
+  --color-sidebar: #161819;
+  --color-topbar: #161819;
+  --color-border: rgba(255,255,255,0.08);
+  --color-border-strong: rgba(255,255,255,0.18);
+  --color-text: #e8e8e6;
+  --color-text-muted: #9a9a9a;
+  --color-text-faint: #666666;
+  --color-input-bg: #252829;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  background: var(--color-page);
+  color: var(--color-text);
+  transition: background 0.2s, color 0.2s;
+}
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #D3D1C7; border-radius: 999px; }
+
+/* Dark mode overrides for inline-styled white backgrounds */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:#ffffff"],
+[data-theme="dark"] [style*="background: #ffffff"],
+[data-theme="dark"] [style*="background:white"],
+[data-theme="dark"] [style*="background: white"] {
+  background: var(--color-surface) !important;
+}
+
+[data-theme="dark"] [style*="background:#F5F5F3"],
+[data-theme="dark"] [style*="background: #F5F5F3"] {
+  background: var(--color-page) !important;
+}
+
+/* Dark mode text overrides */
+[data-theme="dark"] [style*="color:#1a1a1a"],
+[data-theme="dark"] [style*="color: #1a1a1a"] {
+  color: var(--color-text) !important;
+}
+[data-theme="dark"] [style*="color:#333"],
+[data-theme="dark"] [style*="color: #333"] {
+  color: var(--color-text) !important;
+}
+[data-theme="dark"] [style*="color:#444"],
+[data-theme="dark"] [style*="color: #444"] {
+  color: #c8c8c6 !important;
+}
+[data-theme="dark"] [style*="color:#555"],
+[data-theme="dark"] [style*="color: #555"] {
+  color: #b0b0ae !important;
+}
+[data-theme="dark"] [style*="color:#666"],
+[data-theme="dark"] [style*="color: #666"] {
+  color: #a0a09e !important;
+}

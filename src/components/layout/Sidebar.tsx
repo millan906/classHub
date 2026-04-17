@@ -22,13 +22,13 @@ export function Sidebar({ profile, onNavigate }: SidebarProps) {
   return (
     <div style={{
       width: '220px', flexShrink: 0,
-      background: '#ffffff',
-      borderRight: '0.5px solid rgba(0,0,0,0.1)',
+      background: 'var(--color-sidebar)',
+      borderRight: '0.5px solid var(--color-border)',
       display: 'flex', flexDirection: 'column',
       height: '100vh',
     }}>
       {/* Logo */}
-      <div style={{ padding: '1rem 1rem 0.75rem', borderBottom: '0.5px solid rgba(0,0,0,0.1)' }}>
+      <div style={{ padding: '1rem 1rem 0.75rem', borderBottom: '0.5px solid var(--color-border)' }}>
         <div style={{ fontSize: '15px', fontWeight: 600 }}>
           class<span style={{ color: '#1D9E75' }}>hub</span>
         </div>
@@ -59,6 +59,12 @@ export function Sidebar({ profile, onNavigate }: SidebarProps) {
             <SidebarItem icon="⚙️" text="Settings" path="/faculty/settings" isActive={isActive('/faculty/settings')} navigate={go} />
           </SidebarGroup>
         )}
+
+        {!isFaculty && (
+          <SidebarGroup label="Account">
+            <SidebarItem icon="👤" text="Profile" path="/student/profile" isActive={isActive('/student/profile')} navigate={go} />
+          </SidebarGroup>
+        )}
       </div>
     </div>
   )
@@ -87,7 +93,7 @@ function SidebarItem({ icon, text, path, isActive, navigate, badge = 0 }: {
       display: 'flex', alignItems: 'center', gap: '8px',
       padding: '7px 1rem', fontSize: '13px', cursor: 'pointer',
       background: isActive ? '#E1F5EE' : 'transparent',
-      color: isActive ? '#0F6E56' : '#555',
+      color: isActive ? '#0F6E56' : 'var(--color-text-muted)',
       fontWeight: isActive ? 500 : 400,
       borderRadius: '0',
     }}>

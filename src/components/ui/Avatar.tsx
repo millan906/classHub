@@ -3,9 +3,27 @@ interface AvatarProps {
   bg: string
   color: string
   size?: number
+  seed?: string | null
 }
 
-export function Avatar({ initials, bg, color, size = 34 }: AvatarProps) {
+export function Avatar({ initials, bg, color, size = 34, seed }: AvatarProps) {
+  if (seed) {
+    return (
+      <div style={{
+        width: size, height: size, borderRadius: '50%',
+        overflow: 'hidden', flexShrink: 0, background: bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <img
+          src={`https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(seed)}&size=${size * 2}`}
+          alt="avatar"
+          width={size}
+          height={size}
+          style={{ display: 'block' }}
+        />
+      </div>
+    )
+  }
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', background: bg, color,

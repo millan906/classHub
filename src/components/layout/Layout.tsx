@@ -14,6 +14,7 @@ import { Sidebar } from './Sidebar'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import { ChangePasswordModal } from '../ui/ChangePasswordModal'
 import { useNotifications } from '../../hooks/useNotifications'
+import { useTheme } from '../../contexts/ThemeContext'
 import type { Profile } from '../../types'
 
 interface LayoutProps {
@@ -26,6 +27,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
   const isFaculty = profile.role === 'faculty'
   const colors = getAvatarColors(profile.full_name)
   const navigate = useNavigate()
+  const { isDark } = useTheme()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [avatarMenuOpen, setAvatarMenuOpen] = useState(false)
   const [showChangePw, setShowChangePw] = useState(false)
@@ -90,7 +92,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
   function handleNavigate() { if (isMobile) setSidebarOpen(false) }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#F5F5F3' }}>
+    <div style={{ display: 'flex', height: '100vh', background: 'var(--color-page)' }}>
 
       {/* Sidebar — always visible on desktop, overlay on mobile */}
       {!isMobile && <Sidebar profile={profile} onNavigate={handleNavigate} />}
@@ -116,8 +118,8 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
         {/* Top bar */}
         <div style={{
           height: '48px', flexShrink: 0,
-          background: '#ffffff',
-          borderBottom: '0.5px solid rgba(0,0,0,0.1)',
+          background: 'var(--color-topbar)',
+          borderBottom: '0.5px solid var(--color-border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 1rem', gap: '10px',
         }}>
@@ -181,19 +183,20 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
                 </button>
                 {notifOpen && (
                   <div style={{
-                    position: 'absolute', top: '36px', right: 0, background: '#fff',
-                    border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '10px',
+                    position: 'absolute', top: '36px', right: 0,
+                    background: 'var(--color-surface)',
+                    border: '0.5px solid var(--color-border)', borderRadius: '10px',
                     boxShadow: '0 4px 16px rgba(0,0,0,0.1)', width: '280px', zIndex: 50,
                     overflow: 'hidden',
                   }}>
-                    <div style={{ padding: '10px 14px 8px', borderBottom: '0.5px solid rgba(0,0,0,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Notifications</div>
+                    <div style={{ padding: '10px 14px 8px', borderBottom: '0.5px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>Notifications</div>
                       <button onClick={() => navigate('/student/announcements')} style={{ fontSize: '11px', color: '#1D9E75', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                         Announcements →
                       </button>
                     </div>
                     {notifications.length === 0 ? (
-                      <div style={{ padding: '14px', fontSize: '12px', color: '#aaa', textAlign: 'center' }}>No notifications yet.</div>
+                      <div style={{ padding: '14px', fontSize: '12px', color: 'var(--color-text-faint)', textAlign: 'center' }}>No notifications yet.</div>
                     ) : (
                       <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                         {notifications.slice(0, 15).map(n => {
@@ -207,14 +210,14 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
                               onClick={() => { if (dest) { setNotifOpen(false); navigate(dest) } }}
                               style={{
                                 padding: '9px 14px',
-                                borderBottom: '0.5px solid rgba(0,0,0,0.05)',
-                                background: n.read ? 'transparent' : '#F6FFF9',
+                                borderBottom: '0.5px solid var(--color-border)',
+                                background: n.read ? 'transparent' : (isDark ? 'rgba(29,158,117,0.08)' : '#F6FFF9'),
                                 cursor: dest ? 'pointer' : 'default',
                               }}
                             >
-                              <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '1px' }}>{n.title}</div>
-                              {n.body && <div style={{ fontSize: '11px', color: '#888' }}>{n.body}</div>}
-                              <div style={{ fontSize: '10px', color: '#bbb', marginTop: '2px' }}>{timeAgo(n.created_at)}</div>
+                              <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '1px', color: 'var(--color-text)' }}>{n.title}</div>
+                              {n.body && <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{n.body}</div>}
+                              <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', marginTop: '2px' }}>{timeAgo(n.created_at)}</div>
                               {dest && <div style={{ fontSize: '10px', color: '#1D9E75', marginTop: '2px' }}>Tap to view →</div>}
                             </div>
                           )
@@ -234,29 +237,40 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
                   bg={isFaculty ? '#9FE1CB' : colors.bg}
                   color={isFaculty ? '#085041' : colors.color}
                   size={28}
+                  seed={profile.avatar_seed}
                 />
               </div>
               {avatarMenuOpen && (
                 <div style={{
-                  position: 'absolute', top: '36px', right: 0, background: '#fff',
-                  border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '10px',
+                  position: 'absolute', top: '36px', right: 0,
+                  background: 'var(--color-surface)',
+                  border: '0.5px solid var(--color-border)', borderRadius: '10px',
                   boxShadow: '0 4px 16px rgba(0,0,0,0.1)', minWidth: '170px', zIndex: 50,
                   overflow: 'hidden',
                 }}>
-                  <div style={{ padding: '10px 14px 8px', borderBottom: '0.5px solid rgba(0,0,0,0.07)' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{profile.full_name}</div>
-                    <div style={{ fontSize: '11px', color: '#aaa' }}>{profile.email}</div>
+                  <div style={{ padding: '10px 14px 8px', borderBottom: '0.5px solid var(--color-border)' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--color-text)' }}>{profile.full_name}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--color-text-faint)' }}>{profile.email}</div>
                   </div>
+                  {!isFaculty && (
+                    <button onClick={() => { navigate('/student/profile'); setAvatarMenuOpen(false) }} style={{
+                      width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: '13px',
+                      background: 'var(--color-surface)', border: 'none', cursor: 'pointer', color: 'var(--color-text)',
+                      borderBottom: '0.5px solid var(--color-border)',
+                    }}>
+                      👤 My Profile
+                    </button>
+                  )}
                   <button onClick={() => { setAvatarMenuOpen(false); setShowChangePw(true) }} style={{
                     width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: '13px',
-                    background: 'none', border: 'none', cursor: 'pointer', color: '#333',
-                    borderBottom: '0.5px solid rgba(0,0,0,0.07)',
+                    background: 'var(--color-surface)', border: 'none', cursor: 'pointer', color: 'var(--color-text)',
+                    borderBottom: '0.5px solid var(--color-border)',
                   }}>
                     🔑 Change password
                   </button>
                   <button onClick={onSignOut} style={{
                     width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: '13px',
-                    background: 'none', border: 'none', cursor: 'pointer', color: '#A32D2D',
+                    background: 'var(--color-surface)', border: 'none', cursor: 'pointer', color: '#A32D2D',
                   }}>
                     Sign out
                   </button>
@@ -271,7 +285,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
         </div>
 
         {/* Page content */}
-        <main style={{ flex: 1, padding: isMobile ? '1rem' : '1.25rem', overflowY: 'auto' }}>
+        <main style={{ flex: 1, padding: isMobile ? '1rem' : '1.25rem', overflowY: 'auto', background: 'var(--color-page)' }}>
           {children}
         </main>
       </div>

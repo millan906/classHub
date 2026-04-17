@@ -10,6 +10,7 @@ export interface Profile {
   role: Role
   status: Status
   created_at: string
+  avatar_seed?: string | null
 }
 
 export interface SyllabusCell {

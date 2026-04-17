@@ -1,16 +1,43 @@
 import { useAuth } from '../../hooks/useAuth'
 import { useSettings } from '../../hooks/useSettings'
 import { PageHeader } from '../../components/ui/Card'
+import { useTheme } from '../../contexts/ThemeContext'
+import { AvatarPicker } from '../../components/ui/AvatarPicker'
+import { supabase } from '../../lib/supabase'
 
 export default function FacultySettings() {
-  const { profile } = useAuth()
+  const { profile, refetchProfile } = useAuth()
   const { settings, loading, updateSettings } = useSettings(profile?.id ?? null)
+  const { isDark, toggle } = useTheme()
+
+  async function saveAvatar(seed: string | null) {
+    await supabase.from('profiles').update({ avatar_seed: seed }).eq('id', profile!.id)
+    refetchProfile?.()
+  }
 
   if (loading) return null
 
   return (
     <div>
       <PageHeader title="Settings" subtitle="Manage class preferences." />
+
+      {/* Avatar section */}
+      <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '16px 20px', marginBottom: '12px' }}>
+        <AvatarPicker currentSeed={profile?.avatar_seed ?? null} onSave={saveAvatar} />
+      </div>
+
+      {/* Appearance section */}
+      <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '16px 20px', marginBottom: '12px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>
+          Appearance
+        </div>
+        <SettingRow
+          title="Dark mode"
+          description="Switch between light and dark theme."
+          value={isDark}
+          onChange={toggle}
+        />
+      </div>
 
       <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '16px 20px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>
