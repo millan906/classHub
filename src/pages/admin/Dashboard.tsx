@@ -27,15 +27,24 @@ export default function AdminDashboard() {
   async function fetchMembers() {
     if (!institution) return
     setLoading(true)
-    const { data } = await supabase
+    const { data: mems } = await supabase
       .from('institution_members')
-      .select('id, user_id, role, profiles:user_id(full_name, email, avatar_seed)')
+      .select('id, user_id, role')
       .eq('institution_id', institution.id)
-    const flat = (data || []).map((m: any) => ({
+    if (!mems || mems.length === 0) { setMembers([]); setLoading(false); return }
+
+    const userIds = mems.map((m: any) => m.user_id)
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, avatar_seed')
+      .in('id', userIds)
+
+    const profileMap = Object.fromEntries((profiles || []).map((p: any) => [p.id, p]))
+    const flat = mems.map((m: any) => ({
       id: m.id, user_id: m.user_id, role: m.role,
-      full_name: m.profiles?.full_name ?? 'Unknown',
-      email: m.profiles?.email ?? '',
-      avatar_seed: m.profiles?.avatar_seed ?? null,
+      full_name: profileMap[m.user_id]?.full_name ?? 'Unknown',
+      email: profileMap[m.user_id]?.email ?? '',
+      avatar_seed: profileMap[m.user_id]?.avatar_seed ?? null,
     }))
     setMembers(flat)
     setLoading(false)
