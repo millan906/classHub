@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
+import { useInstitution } from './hooks/useInstitution'
+import { InstitutionContext } from './contexts/InstitutionContext'
 import { Layout } from './components/layout/Layout'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { ThemeProvider } from './contexts/ThemeContext'
@@ -8,6 +10,7 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
+import InstitutionOnboarding from './pages/auth/InstitutionOnboarding'
 
 import FacultyDashboard from './pages/faculty/Dashboard'
 import FacultySlides from './pages/faculty/Slides'
@@ -21,6 +24,8 @@ import FacultySettings from './pages/faculty/Settings'
 import FacultyFinalGrades from './pages/faculty/FinalGrades'
 import FacultyAttendance from './pages/faculty/Attendance'
 
+import AdminDashboard from './pages/admin/Dashboard'
+
 import StudentDashboard from './pages/student/Dashboard'
 import StudentCourses from './pages/student/Courses'
 import StudentSlides from './pages/student/Slides'
@@ -33,8 +38,11 @@ import StudentAttendance from './pages/student/Attendance'
 
 function AppRoutes() {
   const { profile, loading, signOut } = useAuth()
+  const { institution, membership, loading: instLoading, refetch: refetchInst } = useInstitution(profile?.id ?? null)
+  const isAdmin = membership?.role === 'admin'
+  const isFacultyMember = membership?.role === 'faculty'
 
-  if (loading) {
+  if (loading || (profile && instLoading)) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div style={{ fontSize: '13px', color: '#888' }}>Loading...</div>
@@ -86,40 +94,67 @@ function AppRoutes() {
 
   const isFaculty = profile.role === 'faculty'
 
+  // Show institution onboarding if user has no institution
+  if (!instLoading && !institution) {
+    return (
+      <InstitutionContext.Provider value={{ institution, membership, isAdmin, isFacultyMember, loading: instLoading, refetch: refetchInst }}>
+        <InstitutionOnboarding profile={profile} onDone={refetchInst} signOut={signOut} />
+      </InstitutionContext.Provider>
+    )
+  }
+
   return (
-    <Layout profile={profile} onSignOut={signOut}>
-      <Routes>
-        {isFaculty ? (
-          <>
-            <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
-            <Route path="/faculty/slides" element={<FacultySlides />} />
-            <Route path="/faculty/students" element={<FacultyStudents />} />
-            <Route path="/faculty/quizzes" element={<FacultyQuizzes />} />
-            <Route path="/faculty/qa" element={<FacultyQA />} />
-            <Route path="/faculty/announcements" element={<FacultyAnnouncements />} />
-            <Route path="/faculty/gradebook" element={<FacultyGradeBook />} />
-            <Route path="/faculty/courses" element={<FacultyCourses />} />
-            <Route path="/faculty/settings" element={<FacultySettings />} />
-            <Route path="/faculty/final-grades" element={<FacultyFinalGrades />} />
-            <Route path="/faculty/attendance" element={<FacultyAttendance />} />
-            <Route path="*" element={<Navigate to="/faculty/dashboard" replace />} />
-          </>
-        ) : (
-          <>
-            <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/student/slides" element={<StudentSlides />} />
-            <Route path="/student/quizzes" element={<StudentQuizzes />} />
-            <Route path="/student/qa" element={<StudentQA />} />
-            <Route path="/student/announcements" element={<StudentAnnouncements />} />
-            <Route path="/student/courses" element={<StudentCourses />} />
-            <Route path="/student/grades" element={<StudentGrades />} />
-            <Route path="/student/profile" element={<StudentProfile />} />
-            <Route path="/student/attendance" element={<StudentAttendance />} />
-            <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
-          </>
-        )}
-      </Routes>
-    </Layout>
+    <InstitutionContext.Provider value={{ institution, membership, isAdmin, isFacultyMember, loading: instLoading, refetch: refetchInst }}>
+      <Layout profile={profile} onSignOut={signOut}>
+        <Routes>
+          {isAdmin ? (
+            <>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
+              <Route path="/faculty/slides" element={<FacultySlides />} />
+              <Route path="/faculty/students" element={<FacultyStudents />} />
+              <Route path="/faculty/quizzes" element={<FacultyQuizzes />} />
+              <Route path="/faculty/qa" element={<FacultyQA />} />
+              <Route path="/faculty/announcements" element={<FacultyAnnouncements />} />
+              <Route path="/faculty/gradebook" element={<FacultyGradeBook />} />
+              <Route path="/faculty/courses" element={<FacultyCourses />} />
+              <Route path="/faculty/settings" element={<FacultySettings />} />
+              <Route path="/faculty/final-grades" element={<FacultyFinalGrades />} />
+              <Route path="/faculty/attendance" element={<FacultyAttendance />} />
+              <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+            </>
+          ) : isFaculty ? (
+            <>
+              <Route path="/faculty/dashboard" element={<FacultyDashboard />} />
+              <Route path="/faculty/slides" element={<FacultySlides />} />
+              <Route path="/faculty/students" element={<FacultyStudents />} />
+              <Route path="/faculty/quizzes" element={<FacultyQuizzes />} />
+              <Route path="/faculty/qa" element={<FacultyQA />} />
+              <Route path="/faculty/announcements" element={<FacultyAnnouncements />} />
+              <Route path="/faculty/gradebook" element={<FacultyGradeBook />} />
+              <Route path="/faculty/courses" element={<FacultyCourses />} />
+              <Route path="/faculty/settings" element={<FacultySettings />} />
+              <Route path="/faculty/final-grades" element={<FacultyFinalGrades />} />
+              <Route path="/faculty/attendance" element={<FacultyAttendance />} />
+              <Route path="*" element={<Navigate to="/faculty/dashboard" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/student/dashboard" element={<StudentDashboard />} />
+              <Route path="/student/slides" element={<StudentSlides />} />
+              <Route path="/student/quizzes" element={<StudentQuizzes />} />
+              <Route path="/student/qa" element={<StudentQA />} />
+              <Route path="/student/announcements" element={<StudentAnnouncements />} />
+              <Route path="/student/courses" element={<StudentCourses />} />
+              <Route path="/student/grades" element={<StudentGrades />} />
+              <Route path="/student/profile" element={<StudentProfile />} />
+              <Route path="/student/attendance" element={<StudentAttendance />} />
+              <Route path="*" element={<Navigate to="/student/dashboard" replace />} />
+            </>
+          )}
+        </Routes>
+      </Layout>
+    </InstitutionContext.Provider>
   )
 }
 

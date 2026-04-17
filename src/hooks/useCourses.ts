@@ -4,15 +4,14 @@ import type { Course, GradingPeriod, CourseScheduleItem, CourseResource, Syllabu
 
 const BUCKET = 'course-resources'
 
-export function useCourses() {
+export function useCourses(institutionId?: string | null) {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
 
   async function fetchCourses() {
-    const { data } = await supabase
-      .from('courses')
-      .select('*')
-      .order('created_at', { ascending: false })
+    let query = supabase.from('courses').select('*').order('created_at', { ascending: false })
+    if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
+    const { data } = await query
     setCourses(data || [])
     setLoading(false)
   }
@@ -24,7 +23,7 @@ export function useCourses() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, fetchCourses)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [institutionId])
 
   async function createCourse(
     id: string,
@@ -36,6 +35,7 @@ export function useCourses() {
     schedule: CourseScheduleItem[] = [],
     resources: CourseResource[] = [],
     syllabus: SyllabusRow[] = [],
+    institution_id?: string | null,
   ) {
     const { error } = await supabase.from('courses').insert({
       id,
@@ -47,6 +47,7 @@ export function useCourses() {
       schedule,
       resources,
       syllabus,
+      ...(institution_id ? { institution_id } : {}),
     })
     if (error) throw error
     await fetchCourses()

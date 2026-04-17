@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import type { Profile } from '../../types'
+import { useInstitutionContext } from '../../contexts/InstitutionContext'
 
 interface SidebarProps {
   profile: Profile
@@ -10,6 +11,7 @@ interface SidebarProps {
 export function Sidebar({ profile, onNavigate }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { isAdmin } = useInstitutionContext()
   const isFaculty = profile.role === 'faculty'
   const base = isFaculty ? '/faculty' : '/student'
   const isActive = (path: string) => location.pathname === path
@@ -58,6 +60,9 @@ export function Sidebar({ profile, onNavigate }: SidebarProps) {
 
         {isFaculty && (
           <SidebarGroup label="System">
+            {isAdmin && (
+              <SidebarItem icon="🏛️" text="Institution" path="/admin/dashboard" isActive={isActive('/admin/dashboard')} navigate={go} />
+            )}
             <SidebarItem icon="⚙️" text="Settings" path="/faculty/settings" isActive={isActive('/faculty/settings')} navigate={go} />
           </SidebarGroup>
         )}
