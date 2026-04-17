@@ -60,7 +60,7 @@ export default function StudentSlides() {
           ))}
         </select>
       </div>
-      <SlideGrid slides={filteredSlides} courses={courses} onView={handleView} onDownload={handleDownload} />
+      <SlideGrid slides={filteredSlides} onView={handleView} onDownload={handleDownload} />
     </div>
   )
 }

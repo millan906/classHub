@@ -78,7 +78,7 @@ export default function FacultySlides() {
           ))}
         </select>
       </div>
-      <SlideGrid slides={filteredSlides} courses={courses} isFaculty onDelete={setConfirmDelete} onView={handleView} onDownload={handleDownload} />
+      <SlideGrid slides={filteredSlides} isFaculty onDelete={setConfirmDelete} onView={handleView} onDownload={handleDownload} />
     </div>
   )
 }
