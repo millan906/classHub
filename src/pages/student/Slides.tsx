@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useSlides } from '../../hooks/useSlides'
 import { useCourses } from '../../hooks/useCourses'
@@ -12,10 +13,17 @@ export default function StudentSlides() {
   const { slides, loading, error, getDownloadUrl, refetch } = useSlides()
   const { courses } = useCourses()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('')
+
+  const enrolledCourses = courses.filter(c => enrolledCourseIds.includes(c.id))
 
   const visibleSlides = slides.filter(s =>
-    s.course_id == null || enrolledCourseIds.includes(s.course_id)
+    s.course_id != null && enrolledCourseIds.includes(s.course_id)
   )
+
+  const filteredSlides = selectedCourseId
+    ? visibleSlides.filter(s => s.course_id === selectedCourseId)
+    : visibleSlides
 
   async function handleView(slide: Slide) {
     const url = await getDownloadUrl(slide.file_path)
@@ -34,7 +42,25 @@ export default function StudentSlides() {
   return (
     <div>
       <PageHeader title="Slides" subtitle="View and download course materials." />
-      <SlideGrid slides={visibleSlides} courses={courses} onView={handleView} onDownload={handleDownload} />
+      <div style={{ marginBottom: '12px' }}>
+        <select
+          value={selectedCourseId}
+          onChange={e => setSelectedCourseId(e.target.value)}
+          style={{
+            padding: '7px 11px', fontSize: '13px', borderRadius: '8px',
+            border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
+            fontFamily: 'Inter, sans-serif', outline: 'none', minWidth: '200px',
+          }}
+        >
+          <option value="">All courses</option>
+          {enrolledCourses.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name}{c.section ? ` · Section ${c.section}` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+      <SlideGrid slides={filteredSlides} courses={courses} onView={handleView} onDownload={handleDownload} />
     </div>
   )
 }

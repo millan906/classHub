@@ -15,6 +15,7 @@ export default function FacultySlides() {
   const { courses } = useCourses()
   const [confirmDelete, setConfirmDelete] = useState<Slide | null>(null)
   const [pageError, setPageError] = useState('')
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('')
 
   async function handleUpload(file: File, title: string, courseId: string | null) {
     if (!profile) return
@@ -31,6 +32,10 @@ export default function FacultySlides() {
     const a = document.createElement('a')
     a.href = url; a.download = slide.title; a.click()
   }
+
+  const filteredSlides = selectedCourseId
+    ? slides.filter(s => s.course_id === selectedCourseId)
+    : slides
 
   if (loading) return <Spinner />
   if (error) return <PageError message={error} onRetry={refetch} />
@@ -55,7 +60,25 @@ export default function FacultySlides() {
         </div>
       )}
       <UploadZone courses={courses} onUpload={handleUpload} />
-      <SlideGrid slides={slides} courses={courses} isFaculty onDelete={setConfirmDelete} onView={handleView} onDownload={handleDownload} />
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
+        <select
+          value={selectedCourseId}
+          onChange={e => setSelectedCourseId(e.target.value)}
+          style={{
+            padding: '7px 11px', fontSize: '13px', borderRadius: '8px',
+            border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
+            fontFamily: 'Inter, sans-serif', outline: 'none', minWidth: '200px',
+          }}
+        >
+          <option value="">All courses</option>
+          {courses.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name}{c.section ? ` · Section ${c.section}` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+      <SlideGrid slides={filteredSlides} courses={courses} isFaculty onDelete={setConfirmDelete} onView={handleView} onDownload={handleDownload} />
     </div>
   )
 }

@@ -37,7 +37,7 @@ export function UploadZone({ courses, onUpload }: UploadZoneProps) {
   }
 
   async function handleUpload() {
-    if (!file || !title.trim()) return
+    if (!file || !title.trim() || !courseId) return
     setUploading(true)
     try {
       await onUpload(file, title.trim(), courseId || null)
@@ -78,33 +78,23 @@ export function UploadZone({ courses, onUpload }: UploadZoneProps) {
       <input ref={inputRef} type="file" accept=".pptx,.pdf,.key" style={{ display: 'none' }} onChange={handleFileChange} />
       {sizeError && <div style={{ fontSize: '12px', color: '#A32D2D', marginTop: '6px' }}>{sizeError}</div>}
       {file && (
-        <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Slide title"
-              style={inputStyle}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <select
-              value={courseId}
-              onChange={e => setCourseId(e.target.value)}
-              style={{ ...inputStyle, flex: 1 }}
-            >
-              <option value="">All courses</option>
-              {courses.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name}{c.section ? ` · Section ${c.section}` : ''}
-                </option>
-              ))}
-            </select>
-            <Button variant="primary" onClick={handleUpload} disabled={uploading}>
-              {uploading ? 'Uploading...' : 'Upload'}
-            </Button>
-            <Button onClick={() => { setFile(null); setTitle(''); setCourseId('') }}>Cancel</Button>
-          </div>
+        <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <select
+            value={courseId}
+            onChange={e => setCourseId(e.target.value)}
+            style={{ ...inputStyle, flex: 1 }}
+          >
+            <option value="">Select course…</option>
+            {courses.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}{c.section ? ` · Section ${c.section}` : ''}
+              </option>
+            ))}
+          </select>
+          <Button variant="primary" onClick={handleUpload} disabled={uploading || !courseId}>
+            {uploading ? 'Uploading...' : 'Upload'}
+          </Button>
+          <Button onClick={() => { setFile(null); setTitle(''); setCourseId('') }}>Cancel</Button>
         </div>
       )}
     </div>
