@@ -26,11 +26,11 @@ export function MetricCard({ label, value, valueColor = '#1a1a1a' }: { label: st
   )
 }
 
-export function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+export function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <>
-      <div style={{ fontSize: '17px', fontWeight: 500, marginBottom: '3px' }}>{title}</div>
-      <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.1rem' }}>{subtitle}</div>
+      <div style={{ fontSize: '17px', fontWeight: 500, marginBottom: subtitle ? '3px' : '1.1rem' }}>{title}</div>
+      {subtitle && <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.1rem' }}>{subtitle}</div>}
     </>
   )
 }

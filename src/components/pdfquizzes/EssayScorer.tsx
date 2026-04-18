@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '../ui/Button'
 import { formInputStyle } from '../../styles/shared'
+import { scoreBarColor } from '../../utils/scoreColors'
 import type { PdfQuiz, PdfQuizSubmission, Profile } from '../../types'
 
 interface EssayScorerProps {
@@ -86,7 +87,7 @@ export function EssayScorer({ quiz, submission, student, onSave, onCancel }: Ess
         const earned = earnedForQuestion(q.question_number)
         const max = maxForQuestion(q.question_number)
         const pct = max > 0 ? Math.round((earned / max) * 100) : 0
-        const barColor = pct >= 75 ? '#1D9E75' : pct >= 50 ? '#f59e0b' : '#ef4444'
+        const barColor = scoreBarColor(pct)
 
         return (
           <div key={q.question_number} style={{

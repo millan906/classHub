@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
 import { useStudents } from '../../hooks/useStudents'
@@ -25,6 +26,19 @@ export default function FacultyDashboard() {
   const navigate = useNavigate()
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('all')
+  const [flagsByCourse, setFlagsByCourse] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (courses.length === 0) return
+    const courseIds = courses.map(c => c.id)
+    supabase.from('attendance_flags').select('course_id').in('course_id', courseIds).then(({ data }) => {
+      const counts: Record<string, number> = {}
+      for (const f of data || []) {
+        counts[f.course_id] = (counts[f.course_id] || 0) + 1
+      }
+      setFlagsByCourse(counts)
+    })
+  }, [courses])
 
   const enrolled = students.filter(s => s.status === 'approved')
   const pending = students.filter(s => s.status === 'pending')
@@ -111,6 +125,18 @@ export default function FacultyDashboard() {
 
   const selectedCourse = selectedCourseId !== 'all' ? courses.find(c => c.id === selectedCourseId) : null
 
+  // ── Attendance flags summary ──────────────────────────────────────────────
+  const totalFlags = Object.values(flagsByCourse).reduce((a, b) => a + b, 0)
+  const flaggedEntries = Object.entries(flagsByCourse).filter(([, count]) => count > 0)
+  const flagCourseBreakdown = flaggedEntries
+    .map(([cId, count]) => {
+      const c = courses.find(x => x.id === cId)
+      const name = c ? (c.section ? `${c.name} ${c.section}` : c.name) : cId
+      return `${name} (${count})`
+    })
+    .join(', ')
+  const firstFlaggedCourseId = flaggedEntries[0]?.[0] ?? null
+
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
@@ -118,10 +144,7 @@ export default function FacultyDashboard() {
     <div>
       {/* Header + course selector */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '8px' }}>
-        <PageHeader
-          title={`${greeting}, ${profile?.full_name ?? 'Professor'}`}
-          subtitle="Here's your class at a glance."
-        />
+        <PageHeader title={`${greeting}, ${profile?.full_name ?? 'Professor'}`} />
         <select
           value={selectedCourseId}
           onChange={e => setSelectedCourseId(e.target.value)}
@@ -143,7 +166,7 @@ export default function FacultyDashboard() {
       </div>
 
       {/* Action alerts */}
-      {(closingSoon.length > 0 || essayPendingCount > 0 || pending.length > 0) && (
+      {(closingSoon.length > 0 || essayPendingCount > 0 || pending.length > 0 || totalFlags > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1rem' }}>
           {pending.length > 0 && (
             <AlertBanner color="#EF9F27" bg="#FEFDF7"
@@ -154,6 +177,11 @@ export default function FacultyDashboard() {
             <AlertBanner color="#378ADD" bg="#EEF5FC"
               label={`${essayPendingCount} essay submission${essayPendingCount > 1 ? 's' : ''} need grading`}
               action="Grade" onAction={() => navigate('/faculty/quizzes')} />
+          )}
+          {totalFlags > 0 && (
+            <AlertBanner color="#A32D2D" bg="#FEF2F2"
+              label={`${totalFlags} attendance flag${totalFlags > 1 ? 's' : ''} — ${flagCourseBreakdown}`}
+              action="Review" onAction={() => navigate(firstFlaggedCourseId ? `/faculty/attendance?course=${firstFlaggedCourseId}` : '/faculty/attendance')} />
           )}
           {closingSoon.map(q => (
             <AlertBanner key={q.id} color="#A32D2D" bg="#FEF2F2"
@@ -208,11 +236,13 @@ export default function FacultyDashboard() {
                 <div style={{ height: '100%', width: submissionRate + '%', background: '#1D9E75', borderRadius: '999px' }} />
               </div>
               <div style={{ fontSize: '12px', color: '#555', marginBottom: '4px' }}>
-                Avg score — {avgScore}%
+                Avg score — {latestQuizSubs.length > 0 ? `${avgScore}%` : '—'}
               </div>
-              <div style={{ height: '6px', background: '#F1EFE8', borderRadius: '999px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: avgScore + '%', background: scoreBarColor(avgScore), borderRadius: '999px' }} />
-              </div>
+              {latestQuizSubs.length > 0 && (
+                <div style={{ height: '6px', background: '#F1EFE8', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: avgScore + '%', background: scoreBarColor(avgScore), borderRadius: '999px' }} />
+                </div>
+              )}
             </>
           ) : (
             <div style={{ fontSize: '12px', color: '#aaa' }}>No assessments for this course yet.</div>
@@ -248,24 +278,32 @@ export default function FacultyDashboard() {
           )}
         </Card>
 
-        {/* No submissions yet */}
+        {/* No submissions yet — only meaningful when some have submitted */}
         <Card>
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>
             No submissions yet
-            <span style={{ fontSize: '12px', fontWeight: 400, color: '#aaa', marginLeft: '6px' }}>({noSubmissionStudents.length})</span>
+            {submittedInCourseIds.size > 0 && (
+              <span style={{ fontSize: '12px', fontWeight: 400, color: '#aaa', marginLeft: '6px' }}>({noSubmissionStudents.length})</span>
+            )}
           </div>
-          {noSubmissionStudents.length === 0
-            ? <div style={{ fontSize: '12px', color: '#aaa' }}>All students have submitted at least once.</div>
-            : noSubmissionStudents.slice(0, 6).map(s => (
-                <div key={s.id} style={{ fontSize: '12px', color: '#555', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#E5E5E5', flexShrink: 0 }} />
-                  {s.full_name}
-                </div>
-              ))
+          {submittedInCourseIds.size === 0
+            ? <div style={{ fontSize: '12px', color: '#aaa' }}>No submissions recorded for this course yet.</div>
+            : noSubmissionStudents.length === 0
+              ? <div style={{ fontSize: '12px', color: '#aaa' }}>All students have submitted at least once.</div>
+              : (
+                <>
+                  {noSubmissionStudents.slice(0, 6).map(s => (
+                    <div key={s.id} style={{ fontSize: '12px', color: '#555', marginBottom: '5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#E5E5E5', flexShrink: 0 }} />
+                      {s.full_name}
+                    </div>
+                  ))}
+                  {noSubmissionStudents.length > 6 && (
+                    <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>+{noSubmissionStudents.length - 6} more</div>
+                  )}
+                </>
+              )
           }
-          {noSubmissionStudents.length > 6 && (
-            <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>+{noSubmissionStudents.length - 6} more</div>
-          )}
         </Card>
       </div>
     </div>

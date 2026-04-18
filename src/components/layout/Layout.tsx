@@ -14,6 +14,7 @@ import { Sidebar } from './Sidebar'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import { ChangePasswordModal } from '../ui/ChangePasswordModal'
 import { useNotifications } from '../../hooks/useNotifications'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { useTheme } from '../../contexts/ThemeContext'
 import type { Profile } from '../../types'
 
@@ -48,16 +49,10 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const isMobile = useIsMobile()
   const [announcementBadge, setAnnouncementBadge] = useState(0)
   const location = useLocation()
   const seenKey = `announcements_seen_${profile.id}`
-
-  useEffect(() => {
-    function onResize() { setIsMobile(window.innerWidth < 768) }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
 
   // Compute badge count from DB on mount
   useEffect(() => {
@@ -115,9 +110,10 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
       )}
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        {/* Top bar */}
+        {/* Top bar — fixed on mobile so it stays visible when the browser chrome appears/disappears */}
         <div style={{
           height: '48px', flexShrink: 0,
+          ...(isMobile ? { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30 } : {}),
           background: 'var(--color-topbar)',
           borderBottom: '0.5px solid var(--color-border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -285,7 +281,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
         </div>
 
         {/* Page content */}
-        <main style={{ flex: 1, padding: isMobile ? '1rem' : '1.25rem', overflowY: 'auto', background: 'var(--color-page)' }}>
+        <main style={{ flex: 1, padding: isMobile ? '1rem' : '1.25rem', paddingTop: isMobile ? 'calc(48px + 1rem)' : '1.25rem', overflowY: 'auto', background: 'var(--color-page)' }}>
           {children}
         </main>
       </div>

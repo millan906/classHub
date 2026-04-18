@@ -1,4 +1,4 @@
-import type { GradeGroup, GradeColumn } from '../hooks/useGradeBook'
+import type { GradeGroup, GradeColumn } from '../types'
 
 /** Returns percentage score (0–100), safe for zero-total edge case. */
 export function calcScore(earned: number, total: number): number {

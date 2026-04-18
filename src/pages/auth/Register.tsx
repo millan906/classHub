@@ -2,6 +2,7 @@ import React from 'react'
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { toTitleCase } from '../../utils/nameFormat'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '8px 12px', fontSize: '13px',
@@ -45,7 +46,7 @@ export default function Register() {
       const res = await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ firstName, lastName, email, password, inviteCode }),
+        body: JSON.stringify({ firstName: toTitleCase(firstName), lastName: toTitleCase(lastName), email: email.trim().toLowerCase(), password, inviteCode }),
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error ?? 'Registration failed')

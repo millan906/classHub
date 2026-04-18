@@ -104,7 +104,7 @@ export default function FacultyStudents() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
           <Button onClick={() => setViewingStudent(null)}>← Students</Button>
-          <Avatar initials={getInitials(viewingStudent.full_name)} bg={colors.bg} color={colors.color} />
+          <Avatar initials={getInitials(viewingStudent.full_name)} bg={colors.bg} color={colors.color} seed={viewingStudent.avatar_seed} />
           <div>
             <div style={{ fontSize: '15px', fontWeight: 500 }}>{viewingStudent.full_name}</div>
             <div style={{ fontSize: '12px', color: '#888' }}>{viewingStudent.email}</div>
@@ -407,7 +407,7 @@ function PendingStudentCard({
         border: `0.5px solid ${borderColor}`,
         borderRadius: isExpanded ? '12px 12px 0 0' : '12px',
       }}>
-        <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
+        <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
           <div style={{ fontSize: '12px', color: '#888' }}>{student.email}</div>
@@ -480,7 +480,7 @@ function EnrolledStudentCard({ student, assignedCourses, onClick, onUnenroll }: 
       display: 'flex', alignItems: 'center', gap: '10px',
       cursor: 'pointer',
     }}>
-      <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
+      <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Name + badge + view on one row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

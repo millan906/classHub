@@ -89,7 +89,7 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
       <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>{quiz.title}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
         <Button onClick={onBack}>← Back</Button>
-        <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
+        <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
         <div>
           <div style={{ fontSize: '15px', fontWeight: 500 }}>{student.full_name}</div>
           {submission ? (
@@ -267,7 +267,7 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
                   border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
                   cursor: 'pointer',
                 }}>
-                <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
+                <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
                   {sub ? (

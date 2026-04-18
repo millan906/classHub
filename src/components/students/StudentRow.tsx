@@ -22,7 +22,7 @@ export function StudentRow({ student, onApprove, onReject }: StudentRowProps) {
       border: `0.5px solid ${isPending ? '#EF9F27' : 'rgba(0,0,0,0.12)'}`,
       borderRadius: '12px', marginBottom: '8px',
     }}>
-      <Avatar initials={initials} bg={colors.bg} color={colors.color} />
+      <Avatar initials={initials} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
         <div style={{ fontSize: '12px', color: '#888' }}>{student.email}</div>

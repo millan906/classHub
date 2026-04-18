@@ -124,7 +124,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
     }}>
       {/* Header: avatar + title + status */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '4px' }}>
-        <Avatar initials={initials} bg={colors.bg} color={colors.color} size={28} />
+        <Avatar initials={initials} bg={colors.bg} color={colors.color} size={28} seed={poster?.avatar_seed} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 600 }}>{question.title}</div>
           <div style={{ fontSize: '11px', color: '#888' }}>
@@ -219,7 +219,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
             const isFacultyAnswer = answer.poster?.role === 'faculty'
             return (
               <div key={answer.id} style={{ marginBottom: '8px', display: 'flex', gap: '8px' }}>
-                <Avatar initials={aInitials} bg={isFacultyAnswer ? '#9FE1CB' : aColors.bg} color={isFacultyAnswer ? '#085041' : aColors.color} size={24} />
+                <Avatar initials={aInitials} bg={isFacultyAnswer ? '#9FE1CB' : aColors.bg} color={isFacultyAnswer ? '#085041' : aColors.color} size={24} seed={answer.poster?.avatar_seed} />
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 500 }}>{answer.poster?.full_name ?? 'Unknown'}</span>

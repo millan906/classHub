@@ -4,6 +4,7 @@ import { useGradeBook } from '../../hooks/useGradeBook'
 import { useGradesVisible } from '../../hooks/useSettings'
 import { useMyFinalGrades } from '../../hooks/useFinalGrades'
 import { PageHeader } from '../../components/ui/Card'
+import { Spinner } from '../../components/ui/Spinner'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { percentageToGWA, gwaColor } from '../../utils/gwaConversion'
 
@@ -16,7 +17,6 @@ export default function StudentGrades() {
 
   const myEntries = entries.filter(e => e.student_id === profile?.id)
 
-  // Weighted summary
   const weightedRows = groups.map(g => {
     const cols = columns.filter(c => c.group_id === g.id)
     const graded = cols.filter(c => myEntries.some(e => e.column_id === c.id && e.score !== null))
@@ -33,6 +33,7 @@ export default function StudentGrades() {
   const hasAnyGrade = weightedRows.some(r => r.weighted !== null)
   const finalGrade = weightedRows.reduce((sum, r) => sum + (r.weighted ?? 0), 0)
   const totalWeight = weightedRows.filter(r => r.weighted !== null).reduce((sum, r) => sum + r.group.weight_percent, 0)
+  const gwa = hasAnyGrade ? percentageToGWA(finalGrade) : null
 
   const activeGroup = selectedGroupId
     ? groups.find(g => g.id === selectedGroupId)
@@ -44,50 +45,53 @@ export default function StudentGrades() {
 
   const detailCols = activeGroup ? columns.filter(c => c.group_id === activeGroup.id) : []
 
-  if (loading || settingsLoading) return null
+  if (loading || settingsLoading) return <Spinner />
 
   return (
     <div>
-      <PageHeader title="My Grades" subtitle="Your grade breakdown by component." />
+      <PageHeader title="My Grades" />
 
-      {/* Final Grades — always visible when published */}
+      {/* Published final grades */}
       {finalGrades.length > 0 && (
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-            Final Grades
+          <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px' }}>
+            Official Final Grades
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {finalGrades.map(fg => {
               const courseGrade = fg.midterm_grade != null && fg.grade != null
                 ? (fg.midterm_grade + fg.grade) / 2
                 : fg.grade ?? fg.midterm_grade ?? null
-              const gwa = courseGrade != null ? percentageToGWA(courseGrade) : '—'
-              const color = courseGrade != null ? gwaColor(gwa) : '#ccc'
-              const rows = [
-                { label: 'Midterm Grade', value: fg.midterm_grade },
-                { label: 'Final Grade', value: fg.grade },
-                { label: 'Course Grade', value: courseGrade, bold: true },
-              ]
+              const fgGwa = courseGrade != null ? percentageToGWA(courseGrade) : '—'
+              const fgColor = courseGrade != null ? gwaColor(fgGwa) : '#ccc'
               return (
-                <div key={fg.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.1)', padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div key={fg.id} style={{ background: '#fff', borderRadius: '12px', border: '0.5px solid rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.07)' }}>
                     <div style={{ fontSize: '14px', fontWeight: 600 }}>{fg.course_name}</div>
-                    <div style={{ fontSize: '11px', color: '#aaa' }}>GWA: <span style={{ fontSize: '15px', fontWeight: 700, color }}>{gwa}</span></div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '22px', fontWeight: 700, color: fgColor, lineHeight: 1 }}>{fgGwa}</div>
+                      <div style={{ fontSize: '10px', color: '#aaa', marginTop: '1px' }}>GWA</div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                    {rows.map(({ label, value, bold }, i) => (
-                      <div key={label} style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        padding: '8px 0',
-                        borderTop: i > 0 ? '0.5px solid #F1EFE8' : undefined,
-                      }}>
-                        <span style={{ fontSize: '13px', color: bold ? '#333' : '#666', fontWeight: bold ? 600 : 400 }}>{label}</span>
-                        <span style={{ fontSize: '13px', fontWeight: bold ? 700 : 500, color: value != null ? (bold ? color : '#444') : '#ccc' }}>
-                          {value != null ? `${value.toFixed(1)}%` : '—'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  {/* Rows */}
+                  {[
+                    { label: 'Midterm Grade', value: fg.midterm_grade },
+                    { label: 'Final Grade', value: fg.grade },
+                    { label: 'Course Grade', value: courseGrade, bold: true },
+                  ].map(({ label, value, bold }, i) => (
+                    <div key={label} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '9px 16px',
+                      borderTop: i > 0 ? '0.5px solid rgba(0,0,0,0.06)' : undefined,
+                      background: bold ? '#FAFAF8' : undefined,
+                    }}>
+                      <span style={{ fontSize: '13px', color: bold ? '#333' : '#666', fontWeight: bold ? 600 : 400 }}>{label}</span>
+                      <span style={{ fontSize: '13px', fontWeight: bold ? 700 : 500, color: value != null ? (bold ? fgColor : '#444') : '#ccc' }}>
+                        {value != null ? `${value.toFixed(1)}%` : '—'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )
             })}
@@ -95,100 +99,137 @@ export default function StudentGrades() {
         </div>
       )}
 
-      {/* Detailed gradebook — gated by faculty visibility toggle */}
+      {/* Detailed gradebook */}
       {!gradesVisible ? (
-        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '2rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔒</div>
-          <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>Detailed grades not yet published</div>
+        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '2.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '28px', marginBottom: '10px' }}>🔒</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>Grades not yet published</div>
           <div style={{ fontSize: '12px', color: '#888' }}>Your professor hasn't released the grade breakdown yet.</div>
         </div>
       ) : groups.length === 0 || !hasAnyGrade ? (
-        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '2rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', marginBottom: '8px' }}>📋</div>
-          <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>No detailed grades yet</div>
+        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '2.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '28px', marginBottom: '10px' }}>📋</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '4px' }}>No grades yet</div>
           <div style={{ fontSize: '12px', color: '#888' }}>Your professor hasn't posted any grades yet.</div>
         </div>
       ) : (
         <>
-          {/* Weighted summary table */}
-          <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '14px 16px', marginBottom: '12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-              Weighted Grade Summary
+          {/* Grade summary card */}
+          <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' }}>
+            {/* Hero: current grade */}
+            <div style={{ padding: '20px 20px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '0.5px solid rgba(0,0,0,0.07)' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                  Running Grade
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  <span style={{ fontSize: '38px', fontWeight: 700, color: scoreBarColor(Math.round(finalGrade)), lineHeight: 1 }}>
+                    {finalGrade.toFixed(1)}
+                  </span>
+                  <span style={{ fontSize: '16px', color: '#aaa', fontWeight: 400 }}>%</span>
+                </div>
+                {totalWeight < 100 && (
+                  <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>{totalWeight}% of total weight graded</div>
+                )}
+              </div>
+              {gwa && (
+                <div style={{ textAlign: 'center', background: '#FAFAF8', borderRadius: '12px', padding: '12px 18px', border: '0.5px solid rgba(0,0,0,0.07)' }}>
+                  <div style={{ fontSize: '28px', fontWeight: 700, color: gwaColor(gwa), lineHeight: 1 }}>{gwa}</div>
+                  <div style={{ fontSize: '10px', color: '#aaa', fontWeight: 500, marginTop: '3px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>GWA</div>
+                </div>
+              )}
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr>
-                    {['Component', 'Weight', 'Items Graded', 'Score', 'Weighted'].map(h => (
-                      <th key={h} style={{ background: '#F1EFE8', padding: '7px 12px', textAlign: 'left', border: '0.5px solid #ddd', fontWeight: 600, fontSize: '12px', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {weightedRows.map(({ group, rawPct, weighted, graded, total }) => (
-                    <tr
-                      key={group.id}
-                      onClick={() => setSelectedGroupId(group.id)}
-                      style={{ cursor: 'pointer', background: selectedGroupId === group.id ? '#F6FFF9' : undefined }}
-                    >
-                      <td style={{ padding: '7px 12px', border: '0.5px solid #eee', fontWeight: 500 }}>{group.name}</td>
-                      <td style={{ padding: '7px 12px', border: '0.5px solid #eee', color: '#888' }}>{group.weight_percent}%</td>
-                      <td style={{ padding: '7px 12px', border: '0.5px solid #eee', color: '#888' }}>{graded} / {total}</td>
-                      <td style={{ padding: '7px 12px', border: '0.5px solid #eee', color: rawPct !== null ? scoreBarColor(Math.round(rawPct)) : '#bbb', fontWeight: rawPct !== null ? 600 : 400 }}>
-                        {rawPct !== null ? `${rawPct.toFixed(1)}%` : '—'}
-                      </td>
-                      <td style={{ padding: '7px 12px', border: '0.5px solid #eee', fontWeight: 600, color: weighted !== null ? scoreBarColor(Math.round((weighted / group.weight_percent) * 100)) : '#bbb' }}>
-                        {weighted !== null ? weighted.toFixed(2) : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                  <tr>
-                    <td colSpan={3} style={{ padding: '7px 12px', border: '0.5px solid #eee', fontWeight: 700, background: '#F9F9F7' }}>
-                      Final Grade
-                      {totalWeight < 100 && <span style={{ fontSize: '10px', color: '#aaa', fontWeight: 400, marginLeft: '6px' }}>({totalWeight}% of total weight graded)</span>}
-                    </td>
-                    <td style={{ padding: '7px 12px', border: '0.5px solid #eee', background: '#F9F9F7' }} />
-                    <td style={{ padding: '7px 12px', border: '0.5px solid #eee', fontWeight: 700, fontSize: '14px', background: '#F9F9F7', color: scoreBarColor(Math.round(finalGrade)) }}>
-                      {finalGrade.toFixed(2)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+
+            {/* Component rows */}
+            <div>
+              {weightedRows.map(({ group, rawPct, weighted, graded, total }, i) => (
+                <div
+                  key={group.id}
+                  onClick={() => setSelectedGroupId(group.id)}
+                  style={{
+                    padding: '12px 20px',
+                    borderTop: i > 0 ? '0.5px solid rgba(0,0,0,0.06)' : undefined,
+                    cursor: 'pointer',
+                    background: selectedGroupId === group.id ? '#F6FFF9' : undefined,
+                    display: 'flex', alignItems: 'center', gap: '14px',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  {/* Left: name + bar */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1a' }}>{group.name}</span>
+                      <span style={{ fontSize: '10px', color: '#aaa', background: '#F1EFE8', padding: '1px 6px', borderRadius: '999px' }}>
+                        {group.weight_percent}%
+                      </span>
+                      {graded < total && (
+                        <span style={{ fontSize: '10px', color: '#aaa' }}>{graded}/{total} graded</span>
+                      )}
+                    </div>
+                    <div style={{ height: '5px', background: '#F1EFE8', borderRadius: '999px' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${rawPct ?? 0}%`,
+                        background: rawPct !== null ? scoreBarColor(Math.round(rawPct)) : '#F1EFE8',
+                        borderRadius: '999px',
+                        transition: 'width 0.4s',
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Right: score + weighted */}
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: rawPct !== null ? scoreBarColor(Math.round(rawPct)) : '#ccc' }}>
+                      {rawPct !== null ? `${rawPct.toFixed(1)}%` : '—'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#aaa' }}>
+                      {weighted !== null ? `${weighted.toFixed(2)} pts` : '—'}
+                    </div>
+                  </div>
+
+                  <span style={{ fontSize: '12px', color: '#ccc', flexShrink: 0 }}>›</span>
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: '11px', color: '#bbb', marginTop: '6px' }}>Click a row to view individual scores below.</div>
           </div>
 
           {/* Per-component detail */}
           {activeGroup && detailCols.length > 0 && (
-            <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '14px 16px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-                {activeGroup.name} — Individual Scores
-              </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+            <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+              {/* Group tabs */}
+              <div style={{ display: 'flex', gap: '4px', padding: '10px 12px', borderBottom: '0.5px solid rgba(0,0,0,0.07)', overflowX: 'auto' }}>
                 {groups.map(g => (
                   <button key={g.id} onClick={() => setSelectedGroupId(g.id)} style={{
-                    padding: '4px 12px', fontSize: '12px', borderRadius: '999px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                    border: '0.5px solid', borderColor: selectedGroupId === g.id ? '#1D9E75' : 'rgba(0,0,0,0.15)',
-                    background: selectedGroupId === g.id ? '#E1F5EE' : 'transparent',
-                    color: selectedGroupId === g.id ? '#0F6E56' : '#555',
+                    padding: '5px 14px', fontSize: '12px', borderRadius: '999px', cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif', border: 'none', flexShrink: 0,
+                    background: selectedGroupId === g.id ? '#1D9E75' : '#F1EFE8',
+                    color: selectedGroupId === g.id ? '#fff' : '#555',
                     fontWeight: selectedGroupId === g.id ? 600 : 400,
                   }}>
                     {g.name}
                   </button>
                 ))}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {detailCols.map(col => {
+
+              {/* Score rows */}
+              <div style={{ padding: '4px 0' }}>
+                {detailCols.map((col, i) => {
                   const entry = myEntries.find(e => e.column_id === col.id)
                   const score = entry?.score ?? null
                   const pct = score !== null && col.max_score > 0 ? Math.round((score / col.max_score) * 100) : null
                   const color = scoreBarColor(pct)
                   return (
-                    <div key={col.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', background: '#FAFAF8', borderRadius: '9px', border: '0.5px solid rgba(0,0,0,0.07)' }}>
+                    <div key={col.id} style={{
+                      display: 'flex', alignItems: 'center', gap: '14px',
+                      padding: '11px 20px',
+                      borderTop: i > 0 ? '0.5px solid rgba(0,0,0,0.06)' : undefined,
+                    }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{col.title}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {col.title}
+                        </div>
                         <div style={{ height: '4px', background: '#F1EFE8', borderRadius: '999px' }}>
-                          <div style={{ height: '100%', width: `${pct ?? 0}%`, background: color, borderRadius: '999px', transition: 'width 0.3s' }} />
+                          <div style={{ height: '100%', width: `${pct ?? 0}%`, background: pct !== null ? color : '#F1EFE8', borderRadius: '999px', transition: 'width 0.3s' }} />
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>

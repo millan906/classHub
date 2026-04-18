@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { computeWeightedGrade } from '../gradeCalculations'
-import type { GradeGroup, GradeColumn } from '../../hooks/useGradeBook'
+import { calcScore, computeWeightedGrade } from '../gradeCalculations'
+import type { GradeGroup, GradeColumn } from '../../types'
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -25,7 +25,34 @@ function makeCol(id: string, groupId: string, maxScore: number): GradeColumn {
 const quizCol = makeCol('col-q1', 'g-quiz', 100)
 const labCol  = makeCol('col-lab', 'g-lab', 50)
 
-// ─── Tests ───────────────────────────────────────────────────────────────────
+// ─── calcScore ────────────────────────────────────────────────────────────────
+
+describe('calcScore', () => {
+  it('returns correct percentage', () => {
+    expect(calcScore(80, 100)).toBe(80)
+    expect(calcScore(45, 50)).toBe(90)
+  })
+
+  it('rounds to nearest integer', () => {
+    expect(calcScore(1, 3)).toBe(33) // 33.33...
+    expect(calcScore(2, 3)).toBe(67) // 66.66...
+  })
+
+  it('returns 0 when total is 0 (no division by zero)', () => {
+    expect(calcScore(0, 0)).toBe(0)
+    expect(calcScore(10, 0)).toBe(0)
+  })
+
+  it('returns 0 for zero earned', () => {
+    expect(calcScore(0, 100)).toBe(0)
+  })
+
+  it('handles perfect score', () => {
+    expect(calcScore(100, 100)).toBe(100)
+  })
+})
+
+// ─── computeWeightedGrade ─────────────────────────────────────────────────────
 
 describe('computeWeightedGrade', () => {
   it('returns null when student has no scores at all', () => {
@@ -52,9 +79,7 @@ describe('computeWeightedGrade', () => {
   })
 
   it('computes combined weighted grade correctly', () => {
-    // quiz: 80/100 = 80% × 40 = 32
-    // lab:  40/50  = 80% × 60 = 48
-    // total = 80
+    // quiz: 80/100 = 80% × 40 = 32 · lab: 40/50 = 80% × 60 = 48 · total = 80
     const result = computeWeightedGrade(
       'stu1', [quizzesGroup, labGroup], [quizCol, labCol],
       (_sid, col) => col.id === 'col-q1' ? 80 : col.id === 'col-lab' ? 40 : null,
@@ -73,17 +98,16 @@ describe('computeWeightedGrade', () => {
   })
 
   it('ignores a group that has no columns', () => {
+    // lab: 50/50 = 100% × 60 = 60
     const result = computeWeightedGrade(
       'stu1', [quizzesGroup, labGroup], [labCol],
       (_sid, col) => col.id === 'col-lab' ? 50 : null,
     )
-    // lab: 50/50 = 100% × 60 = 60
     expect(result).toBe(60)
   })
 
   it('ignores a group if no scores are present for it', () => {
-    // quiz has scores, lab has none → only quiz contributes
-    // quiz: 80/100 = 80% × 40 = 32
+    // quiz: 80/100 = 80% × 40 = 32; lab has no scores → not counted
     const result = computeWeightedGrade(
       'stu1', [quizzesGroup, labGroup], [quizCol, labCol],
       (_sid, col) => col.id === 'col-q1' ? 80 : null,
@@ -92,11 +116,21 @@ describe('computeWeightedGrade', () => {
   })
 
   it('rounds result to nearest integer', () => {
-    // 1/3 = 33.33% × 40 = 13.33 → rounds to 13
+    // 33/100 = 33% × 40 = 13.2 → rounds to 13
     const result = computeWeightedGrade(
       'stu1', [quizzesGroup], [quizCol],
-      () => 33,  // 33/100
+      () => 33,
     )
     expect(result).toBe(13)
+  })
+
+  it('handles zero score (0 earned) without returning null', () => {
+    // Student scored 0 — has an entry, should return 0 not null
+    const result = computeWeightedGrade(
+      'stu1', [quizzesGroup], [quizCol],
+      () => 0,
+    )
+    // 0/100 × 40 = 0 — but possible = 100 > 0, so hasAny = true
+    expect(result).toBe(0)
   })
 })

@@ -67,11 +67,6 @@ export function Sidebar({ profile, onNavigate }: SidebarProps) {
           </SidebarGroup>
         )}
 
-        {!isFaculty && (
-          <SidebarGroup label="Account">
-            <SidebarItem icon="👤" text="Profile" path="/student/profile" isActive={isActive('/student/profile')} navigate={go} />
-          </SidebarGroup>
-        )}
       </div>
     </div>
   )

@@ -277,6 +277,40 @@ export interface PdfQuizFormData {
   }[]
 }
 
+// ── Gradebook ─────────────────────────────────────────────────────────────────
+
+export interface GradeGroup {
+  id: string
+  name: string
+  weight_percent: number
+  created_by: string
+  created_at: string
+  course_id?: string | null
+}
+
+export interface GradeColumn {
+  id: string
+  title: string
+  category: string | null
+  max_score: number
+  group_id: string
+  entry_type: 'manual' | 'quiz_linked'
+  linked_quiz_id: string | null
+  description: string | null
+  created_by: string
+  created_at: string
+  course_id?: string | null
+}
+
+export interface GradeEntry {
+  id: string
+  column_id: string
+  student_id: string
+  score: number | null
+}
+
+// ── Attendance ────────────────────────────────────────────────────────────────
+
 export type AttendanceStatus = 'present' | 'late' | 'absent' | 'excused'
 
 export interface AttendanceSession {

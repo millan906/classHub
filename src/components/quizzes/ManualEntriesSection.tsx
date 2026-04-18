@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import { inputStyle } from '../../styles/shared'
-import type { GradeGroup, GradeColumn, GradeEntry } from '../../hooks/useGradeBook'
+import { scoreBarColor } from '../../utils/scoreColors'
+import type { GradeGroup, GradeColumn, GradeEntry } from '../../types'
 import type { Profile } from '../../types'
 
 interface ManualEntriesSectionProps {
@@ -95,7 +96,7 @@ export function ManualEntriesSection({ columns, groups, enrolled, entries, onSav
 // ─── ManualScoreRow ───────────────────────────────────────────────────────────
 
 interface ManualScoreRowProps {
-  student: Pick<Profile, 'id' | 'full_name'>
+  student: Pick<Profile, 'id' | 'full_name' | 'avatar_seed'>
   colors: { bg: string; color: string }
   maxScore: number
   currentScore: number | null
@@ -119,11 +120,11 @@ function ManualScoreRow({ student, colors, maxScore, currentScore, onSave }: Man
   }
 
   const pct = currentScore !== null ? Math.round((currentScore / maxScore) * 100) : null
-  const barColor = pct === null ? '#E5E5E5' : pct >= 75 ? '#1D9E75' : pct >= 50 ? '#F59E0B' : '#EF4444'
+  const barColor = scoreBarColor(pct)
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 0', borderBottom: '0.5px solid rgba(0,0,0,0.06)' }}>
-      <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
+      <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
         {pct !== null && (

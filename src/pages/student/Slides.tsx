@@ -4,6 +4,7 @@ import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useSlides } from '../../hooks/useSlides'
 import { useCourses } from '../../hooks/useCourses'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { PageHeader } from '../../components/ui/Card'
 import { SlideGrid } from '../../components/slides/SlideGrid'
 import { Spinner, PageError } from '../../components/ui/Spinner'
@@ -15,6 +16,7 @@ export default function StudentSlides() {
   const { slides, loading, error, getDownloadUrl, refetch } = useSlides(institution?.id)
   const { courses } = useCourses()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
+  const isMobile = useIsMobile()
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')
 
   const enrolledCourses = courses.filter(c => enrolledCourseIds.includes(c.id))
@@ -51,7 +53,8 @@ export default function StudentSlides() {
           style={{
             padding: '7px 11px', fontSize: '13px', borderRadius: '8px',
             border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
-            fontFamily: 'Inter, sans-serif', outline: 'none', minWidth: '200px',
+            fontFamily: 'Inter, sans-serif', outline: 'none',
+            width: isMobile ? '100%' : 'auto', minWidth: isMobile ? undefined : '200px',
           }}
         >
           <option value="">All courses</option>

@@ -118,7 +118,7 @@ export function IntegrityReport({ quizId, enrolledStudents, submissions }: Integ
                 width: '8px', height: '8px', borderRadius: '50%',
                 background: dot, flexShrink: 0,
               }} />
-              <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} />
+              <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
                 <div style={{ fontSize: '12px', color: '#888' }}>
@@ -203,7 +203,7 @@ export function IntegrityReport({ quizId, enrolledStudents, submissions }: Integ
                 borderRadius: '12px', padding: '10px 12px', marginBottom: '8px',
                 display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.6,
               }}>
-                <Avatar initials={getInitials(s.full_name)} bg={colors.bg} color={colors.color} />
+                <Avatar initials={getInitials(s.full_name)} bg={colors.bg} color={colors.color} seed={s.avatar_seed} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: 500 }}>{s.full_name}</div>
                   <div style={{ fontSize: '12px', color: '#888' }}>No submission</div>

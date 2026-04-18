@@ -6,6 +6,7 @@ import { useIntegrityLogs } from '../../hooks/useIntegrityLogs'
 import { useGradeBook } from '../../hooks/useGradeBook'
 import { useCourses } from '../../hooks/useCourses'
 import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { TYPE_ORDER } from '../../constants/itemTypes'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { PageHeader } from '../../components/ui/Card'
@@ -24,6 +25,7 @@ export default function StudentQuizzes() {
   const { logEvent } = useIntegrityLogs()
   const { groups, columns, entries } = useGradeBook()
   const { courses } = useCourses()
+  const isMobile = useIsMobile()
   const [takingQuiz, setTakingQuiz] = useState<Quiz | null>(null)
   const [takingPdfQuiz, setTakingPdfQuiz] = useState<PdfQuiz | null>(null)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
@@ -92,7 +94,7 @@ export default function StudentQuizzes() {
         <select
           value={filterCourseId}
           onChange={e => setFilterCourseId(e.target.value)}
-          style={{ fontSize: '13px', padding: '6px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}
+          style={{ fontSize: '13px', padding: '8px 12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer', fontFamily: 'Inter, sans-serif', width: isMobile ? '100%' : 'auto', minWidth: isMobile ? undefined : '200px' }}
         >
           <option value="all">All Courses</option>
           <option value="none">No Course</option>

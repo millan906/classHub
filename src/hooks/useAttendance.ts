@@ -14,10 +14,15 @@ export function useAttendance(courseId: string | null) {
 
   async function fetchAll(cId: string) {
     setLoading(true)
-    const [sessRes, recRes] = await Promise.all([
-      supabase.from('attendance_sessions').select('*').eq('course_id', cId).order('date', { ascending: false }),
-      supabase.from('attendance_records').select('*'),
-    ])
+    const sessRes = await supabase
+      .from('attendance_sessions')
+      .select('*')
+      .eq('course_id', cId)
+      .order('date', { ascending: false })
+    const sessionIds = (sessRes.data || []).map((s: { id: string }) => s.id)
+    const recRes = sessionIds.length > 0
+      ? await supabase.from('attendance_records').select('*').in('session_id', sessionIds)
+      : { data: [] }
     setSessions(sessRes.data || [])
     setRecords(recRes.data || [])
     setLoading(false)
