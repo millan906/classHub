@@ -87,7 +87,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
   function handleNavigate() { if (isMobile) setSidebarOpen(false) }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--color-page)' }}>
+    <div style={{ display: 'flex', height: '100dvh', background: 'var(--color-page)' }}>
 
       {/* Sidebar — always visible on desktop, overlay on mobile */}
       {!isMobile && <Sidebar profile={profile} onNavigate={handleNavigate} />}
@@ -113,7 +113,6 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
         {/* Top bar — fixed on mobile so it stays visible when the browser chrome appears/disappears */}
         <div style={{
           height: '48px', flexShrink: 0,
-          ...(isMobile ? { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 30 } : {}),
           background: 'var(--color-topbar)',
           borderBottom: '0.5px solid var(--color-border)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -281,7 +280,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
         </div>
 
         {/* Page content */}
-        <main style={{ flex: 1, padding: isMobile ? '1rem' : '1.25rem', paddingTop: isMobile ? 'calc(48px + 1rem)' : '1.25rem', overflowY: 'auto', background: 'var(--color-page)' }}>
+        <main style={{ flex: 1, padding: isMobile ? '1rem' : '1.25rem', overflowY: 'auto', background: 'var(--color-page)' }}>
           {children}
         </main>
       </div>
