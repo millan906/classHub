@@ -42,7 +42,7 @@ export default function StudentProfile() {
     await supabase.from('profiles').update({ avatar_seed: seed }).eq('id', profile.id)
     refetchProfile?.()
     setAvatarSaved(true)
-    setTimeout(() => setAvatarSaved(false), 1800)
+    setTimeout(() => navigate(-1), 900)
   }
 
   function handleDarkToggle() {
