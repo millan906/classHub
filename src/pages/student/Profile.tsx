@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useTheme } from '../../contexts/ThemeContext'
 import { AvatarPicker } from '../../components/ui/AvatarPicker'
@@ -31,15 +33,31 @@ function ToggleSwitch({ value, onChange }: { value: boolean; onChange: () => voi
 export default function StudentProfile() {
   const { profile, refetchProfile } = useAuth()
   const { isDark, toggle } = useTheme()
+  const navigate = useNavigate()
+  const [darkSaved, setDarkSaved] = useState(false)
 
   async function saveAvatar(seed: string | null) {
     if (!profile) return
     await supabase.from('profiles').update({ avatar_seed: seed }).eq('id', profile.id)
     refetchProfile?.()
+    navigate(-1)
+  }
+
+  function handleDarkToggle() {
+    toggle()
+    setDarkSaved(true)
+    setTimeout(() => setDarkSaved(false), 1800)
   }
 
   return (
     <div>
+      <button
+        onClick={() => navigate(-1)}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#555', marginBottom: '12px', padding: '4px 0', display: 'flex', alignItems: 'center', gap: '4px' }}
+      >
+        ← Back
+      </button>
+
       <PageHeader title="Profile" subtitle="Manage your avatar and preferences." />
 
       {/* Avatar */}
@@ -58,12 +76,15 @@ export default function StudentProfile() {
         <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '14px' }}>
           Appearance
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '2px' }}>Dark mode</div>
             <div style={{ fontSize: '12px', color: '#888', lineHeight: 1.5 }}>Switch between light and dark theme.</div>
           </div>
-          <ToggleSwitch value={isDark} onChange={toggle} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {darkSaved && <span style={{ fontSize: '11px', color: '#1D9E75' }}>Saved</span>}
+            <ToggleSwitch value={isDark} onChange={handleDarkToggle} />
+          </div>
         </div>
       </div>
     </div>
