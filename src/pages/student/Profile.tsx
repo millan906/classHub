@@ -35,12 +35,14 @@ export default function StudentProfile() {
   const { isDark, toggle } = useTheme()
   const navigate = useNavigate()
   const [darkSaved, setDarkSaved] = useState(false)
+  const [avatarSaved, setAvatarSaved] = useState(false)
 
   async function saveAvatar(seed: string | null) {
     if (!profile) return
     await supabase.from('profiles').update({ avatar_seed: seed }).eq('id', profile.id)
     refetchProfile?.()
-    navigate(-1)
+    setAvatarSaved(true)
+    setTimeout(() => setAvatarSaved(false), 1800)
   }
 
   function handleDarkToggle() {
@@ -66,6 +68,9 @@ export default function StudentProfile() {
         borderRadius: '12px', padding: '16px 20px', marginBottom: '12px',
       }}>
         <AvatarPicker currentSeed={profile?.avatar_seed ?? null} onSave={saveAvatar} />
+        {avatarSaved && (
+          <div style={{ marginTop: '10px', fontSize: '12px', color: '#1D9E75', fontWeight: 500 }}>✓ Avatar saved</div>
+        )}
       </div>
 
       {/* Appearance */}
