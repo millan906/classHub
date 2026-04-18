@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useSettings } from '../../hooks/useSettings'
 import { PageHeader } from '../../components/ui/Card'
@@ -9,10 +10,20 @@ export default function FacultySettings() {
   const { profile, refetchProfile } = useAuth()
   const { settings, loading, updateSettings } = useSettings(profile?.id ?? null)
   const { isDark, toggle } = useTheme()
+  const [avatarSaved, setAvatarSaved] = useState(false)
+  const [darkSaved, setDarkSaved] = useState(false)
 
   async function saveAvatar(seed: string | null) {
     await supabase.from('profiles').update({ avatar_seed: seed }).eq('id', profile!.id)
     refetchProfile?.()
+    setAvatarSaved(true)
+    setTimeout(() => setAvatarSaved(false), 1800)
+  }
+
+  function handleDarkToggle() {
+    toggle()
+    setDarkSaved(true)
+    setTimeout(() => setDarkSaved(false), 1800)
   }
 
   if (loading) return null
@@ -24,6 +35,9 @@ export default function FacultySettings() {
       {/* Avatar section */}
       <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '16px 20px', marginBottom: '12px' }}>
         <AvatarPicker currentSeed={profile?.avatar_seed ?? null} onSave={saveAvatar} />
+        {avatarSaved && (
+          <div style={{ marginTop: '10px', fontSize: '12px', color: '#1D9E75', fontWeight: 500 }}>✓ Avatar saved</div>
+        )}
       </div>
 
       {/* Appearance section */}
@@ -35,7 +49,8 @@ export default function FacultySettings() {
           title="Dark mode"
           description="Switch between light and dark theme."
           value={isDark}
-          onChange={toggle}
+          onChange={handleDarkToggle}
+          saved={darkSaved}
         />
       </div>
 
@@ -55,12 +70,13 @@ export default function FacultySettings() {
   )
 }
 
-function SettingRow({ title, description, value, onChange, hint }: {
+function SettingRow({ title, description, value, onChange, hint, saved }: {
   title: string
   description: string
   value: boolean
   onChange: (v: boolean) => void
   hint?: string
+  saved?: boolean
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
@@ -68,6 +84,9 @@ function SettingRow({ title, description, value, onChange, hint }: {
         <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '2px' }}>{title}</div>
         <div style={{ fontSize: '12px', color: '#888', lineHeight: 1.5 }}>{description}</div>
         {hint && <div style={{ fontSize: '11px', color: '#C87000', marginTop: '3px' }}>⚠ {hint}</div>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+        {saved && <span style={{ fontSize: '11px', color: '#1D9E75' }}>Saved</span>}
       </div>
       <button
         onClick={() => onChange(!value)}
