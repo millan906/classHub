@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'

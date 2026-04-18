@@ -71,7 +71,7 @@ export function PdfQuizScanner({ quizTitle, objectiveQuestions, onConfirm, onCan
 
       setAnswers(full)
       setStep('review')
-    } catch (err) {
+    } catch {
       setError('OCR failed. Try a clearer photo.')
       setStep('upload')
     }

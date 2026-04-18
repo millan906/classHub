@@ -14,7 +14,7 @@ export function useStudents(institutionId?: string | null) {
         .select('user_id')
         .eq('institution_id', institutionId)
         .eq('role', 'student')
-      const memberIds = (members || []).map((m: any) => m.user_id)
+      const memberIds = (members || []).map((m: { user_id: string }) => m.user_id)
 
       // Also get profiles with institution_id set (pending students who joined)
       const { data: byInst } = await supabase

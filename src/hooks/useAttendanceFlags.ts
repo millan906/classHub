@@ -19,11 +19,6 @@ export interface AttendanceFlag {
 export function useAttendanceFlags(courseId: string | null) {
   const [flags, setFlags] = useState<AttendanceFlag[]>([])
 
-  useEffect(() => {
-    if (!courseId) { setFlags([]); return }
-    fetchFlags(courseId)
-  }, [courseId])
-
   async function fetchFlags(cId: string) {
     const { data } = await supabase
       .from('attendance_flags')
@@ -31,6 +26,12 @@ export function useAttendanceFlags(courseId: string | null) {
       .eq('course_id', cId)
     setFlags((data || []) as AttendanceFlag[])
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!courseId) { setFlags([]); return }
+    fetchFlags(courseId)
+  }, [courseId])
 
   async function upsertFlag(cId: string, studentId: string, flagType: FlagType) {
     // Only insert if not already present (ignoreDuplicates)

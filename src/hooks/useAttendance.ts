@@ -7,11 +7,6 @@ export function useAttendance(courseId: string | null) {
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (courseId) fetchAll(courseId)
-    else setLoading(false)
-  }, [courseId])
-
   async function fetchAll(cId: string) {
     setLoading(true)
     const sessRes = await supabase
@@ -27,6 +22,12 @@ export function useAttendance(courseId: string | null) {
     setRecords(recRes.data || [])
     setLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (courseId) fetchAll(courseId)
+    else setLoading(false)
+  }, [courseId])
 
   async function createSession(courseId: string, label: string, date: string, userId: string) {
     const { data, error } = await supabase.from('attendance_sessions').insert({
@@ -75,11 +76,6 @@ export function useMyAttendance(studentId: string | null) {
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (studentId) fetchMine(studentId)
-    else setLoading(false)
-  }, [studentId])
-
   async function fetchMine(sId: string) {
     setLoading(true)
     const { data: recs } = await supabase.from('attendance_records').select('*').eq('student_id', sId)
@@ -93,6 +89,12 @@ export function useMyAttendance(studentId: string | null) {
     setSessions(sessData)
     setLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (studentId) fetchMine(studentId)
+    else setLoading(false)
+  }, [studentId])
 
   return { sessions, records, loading }
 }

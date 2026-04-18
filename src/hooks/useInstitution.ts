@@ -22,11 +22,6 @@ export function useInstitution(userId: string | null) {
   const [membership, setMembership] = useState<InstitutionMember | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (userId) fetchInstitution(userId)
-    else setLoading(false)
-  }, [userId])
-
   async function fetchInstitution(uid: string) {
     setLoading(true)
     // Get membership
@@ -49,6 +44,12 @@ export function useInstitution(userId: string | null) {
     setInstitution(inst)
     setLoading(false)
   }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (userId) fetchInstitution(userId)
+    else setLoading(false)
+  }, [userId])
 
   async function createInstitution(name: string, slug: string, userId: string): Promise<Institution> {
     // Check slug is unique
