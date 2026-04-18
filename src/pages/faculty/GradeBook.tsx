@@ -521,39 +521,17 @@ export default function FacultyGradeBook() {
 
       {/* Course selector */}
       {courses.length > 0 && (
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
-          <button
-            onClick={() => setSelectedCourseId(null)}
-            style={{
-              padding: '5px 14px', fontSize: '12px', borderRadius: '999px', cursor: 'pointer',
-              fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
-              border: selectedCourseId === null ? 'none' : '0.5px solid rgba(0,0,0,0.2)',
-              background: selectedCourseId === null ? '#1D9E75' : 'transparent',
-              color: selectedCourseId === null ? '#fff' : '#555',
-              fontWeight: selectedCourseId === null ? 600 : 400,
-            }}
+        <div style={{ marginBottom: '14px' }}>
+          <select
+            value={selectedCourseId ?? ''}
+            onChange={e => setSelectedCourseId(e.target.value || null)}
+            style={{ fontSize: '13px', padding: '6px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
           >
-            All students
-          </button>
-          {courses.map(c => {
-            const active = selectedCourseId === c.id
-            return (
-              <button
-                key={c.id}
-                onClick={() => setSelectedCourseId(c.id)}
-                style={{
-                  padding: '5px 14px', fontSize: '12px', borderRadius: '999px', cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif', transition: 'all 0.15s',
-                  border: active ? 'none' : '0.5px solid rgba(0,0,0,0.2)',
-                  background: active ? '#1D9E75' : 'transparent',
-                  color: active ? '#fff' : '#555',
-                  fontWeight: active ? 600 : 400,
-                }}
-              >
-                {c.name}{c.section ? ` · ${c.section}` : ''}
-              </button>
-            )
-          })}
+            <option value="">All students</option>
+            {courses.map(c => (
+              <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>
+            ))}
+          </select>
         </div>
       )}
 
