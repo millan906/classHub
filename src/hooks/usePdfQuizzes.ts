@@ -171,15 +171,18 @@ export function usePdfQuizzes() {
 
     // In-app notification
     if (quiz?.course_id) {
-      const { data: enrollments } = await supabase
-        .from('course_enrollments').select('student_id').eq('course_id', quiz.course_id)
+      const [{ data: enrollments }, { data: course }] = await Promise.all([
+        supabase.from('course_enrollments').select('student_id').eq('course_id', quiz.course_id),
+        supabase.from('courses').select('name, section').eq('id', quiz.course_id).single(),
+      ])
       const ids = (enrollments ?? []).map((e: { student_id: string }) => e.student_id).filter(Boolean)
+      const courseName = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
       if (ids.length > 0) {
         await supabase.from('notifications').insert(
           ids.map(uid => ({
             user_id: uid,
             title: `${quiz.title} is now open`,
-            body: 'A quiz is now available. Log in to begin.',
+            body: `Paper assessment is now available${courseName ? ` for ${courseName}` : ''}. Head to Assessments to begin.`,
             type: 'quiz_open',
             related_id: id,
           }))
