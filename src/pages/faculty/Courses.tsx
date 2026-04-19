@@ -634,7 +634,7 @@ function CourseRow({ course, facultyId, courses, onEdit, onDelete, onToggle, onC
 export default function FacultyCourses() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { courses, createCourse, updateCourse, deleteCourse, toggleCourseStatus, uploadResource, deleteResource, getResourceUrl, copyCourseInfo } = useCourses(institution?.id)
+  const { courses, createCourse, updateCourse, deleteCourse, toggleCourseStatus, uploadResource, deleteResource, getResourceUrl, copyCourseInfo } = useCourses(institution?.id, profile?.id)
   const [showForm, setShowForm] = useState(false)
   const [newCourseId] = useState(() => crypto.randomUUID())
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)

@@ -4,26 +4,44 @@ import type { Course, GradingPeriod, CourseScheduleItem, CourseResource, Syllabu
 
 const BUCKET = 'course-resources'
 
-export function useCourses(institutionId?: string | null) {
+export function useCourses(institutionId?: string | null, facultyId?: string | null) {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
 
   async function fetchCourses() {
-    let query = supabase.from('courses').select('*').order('created_at', { ascending: false })
-    if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
-    const { data } = await query
-    setCourses(data || [])
+    if (facultyId) {
+      // Faculty: only courses they're assigned to via course_faculty
+      const { data: assignments } = await supabase
+        .from('course_faculty')
+        .select('course_id')
+        .eq('faculty_id', facultyId)
+      const courseIds = (assignments || []).map((a: { course_id: string }) => a.course_id)
+      if (courseIds.length === 0) { setCourses([]); setLoading(false); return }
+      const { data } = await supabase
+        .from('courses')
+        .select('*')
+        .in('id', courseIds)
+        .order('created_at', { ascending: false })
+      setCourses(data || [])
+    } else {
+      // Students / public: all institution courses
+      let query = supabase.from('courses').select('*').order('created_at', { ascending: false })
+      if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
+      const { data } = await query
+      setCourses(data || [])
+    }
     setLoading(false)
   }
 
   useEffect(() => {
     fetchCourses()
     const channel = supabase
-      .channel('courses-changes')
+      .channel(`courses-changes-${facultyId ?? institutionId ?? 'all'}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, fetchCourses)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'course_faculty' }, fetchCourses)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [institutionId])
+  }, [institutionId, facultyId])
 
   async function createCourse(
     id: string,
@@ -50,6 +68,11 @@ export function useCourses(institutionId?: string | null) {
       ...(institution_id ? { institution_id } : {}),
     })
     if (error) throw error
+    // Auto-assign creator as the teaching faculty for this course
+    await supabase.from('course_faculty').upsert(
+      { course_id: id, faculty_id: userId },
+      { onConflict: 'course_id,faculty_id', ignoreDuplicates: true }
+    )
     await fetchCourses()
   }
 

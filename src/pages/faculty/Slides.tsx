@@ -14,7 +14,7 @@ export default function FacultySlides() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
   const { slides, loading, error, uploadSlide, deleteSlide, getDownloadUrl, refetch } = useSlides(institution?.id)
-  const { courses } = useCourses()
+  const { courses } = useCourses(null, profile?.id)
   const [confirmDelete, setConfirmDelete] = useState<Slide | null>(null)
   const [pageError, setPageError] = useState('')
   const [selectedCourseId, setSelectedCourseId] = useState<string>('')

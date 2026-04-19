@@ -9,8 +9,7 @@ import { percentageToGWA, gwaColor } from '../../utils/gwaConversion'
 
 export default function FacultyFinalGrades() {
   const { profile } = useAuth()
-  const { courses: allCourses } = useCourses()
-  const courses = allCourses.filter(c => c.created_by === profile?.id)
+  const { courses } = useCourses(null, profile?.id)
   const { finalGrades, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse } = useFinalGrades()
   const { students: allStudents } = useStudents()
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)

@@ -28,7 +28,7 @@ export default function FacultyQuizzes() {
   const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz } = useQuizzes()
   const { slides } = useSlides()
   const { students } = useStudents()
-  const { courses } = useCourses()
+  const { courses } = useCourses(null, profile?.id)
   const { enrollments } = useAllEnrollments()
   const { groups, columns, entries, addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn, upsertEntry } = useGradeBook()
   const { pdfQuizzes, submissions: pdfSubmissions, fetchAllSubmissions: fetchAllPdfSubmissions, createPdfQuiz, updatePdfQuiz, deletePdfQuiz, togglePdfQuiz, saveScannedAnswers, saveEssayScores: savePdfEssayScores, createEssaySubmission, downloadScoresCsv, releaseResults: releasePdfResults, copyPdfQuiz } = usePdfQuizzes()

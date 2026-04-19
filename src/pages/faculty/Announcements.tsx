@@ -13,7 +13,7 @@ export default function FacultyAnnouncements() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
   const { announcements, postAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(institution?.id)
-  const { courses } = useCourses()
+  const { courses } = useCourses(null, profile?.id)
   const [confirmDelete, setConfirmDelete] = useState<Announcement | null>(null)
 
   async function handlePost(title: string, body: string, courseId: string | null) {

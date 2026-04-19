@@ -374,7 +374,7 @@ export default function FacultyGradeBook() {
   const { profile } = useAuth()
   const { quizzes, submissions, fetchAllSubmissions } = useQuizzes()
   const { students } = useStudents()
-  const { courses } = useCourses()
+  const { courses } = useCourses(null, profile?.id)
   const { enrollments } = useAllEnrollments()
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)

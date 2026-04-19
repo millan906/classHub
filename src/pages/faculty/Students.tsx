@@ -17,7 +17,7 @@ export default function FacultyStudents() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
   const { students, approveWithCourses, rejectStudent } = useStudents(institution?.id)
-  const { courses } = useCourses()
+  const { courses } = useCourses(null, profile?.id)
   const { enrollments, refetch: refetchEnrollments, unenrollStudent } = useAllEnrollments()
   const { quizzes, submissions } = useQuizzes()
   const { groups, columns, entries } = useGradeBook()

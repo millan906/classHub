@@ -31,7 +31,7 @@ const inputStyle = {
 
 export default function FacultyAttendance() {
   const { profile } = useAuth()
-  const { courses } = useCourses()
+  const { courses } = useCourses(null, profile?.id)
   const { students } = useStudents()
   const [searchParams] = useSearchParams()
   const [selectedCourseId, setSelectedCourseId] = useState<string>(searchParams.get('course') ?? '')

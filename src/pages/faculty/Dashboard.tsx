@@ -22,7 +22,7 @@ export default function FacultyDashboard() {
   const { quizzes, submissions } = useQuizzes()
   const { groups, columns, entries } = useGradeBook()
   const { enrollments } = useAllEnrollments()
-  const { courses } = useCourses()
+  const { courses } = useCourses(null, profile?.id)
   const navigate = useNavigate()
 
   const [selectedCourseId, setSelectedCourseId] = useState<string>('all')
