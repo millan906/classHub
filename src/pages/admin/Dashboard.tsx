@@ -2,12 +2,12 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
-import { useCourses } from '../../hooks/useCourses'
-import { useCourseFaculty } from '../../hooks/useCourseFaculty'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
 import { Avatar, getInitials, getAvatarColors } from '../../components/ui/Avatar'
+import CoursesTab from './CoursesTab'
+import RosterTab from './RosterTab'
 
 interface Member {
   id: string
@@ -18,10 +18,12 @@ interface Member {
   avatar_seed?: string | null
 }
 
+type Tab = 'members' | 'courses' | 'roster'
+
 export default function AdminDashboard() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { courses } = useCourses(institution?.id)
+  const [activeTab, setActiveTab] = useState<Tab>('members')
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'admin' | 'faculty' | 'student'>('all')
@@ -74,7 +76,6 @@ export default function AdminDashboard() {
     setImportLoading(true)
     setImportResult('')
     try {
-      // Get all student_ids from course_enrollments
       const { data: enrollments } = await supabase
         .from('course_enrollments')
         .select('student_id')
@@ -92,7 +93,6 @@ export default function AdminDashboard() {
         return
       }
 
-      // Fetch their profiles (including existing role)
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, full_name, email, avatar_seed, role')
@@ -103,7 +103,6 @@ export default function AdminDashboard() {
         return
       }
 
-      // Bulk insert into institution_members using each user's existing role
       const inserts = profiles.map((p: any) => ({
         institution_id: institution.id,
         user_id: p.id,
@@ -116,7 +115,6 @@ export default function AdminDashboard() {
 
       if (error) throw error
 
-      // Update profiles.institution_id
       await supabase.from('profiles').update({ institution_id: institution.id }).in('id', newIds)
 
       const profileMap = Object.fromEntries(profiles.map((p: any) => [p.id, p]))
@@ -169,7 +167,6 @@ export default function AdminDashboard() {
     setAddError('')
     setAddSuccess('')
     try {
-      // Look up user by email
       const { data: found } = await supabase
         .from('profiles')
         .select('id, full_name, email, avatar_seed')
@@ -181,13 +178,11 @@ export default function AdminDashboard() {
         return
       }
 
-      // Check if already a member
       if (members.some(m => m.user_id === found.id)) {
         setAddError('This person is already a member of this institution.')
         return
       }
 
-      // Add to institution_members
       const { data: newMem, error } = await supabase
         .from('institution_members')
         .insert({ institution_id: institution.id, user_id: found.id, role: addRole })
@@ -196,7 +191,6 @@ export default function AdminDashboard() {
 
       if (error) throw error
 
-      // Update profile institution_id
       await supabase.from('profiles').update({ institution_id: institution.id }).eq('id', found.id)
 
       setMembers(prev => [...prev, {
@@ -220,327 +214,265 @@ export default function AdminDashboard() {
     student: { bg: '#E6F1FB', color: '#0C447C' },
   }
 
+  const TABS: { key: Tab; label: string }[] = [
+    { key: 'members', label: 'Members' },
+    { key: 'courses', label: 'Courses' },
+    { key: 'roster',  label: 'Roster' },
+  ]
+
   return (
     <div>
       <PageHeader title={institution?.name ?? 'Institution'} subtitle={`Code: ${institution?.slug ?? ''} · ${members.length} members`} />
 
-      {/* Filter tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        {(['all', 'admin', 'faculty', 'student'] as const).map(r => {
-          const count = r === 'all' ? members.length : members.filter(m => m.role === r).length
-          return (
-            <button
-              key={r}
-              onClick={() => setFilter(r)}
-              style={{
-                padding: '8px 16px', fontSize: '12px', fontWeight: 500, borderRadius: '8px',
-                border: filter === r ? 'none' : '0.5px solid rgba(0,0,0,0.15)',
-                background: filter === r ? '#1D9E75' : '#fff',
-                color: filter === r ? '#fff' : '#555',
-                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)} ({count})
-            </button>
-          )
-        })}
+      {/* Top-level tab bar */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', borderBottom: '0.5px solid rgba(0,0,0,0.1)', paddingBottom: '0' }}>
+        {TABS.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              padding: '8px 18px', fontSize: '13px', fontWeight: 500,
+              borderRadius: '8px 8px 0 0',
+              border: activeTab === tab.key ? '0.5px solid rgba(0,0,0,0.1)' : 'none',
+              borderBottom: activeTab === tab.key ? '2px solid #1D9E75' : '2px solid transparent',
+              background: activeTab === tab.key ? '#F0FBF6' : 'transparent',
+              color: activeTab === tab.key ? '#1D9E75' : '#666',
+              cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+              transition: 'color 0.1s, background 0.1s',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Institution code banner */}
-      <div style={{
-        background: '#E1F5EE', border: '0.5px solid rgba(29,158,117,0.3)',
-        borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
-        display: 'flex', alignItems: 'center', gap: '12px',
-      }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '12px', color: '#0F6E56', fontWeight: 500, marginBottom: '2px' }}>Institution Code</div>
-          <div style={{ fontSize: '20px', fontWeight: 700, color: '#085041', letterSpacing: '0.05em' }}>{institution?.slug}</div>
-          <div style={{ fontSize: '11px', color: '#1D9E75', marginTop: '2px' }}>Share this code with faculty and students to join</div>
-        </div>
-      </div>
-
-      {loading && <Spinner />}
-
-      {/* Add member */}
-      <div style={{ marginBottom: '12px' }}>
-        {!showAddForm ? (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => { setShowAddForm(true); setAddError(''); setAddSuccess(''); setImportResult('') }}
-              style={{
-                padding: '7px 14px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
-                border: 'none', background: '#1D9E75', color: '#fff',
-                cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              + Add member
-            </button>
-            <button
-              onClick={importEnrolledStudents}
-              disabled={importLoading}
-              style={{
-                padding: '7px 14px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
-                border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#333',
-                cursor: importLoading ? 'not-allowed' : 'pointer',
-                opacity: importLoading ? 0.6 : 1,
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              {importLoading ? 'Importing...' : '⬇ Import enrolled students'}
-            </button>
-            {importResult && (
-              <span style={{
-                fontSize: '12px', padding: '5px 10px', borderRadius: '6px',
-                background: importResult.startsWith('✓') ? '#E1F5EE' : '#FCEBEB',
-                color: importResult.startsWith('✓') ? '#0F6E56' : '#A32D2D',
-              }}>
-                {importResult}
-              </span>
-            )}
-            <button
-              onClick={importExistingCourses}
-              disabled={importCoursesLoading}
-              style={{
-                padding: '7px 14px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
-                border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#333',
-                cursor: importCoursesLoading ? 'not-allowed' : 'pointer',
-                opacity: importCoursesLoading ? 0.6 : 1,
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              {importCoursesLoading ? 'Importing...' : '⬇ Import existing courses'}
-            </button>
-            {importCoursesResult && (
-              <span style={{
-                fontSize: '12px', padding: '5px 10px', borderRadius: '6px',
-                background: importCoursesResult.startsWith('✓') ? '#E1F5EE' : '#FCEBEB',
-                color: importCoursesResult.startsWith('✓') ? '#0F6E56' : '#A32D2D',
-              }}>
-                {importCoursesResult}
-              </span>
-            )}
-          </div>
-        ) : (
+      {/* ── Members Tab ── */}
+      {activeTab === 'members' && (
+        <div>
+          {/* Institution code banner */}
           <div style={{
-            background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)',
-            borderRadius: '12px', padding: '14px 16px',
+            background: '#E1F5EE', border: '0.5px solid rgba(29,158,117,0.3)',
+            borderRadius: '10px', padding: '12px 16px', marginBottom: '16px',
+            display: 'flex', alignItems: 'center', gap: '12px',
           }}>
-            <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px' }}>Add existing user</div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Email address</div>
-                <input
-                  value={addEmail}
-                  onChange={e => setAddEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addMember()}
-                  placeholder="student@email.com"
-                  style={{
-                    padding: '7px 11px', fontSize: '13px', borderRadius: '8px',
-                    border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
-                    fontFamily: 'Inter, sans-serif', outline: 'none', width: '240px',
-                  }}
-                />
-              </div>
-              <div>
-                <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Role</div>
-                <select
-                  value={addRole}
-                  onChange={e => setAddRole(e.target.value as 'student' | 'faculty' | 'admin')}
-                  style={{
-                    padding: '7px 11px', fontSize: '13px', borderRadius: '8px',
-                    border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
-                    fontFamily: 'Inter, sans-serif', outline: 'none',
-                  }}
-                >
-                  <option value="student">Student</option>
-                  <option value="faculty">Faculty</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <button
-                onClick={addMember}
-                disabled={addLoading || !addEmail.trim()}
-                style={{
-                  padding: '7px 16px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
-                  border: 'none', background: '#1D9E75', color: '#fff',
-                  cursor: addLoading || !addEmail.trim() ? 'not-allowed' : 'pointer',
-                  opacity: addLoading || !addEmail.trim() ? 0.6 : 1,
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
-                {addLoading ? 'Adding...' : 'Add'}
-              </button>
-              <button
-                onClick={() => { setShowAddForm(false); setAddError(''); setAddSuccess(''); setAddEmail('') }}
-                style={{
-                  padding: '7px 14px', fontSize: '13px', borderRadius: '8px',
-                  border: '0.5px solid rgba(0,0,0,0.2)', background: 'transparent',
-                  cursor: 'pointer', fontFamily: 'Inter, sans-serif', color: '#555',
-                }}
-              >
-                Cancel
-              </button>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '12px', color: '#0F6E56', fontWeight: 500, marginBottom: '2px' }}>Institution Code</div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: '#085041', letterSpacing: '0.05em' }}>{institution?.slug}</div>
+              <div style={{ fontSize: '11px', color: '#1D9E75', marginTop: '2px' }}>Share this code with faculty and students to join</div>
             </div>
-            {addError && (
-              <div style={{ marginTop: '10px', fontSize: '12px', color: '#A32D2D', background: '#FCEBEB', borderRadius: '6px', padding: '8px 12px' }}>
-                {addError}
-              </div>
-            )}
-            {addSuccess && (
-              <div style={{ marginTop: '10px', fontSize: '12px', color: '#0F6E56', background: '#E1F5EE', borderRadius: '6px', padding: '8px 12px' }}>
-                ✓ {addSuccess}
-              </div>
-            )}
           </div>
-        )}
-      </div>
 
-      {/* Course Assignments */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-          Course Assignments
-        </div>
-        {courses.length === 0 ? (
-          <div style={{ fontSize: '13px', color: '#aaa' }}>No courses yet.</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {courses.map(course => (
-              <CourseAssignmentRow
-                key={course.id}
-                courseId={course.id}
-                courseName={`${course.name}${course.section ? ` · Section ${course.section}` : ''}`}
-                institutionId={institution?.id}
-                facultyMembers={members.filter(m => m.role === 'faculty' || m.role === 'admin')}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Members list */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {filtered.map(member => {
-          const colors = getAvatarColors(member.full_name)
-          const badge = roleBadge[member.role]
-          const isMe = member.user_id === profile?.id
-          return (
-            <div key={member.id} style={{
-              background: '#fff', border: '0.5px solid rgba(0,0,0,0.10)',
-              borderRadius: '10px', padding: '10px 14px',
-              display: 'flex', alignItems: 'center', gap: '10px',
-            }}>
-              <Avatar initials={getInitials(member.full_name)} bg={colors.bg} color={colors.color} size={32} seed={member.avatar_seed} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '13px', fontWeight: 500 }}>{member.full_name}{isMe ? ' (you)' : ''}</div>
-                <div style={{ fontSize: '11px', color: '#aaa' }}>{member.email}</div>
-              </div>
-              <span style={{
-                fontSize: '11px', fontWeight: 500, padding: '2px 8px',
-                borderRadius: '999px', background: badge.bg, color: badge.color,
-              }}>
-                {member.role}
-              </span>
-              {!isMe && (
+          {/* Filter tabs */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+            {(['all', 'admin', 'faculty', 'student'] as const).map(r => {
+              const count = r === 'all' ? members.length : members.filter(m => m.role === r).length
+              return (
                 <button
-                  onClick={() => removeMember(member.id)}
+                  key={r}
+                  onClick={() => setFilter(r)}
                   style={{
-                    padding: '4px 8px', fontSize: '11px', borderRadius: '6px',
-                    border: '0.5px solid rgba(163,45,45,0.3)', background: 'transparent',
-                    color: '#A32D2D', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                    padding: '8px 16px', fontSize: '12px', fontWeight: 500, borderRadius: '8px',
+                    border: filter === r ? 'none' : '0.5px solid rgba(0,0,0,0.15)',
+                    background: filter === r ? '#1D9E75' : '#fff',
+                    color: filter === r ? '#fff' : '#555',
+                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                   }}
                 >
-                  Remove
+                  {r === 'all' ? 'All' : r.charAt(0).toUpperCase() + r.slice(1)} ({count})
                 </button>
-              )}
-            </div>
-          )
-        })}
-        {filtered.length === 0 && !loading && (
-          <div style={{ fontSize: '13px', color: '#888', textAlign: 'center', padding: '2rem' }}>No members found.</div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── CourseAssignmentRow ──────────────────────────────────────────────────────
-
-function CourseAssignmentRow({ courseId, courseName, institutionId, facultyMembers }: {
-  courseId: string
-  courseName: string
-  institutionId: string | null | undefined
-  facultyMembers: Member[]
-}) {
-  const { assignedIds, assign, unassign } = useCourseFaculty(courseId, institutionId)
-  const [saving, setSaving] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(false)
-
-  async function toggle(facultyId: string, isAssigned: boolean) {
-    setSaving(facultyId)
-    try {
-      if (isAssigned) await unassign(facultyId)
-      else await assign(facultyId)
-    } finally {
-      setSaving(null)
-    }
-  }
-
-  const assignedNames = facultyMembers
-    .filter(f => assignedIds.includes(f.user_id))
-    .map(f => f.full_name)
-
-  return (
-    <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
-      <div
-        onClick={() => setExpanded(e => !e)}
-        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer' }}
-      >
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '13px', fontWeight: 500 }}>{courseName}</div>
-          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
-            {assignedNames.length === 0 ? 'No faculty assigned' : assignedNames.join(', ')}
+              )
+            })}
           </div>
-        </div>
-        <span style={{ fontSize: '11px', color: '#aaa' }}>{expanded ? '▲' : '▼'}</span>
-      </div>
 
-      {expanded && (
-        <div style={{ borderTop: '0.5px solid #F1EFE8', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {facultyMembers.length === 0 ? (
-            <div style={{ fontSize: '12px', color: '#aaa' }}>No faculty in this institution yet.</div>
-          ) : facultyMembers.map(f => {
-            const isAssigned = assignedIds.includes(f.user_id)
-            const colors = getAvatarColors(f.full_name)
-            return (
-              <div key={f.user_id} style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '7px 10px', borderRadius: '8px',
-                background: isAssigned ? '#F0FBF6' : '#fafafa',
-                border: `0.5px solid ${isAssigned ? '#B6E8D4' : 'rgba(0,0,0,0.07)'}`,
+          {loading && <Spinner />}
+
+          {/* Add member */}
+          <div style={{ marginBottom: '12px' }}>
+            {!showAddForm ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => { setShowAddForm(true); setAddError(''); setAddSuccess(''); setImportResult('') }}
+                  style={{
+                    padding: '7px 14px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
+                    border: 'none', background: '#1D9E75', color: '#fff',
+                    cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  + Add member
+                </button>
+                <button
+                  onClick={importEnrolledStudents}
+                  disabled={importLoading}
+                  style={{
+                    padding: '7px 14px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
+                    border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#333',
+                    cursor: importLoading ? 'not-allowed' : 'pointer',
+                    opacity: importLoading ? 0.6 : 1,
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  {importLoading ? 'Importing...' : '⬇ Import enrolled students'}
+                </button>
+                {importResult && (
+                  <span style={{
+                    fontSize: '12px', padding: '5px 10px', borderRadius: '6px',
+                    background: importResult.startsWith('✓') ? '#E1F5EE' : '#FCEBEB',
+                    color: importResult.startsWith('✓') ? '#0F6E56' : '#A32D2D',
+                  }}>
+                    {importResult}
+                  </span>
+                )}
+                <button
+                  onClick={importExistingCourses}
+                  disabled={importCoursesLoading}
+                  style={{
+                    padding: '7px 14px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
+                    border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#333',
+                    cursor: importCoursesLoading ? 'not-allowed' : 'pointer',
+                    opacity: importCoursesLoading ? 0.6 : 1,
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  {importCoursesLoading ? 'Importing...' : '⬇ Import existing courses'}
+                </button>
+                {importCoursesResult && (
+                  <span style={{
+                    fontSize: '12px', padding: '5px 10px', borderRadius: '6px',
+                    background: importCoursesResult.startsWith('✓') ? '#E1F5EE' : '#FCEBEB',
+                    color: importCoursesResult.startsWith('✓') ? '#0F6E56' : '#A32D2D',
+                  }}>
+                    {importCoursesResult}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div style={{
+                background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)',
+                borderRadius: '12px', padding: '14px 16px',
               }}>
-                <Avatar initials={getInitials(f.full_name)} bg={colors.bg} color={colors.color} seed={f.avatar_seed} size={26} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '12px', fontWeight: 500 }}>{f.full_name}</div>
-                  <div style={{ fontSize: '11px', color: '#aaa' }}>{f.email}</div>
+                <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '12px' }}>Add existing user</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Email address</div>
+                    <input
+                      value={addEmail}
+                      onChange={e => setAddEmail(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && addMember()}
+                      placeholder="student@email.com"
+                      style={{
+                        padding: '7px 11px', fontSize: '13px', borderRadius: '8px',
+                        border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
+                        fontFamily: 'Inter, sans-serif', outline: 'none', width: '240px',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '4px' }}>Role</div>
+                    <select
+                      value={addRole}
+                      onChange={e => setAddRole(e.target.value as 'student' | 'faculty' | 'admin')}
+                      style={{
+                        padding: '7px 11px', fontSize: '13px', borderRadius: '8px',
+                        border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
+                        fontFamily: 'Inter, sans-serif', outline: 'none',
+                      }}
+                    >
+                      <option value="student">Student</option>
+                      <option value="faculty">Faculty</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={addMember}
+                    disabled={addLoading || !addEmail.trim()}
+                    style={{
+                      padding: '7px 16px', fontSize: '13px', fontWeight: 500, borderRadius: '8px',
+                      border: 'none', background: '#1D9E75', color: '#fff',
+                      cursor: addLoading || !addEmail.trim() ? 'not-allowed' : 'pointer',
+                      opacity: addLoading || !addEmail.trim() ? 0.6 : 1,
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    {addLoading ? 'Adding...' : 'Add'}
+                  </button>
+                  <button
+                    onClick={() => { setShowAddForm(false); setAddError(''); setAddSuccess(''); setAddEmail('') }}
+                    style={{
+                      padding: '7px 14px', fontSize: '13px', borderRadius: '8px',
+                      border: '0.5px solid rgba(0,0,0,0.2)', background: 'transparent',
+                      cursor: 'pointer', fontFamily: 'Inter, sans-serif', color: '#555',
+                    }}
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <button
-                  onClick={() => toggle(f.user_id, isAssigned)}
-                  disabled={saving === f.user_id}
-                  style={{
-                    fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: 'none',
-                    background: isAssigned ? '#FCEBEB' : '#1D9E75',
-                    color: isAssigned ? '#A32D2D' : '#fff',
-                    cursor: saving === f.user_id ? 'not-allowed' : 'pointer',
-                    fontFamily: 'Inter, sans-serif', fontWeight: 500,
-                    opacity: saving === f.user_id ? 0.6 : 1,
-                  }}
-                >
-                  {saving === f.user_id ? '…' : isAssigned ? 'Remove' : 'Assign'}
-                </button>
+                {addError && (
+                  <div style={{ marginTop: '10px', fontSize: '12px', color: '#A32D2D', background: '#FCEBEB', borderRadius: '6px', padding: '8px 12px' }}>
+                    {addError}
+                  </div>
+                )}
+                {addSuccess && (
+                  <div style={{ marginTop: '10px', fontSize: '12px', color: '#0F6E56', background: '#E1F5EE', borderRadius: '6px', padding: '8px 12px' }}>
+                    ✓ {addSuccess}
+                  </div>
+                )}
               </div>
-            )
-          })}
+            )}
+          </div>
+
+          {/* Members list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {filtered.map(member => {
+              const colors = getAvatarColors(member.full_name)
+              const badge = roleBadge[member.role]
+              const isMe = member.user_id === profile?.id
+              return (
+                <div key={member.id} style={{
+                  background: '#fff', border: '0.5px solid rgba(0,0,0,0.10)',
+                  borderRadius: '10px', padding: '10px 14px',
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                }}>
+                  <Avatar initials={getInitials(member.full_name)} bg={colors.bg} color={colors.color} size={32} seed={member.avatar_seed} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{member.full_name}{isMe ? ' (you)' : ''}</div>
+                    <div style={{ fontSize: '11px', color: '#aaa' }}>{member.email}</div>
+                  </div>
+                  <span style={{
+                    fontSize: '11px', fontWeight: 500, padding: '2px 8px',
+                    borderRadius: '999px', background: badge.bg, color: badge.color,
+                  }}>
+                    {member.role}
+                  </span>
+                  {!isMe && (
+                    <button
+                      onClick={() => removeMember(member.id)}
+                      style={{
+                        padding: '4px 8px', fontSize: '11px', borderRadius: '6px',
+                        border: '0.5px solid rgba(163,45,45,0.3)', background: 'transparent',
+                        color: '#A32D2D', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                      }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+            {filtered.length === 0 && !loading && (
+              <div style={{ fontSize: '13px', color: '#888', textAlign: 'center', padding: '2rem' }}>No members found.</div>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* ── Courses Tab ── */}
+      {activeTab === 'courses' && (
+        <CoursesTab institutionId={institution?.id} />
+      )}
+
+      {/* ── Roster Tab ── */}
+      {activeTab === 'roster' && (
+        <RosterTab institutionId={institution?.id} />
       )}
     </div>
   )
