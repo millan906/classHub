@@ -10,16 +10,17 @@ interface RosterTabProps {
 }
 
 interface ParsedRow {
-  email: string
-  first_name: string
+  student_no: string
   last_name: string
+  first_name: string
   program?: string
   section?: string
 }
 
 interface EnrollResult {
   enrolled: number
-  notFound: string[]
+  pending: number
+  notFoundEntries: { student_no: string; name: string }[]
   errors: string[]
 }
 
@@ -38,12 +39,12 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
     for (const key of Object.keys(row)) {
       lower[key.trim().toLowerCase()] = row[key]
     }
-    const email = (lower['email'] ?? '').toString().trim().toLowerCase()
+    const studentNo = (lower['student_no'] ?? lower['student no'] ?? lower['studentno'] ?? '').toString().trim()
     const firstName = (lower['first_name'] ?? lower['firstname'] ?? '').toString().trim()
     const lastName = (lower['last_name'] ?? lower['lastname'] ?? '').toString().trim()
-    if (!email) return null
+    if (!studentNo) return null
     return {
-      email,
+      student_no: studentNo,
       first_name: firstName,
       last_name: lastName,
       program: lower['program'] ? lower['program'].toString().trim() : undefined,
@@ -73,7 +74,7 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
           if (normalized) parsed.push(normalized)
         }
         if (parsed.length === 0) {
-          setParseError('No valid rows found. Make sure the file has an "email" column.')
+          setParseError('No valid rows found. Make sure the file has a "student_no" column.')
           return
         }
         setParsedRows(parsed)
@@ -91,20 +92,42 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
     setUploading(true)
     setResult(null)
 
-    const notFound: string[] = []
+    const notFoundEntries: { student_no: string; name: string }[] = []
     const errors: string[] = []
     let enrolled = 0
+    let pending = 0
 
     for (const row of parsedRows) {
       try {
         const { data: found } = await supabase
           .from('profiles')
           .select('id, status, institution_id')
-          .eq('email', row.email)
+          .eq('student_no', row.student_no)
           .maybeSingle()
 
         if (!found) {
-          notFound.push(row.email)
+          // Insert into pending_roster — will auto-enroll when student registers
+          const { error: pendingError } = await supabase
+            .from('pending_roster')
+            .upsert(
+              {
+                student_no: row.student_no,
+                course_id: selectedCourseId,
+                last_name: row.last_name || null,
+                first_name: row.first_name || null,
+                uploaded_by: profile.id,
+              },
+              { onConflict: 'student_no,course_id', ignoreDuplicates: true }
+            )
+          if (pendingError) {
+            errors.push(`${row.student_no}: ${pendingError.message}`)
+          } else {
+            pending++
+            notFoundEntries.push({
+              student_no: row.student_no,
+              name: [row.last_name, row.first_name].filter(Boolean).join(', ') || '—',
+            })
+          }
           continue
         }
 
@@ -125,16 +148,16 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
           )
 
         if (enrollError) {
-          errors.push(`${row.email}: ${enrollError.message}`)
+          errors.push(`${row.student_no}: ${enrollError.message}`)
         } else {
           enrolled++
         }
       } catch (err: unknown) {
-        errors.push(`${row.email}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        errors.push(`${row.student_no}: ${err instanceof Error ? err.message : 'Unknown error'}`)
       }
     }
 
-    setResult({ enrolled, notFound, errors })
+    setResult({ enrolled, pending, notFoundEntries, errors })
     setUploading(false)
   }
 
@@ -177,7 +200,7 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
           Upload Roster File
         </div>
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '10px' }}>
-          Accepts .csv or .xlsx. Required column: <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>email</code>. Optional: <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>first_name</code>, <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>last_name</code>, <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>program</code>, <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>section</code>. Headers are case-insensitive.
+          Accepts .csv or .xlsx. Required column: <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>student_no</code>. Optional: <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>last_name</code>, <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>first_name</code>, <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>program</code>, <code style={{ background: '#F5F5F5', padding: '1px 5px', borderRadius: '4px', fontFamily: 'monospace' }}>section</code>. Headers are case-insensitive.
         </div>
         <label style={{
           display: 'inline-block', padding: '7px 14px', fontSize: '13px', fontWeight: 500,
@@ -221,7 +244,7 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
               <thead>
                 <tr>
-                  {['Email', 'First Name', 'Last Name', 'Program', 'Section'].map(h => (
+                  {['Student No.', 'Name', 'Program', 'Section'].map(h => (
                     <th key={h} style={{
                       textAlign: 'left', padding: '6px 10px',
                       fontSize: '10px', fontWeight: 700, color: '#888',
@@ -236,9 +259,10 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
               <tbody>
                 {parsedRows.slice(0, 50).map((row, i) => (
                   <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFAFA' }}>
-                    <td style={{ padding: '6px 10px', color: '#333' }}>{row.email}</td>
-                    <td style={{ padding: '6px 10px', color: '#555' }}>{row.first_name || '—'}</td>
-                    <td style={{ padding: '6px 10px', color: '#555' }}>{row.last_name || '—'}</td>
+                    <td style={{ padding: '6px 10px', color: '#333', fontFamily: 'monospace', fontSize: '11px' }}>{row.student_no}</td>
+                    <td style={{ padding: '6px 10px', color: '#555' }}>
+                      {[row.last_name, row.first_name].filter(Boolean).join(', ') || '—'}
+                    </td>
                     <td style={{ padding: '6px 10px', color: '#555' }}>{row.program || '—'}</td>
                     <td style={{ padding: '6px 10px', color: '#555' }}>{row.section || '—'}</td>
                   </tr>
@@ -293,34 +317,34 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
               background: '#E1F5EE', border: '0.5px solid rgba(29,158,117,0.3)',
             }}>
               <div style={{ fontSize: '20px', fontWeight: 700, color: '#085041' }}>{result.enrolled}</div>
-              <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500 }}>enrolled</div>
+              <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500 }}>enrolled now</div>
             </div>
             <div style={{
               padding: '10px 16px', borderRadius: '10px',
-              background: result.notFound.length > 0 ? '#FCEBEB' : '#F5F5F5',
-              border: `0.5px solid ${result.notFound.length > 0 ? 'rgba(163,45,45,0.3)' : 'rgba(0,0,0,0.1)'}`,
+              background: result.pending > 0 ? '#FFF8EC' : '#F5F5F5',
+              border: `0.5px solid ${result.pending > 0 ? 'rgba(239,159,39,0.4)' : 'rgba(0,0,0,0.1)'}`,
             }}>
-              <div style={{ fontSize: '20px', fontWeight: 700, color: result.notFound.length > 0 ? '#A32D2D' : '#888' }}>{result.notFound.length}</div>
-              <div style={{ fontSize: '11px', color: result.notFound.length > 0 ? '#A32D2D' : '#888', fontWeight: 500 }}>not found</div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: result.pending > 0 ? '#8C5B00' : '#888' }}>{result.pending}</div>
+              <div style={{ fontSize: '11px', color: result.pending > 0 ? '#B87900' : '#888', fontWeight: 500 }}>pending roster</div>
             </div>
           </div>
 
-          {result.notFound.length > 0 && (
-            <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#A32D2D', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
-                Not Found (no account)
+          {result.pending > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#B87900', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+                Added to Pending Roster (will auto-enroll when they register)
               </div>
               <div style={{
-                background: '#FCEBEB', border: '0.5px solid rgba(163,45,45,0.2)',
+                background: '#FFF8EC', border: '0.5px solid rgba(239,159,39,0.3)',
                 borderRadius: '8px', padding: '10px 12px',
                 display: 'flex', flexDirection: 'column', gap: '3px',
               }}>
-                {result.notFound.map(email => (
-                  <div key={email} style={{ fontSize: '12px', color: '#A32D2D', fontFamily: 'monospace' }}>{email}</div>
+                {result.notFoundEntries.map(entry => (
+                  <div key={entry.student_no} style={{ fontSize: '12px', color: '#7A4F00', display: 'flex', gap: '10px' }}>
+                    <span style={{ fontFamily: 'monospace', minWidth: '120px' }}>{entry.student_no}</span>
+                    <span style={{ color: '#9A6800' }}>{entry.name}</span>
+                  </div>
                 ))}
-              </div>
-              <div style={{ fontSize: '11px', color: '#888', marginTop: '6px' }}>
-                These emails have no account in the system. Ask them to sign up first.
               </div>
             </div>
           )}

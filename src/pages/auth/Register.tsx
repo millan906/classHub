@@ -28,6 +28,7 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [inviteCode, setInviteCode] = useState('')
+  const [studentNo, setStudentNo] = useState('')
   const [program, setProgram] = useState('')
   const [section, setSection] = useState('')
   const [error, setError] = useState('')
@@ -48,7 +49,7 @@ export default function Register() {
       const res = await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ firstName: toTitleCase(firstName), lastName: toTitleCase(lastName), email: email.trim().toLowerCase(), password, inviteCode, program, section }),
+        body: JSON.stringify({ firstName: toTitleCase(firstName), lastName: toTitleCase(lastName), email: email.trim().toLowerCase(), password, inviteCode, studentNo, program, section }),
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error ?? 'Registration failed')
@@ -111,6 +112,8 @@ export default function Register() {
               <div style={{ fontSize: '11px', fontWeight: 600, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 10px' }}>
                 Student info
               </div>
+              <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Student No.</div>
+              <input value={studentNo} onChange={e => setStudentNo(e.target.value)} placeholder="e.g. 2023-0413-A" style={inputStyle} />
               <div style={{ display: 'flex', gap: '8px' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Program</div>

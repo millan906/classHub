@@ -434,6 +434,9 @@ function PendingStudentCard({
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
           <div style={{ fontSize: '12px', color: '#888' }}>{student.email}</div>
+          {student.student_no && (
+            <div style={{ fontSize: '11px', color: '#bbb' }}>{student.student_no}</div>
+          )}
           {(student.program || student.section) && (
             <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500, marginTop: '2px' }}>
               {[student.program, student.section].filter(Boolean).join(' · ')}
@@ -517,6 +520,9 @@ function EnrolledStudentCard({ student, assignedCourses, onClick, onUnenroll }: 
           <span style={{ fontSize: '11px', color: '#aaa', marginLeft: 'auto' }}>View →</span>
         </div>
         <div style={{ fontSize: '12px', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>{student.email}</div>
+          {student.student_no && (
+            <div style={{ fontSize: '11px', color: '#bbb' }}>{student.student_no}</div>
+          )}
           {(student.program || student.section) && (
             <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500, marginTop: '1px' }}>
               {[student.program, student.section].filter(Boolean).join(' · ')}

@@ -11,6 +11,7 @@ export interface Profile {
   status: Status
   created_at: string
   avatar_seed?: string | null
+  student_no?: string | null
   program?: string | null
   section?: string | null
 }

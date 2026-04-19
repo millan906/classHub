@@ -11,7 +11,7 @@ const FACULTY_INVITE_CODE = Deno.env.get('FACULTY_INVITE_CODE') ?? ''
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  const { firstName, lastName, email, password, inviteCode, program, section } = await req.json()
+  const { firstName, lastName, email, password, inviteCode, program, section, studentNo } = await req.json()
 
   if (!email || !password || !firstName || !lastName) {
     return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -52,6 +52,8 @@ Deno.serve(async (req) => {
     })
   }
 
+  const trimmedStudentNo = role === 'student' && studentNo ? studentNo.trim() || null : null
+
   // Insert profile using service role (bypasses RLS)
   const { error: profileError } = await supabase.from('profiles').insert({
     id: user.id,
@@ -61,6 +63,7 @@ Deno.serve(async (req) => {
     email,
     role,
     status,
+    ...(role === 'student' && trimmedStudentNo ? { student_no: trimmedStudentNo } : {}),
     ...(role === 'student' && program ? { program: program.trim() } : {}),
     ...(role === 'student' && section ? { section: section.trim() } : {}),
   })
@@ -71,6 +74,49 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: profileError.message }), {
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
+  }
+
+  // Auto-enrollment: if student has a student_no, check pending_roster for matches
+  if (role === 'student' && trimmedStudentNo) {
+    const { data: pendingEntries } = await supabase
+      .from('pending_roster')
+      .select('id, course_id')
+      .eq('student_no', trimmedStudentNo)
+
+    if (pendingEntries && pendingEntries.length > 0) {
+      // Get institution_id from the first matched course to approve the student
+      const courseIds = pendingEntries.map((e: { id: string; course_id: string }) => e.course_id)
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('id, institution_id')
+        .in('id', courseIds)
+
+      const firstCourse = courses && courses.length > 0 ? courses[0] : null
+      const institutionId = firstCourse?.institution_id ?? null
+
+      // Approve the student and set institution_id
+      await supabase
+        .from('profiles')
+        .update({ status: 'approved', ...(institutionId ? { institution_id: institutionId } : {}) })
+        .eq('id', user.id)
+
+      // Upsert enrollments for each matched course
+      for (const entry of pendingEntries as { id: string; course_id: string }[]) {
+        await supabase
+          .from('course_enrollments')
+          .upsert(
+            { course_id: entry.course_id, student_id: user.id, invited_by: user.id },
+            { onConflict: 'course_id,student_id', ignoreDuplicates: true }
+          )
+      }
+
+      // Delete matched pending_roster entries
+      const entryIds = pendingEntries.map((e: { id: string; course_id: string }) => e.id)
+      await supabase
+        .from('pending_roster')
+        .delete()
+        .in('id', entryIds)
+    }
   }
 
   return new Response(JSON.stringify({ success: true, role, status }), {
