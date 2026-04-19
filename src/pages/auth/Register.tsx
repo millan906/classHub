@@ -28,6 +28,8 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [inviteCode, setInviteCode] = useState('')
+  const [program, setProgram] = useState('')
+  const [section, setSection] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -46,7 +48,7 @@ export default function Register() {
       const res = await fetch(fnUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY },
-        body: JSON.stringify({ firstName: toTitleCase(firstName), lastName: toTitleCase(lastName), email: email.trim().toLowerCase(), password, inviteCode }),
+        body: JSON.stringify({ firstName: toTitleCase(firstName), lastName: toTitleCase(lastName), email: email.trim().toLowerCase(), password, inviteCode, program, section }),
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error ?? 'Registration failed')
@@ -103,6 +105,24 @@ export default function Register() {
           <div style={{ fontSize: '11px', marginBottom: '10px', color: pwOk ? '#1D9E75' : (password.length > 0 ? '#A32D2D' : '#aaa') }}>
             {pwOk ? '✓ Password looks good' : (pwError ?? `Min ${PASSWORD_MIN} chars, max ${PASSWORD_MAX}, letters + numbers required`)}
           </div>
+          {/* Student section info — shown when no invite code (i.e. registering as student) */}
+          {!inviteCode && (
+            <>
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '4px 0 10px' }}>
+                Student info
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Program</div>
+                  <input value={program} onChange={e => setProgram(e.target.value)} placeholder="e.g. BSIT" style={inputStyle} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Section</div>
+                  <input value={section} onChange={e => setSection(e.target.value)} placeholder="e.g. 3C" style={inputStyle} />
+                </div>
+              </div>
+            </>
+          )}
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Faculty invite code (optional)</div>
           <input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder="Leave blank if student" style={inputStyle} />
           {error && <div style={{ fontSize: '12px', color: '#A32D2D', marginBottom: '10px' }}>{error}</div>}

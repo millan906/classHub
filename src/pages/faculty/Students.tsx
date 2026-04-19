@@ -26,12 +26,18 @@ export default function FacultyStudents() {
   const [selectedCourses, setSelectedCourses] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
+  const [filterSection, setFilterSection] = useState<string>('all')
   const [viewingStudent, setViewingStudent] = useState<Profile | null>(null)
 
   const pending = students.filter(s => s.status === 'pending')
   const enrolled = students.filter(s => s.status === 'approved')
   const rejected = students.filter(s => s.status === 'rejected')
   const openCourses = courses.filter(c => c.status === 'open')
+
+  // Unique sections across all enrolled students (for filter dropdown)
+  const allSections = [...new Set(
+    enrolled.map(s => s.section).filter((sec): sec is string => !!sec)
+  )].sort()
 
   function startApproving(studentId: string) {
     setApprovingId(studentId)
@@ -108,6 +114,11 @@ export default function FacultyStudents() {
           <div>
             <div style={{ fontSize: '15px', fontWeight: 500 }}>{viewingStudent.full_name}</div>
             <div style={{ fontSize: '12px', color: '#888' }}>{viewingStudent.email}</div>
+            {(viewingStudent.program || viewingStudent.section) && (
+              <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500, marginTop: '1px' }}>
+                {[viewingStudent.program, viewingStudent.section].filter(Boolean).join(' · ')}
+              </div>
+            )}
           </div>
         </div>
 
@@ -278,8 +289,20 @@ export default function FacultyStudents() {
       )}
 
       {/* ── Enrolled ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
         <div style={{ fontSize: '13px', fontWeight: 500 }}>Enrolled ({enrolled.length})</div>
+        {allSections.length > 0 && (
+          <select
+            value={filterSection}
+            onChange={e => setFilterSection(e.target.value)}
+            style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}
+          >
+            <option value="all">All Sections</option>
+            {allSections.map(sec => (
+              <option key={sec} value={sec}>{sec}</option>
+            ))}
+          </select>
+        )}
         <select
           value={filterCourseId}
           onChange={e => setFilterCourseId(e.target.value)}
@@ -292,11 +315,11 @@ export default function FacultyStudents() {
         </select>
       </div>
       {(() => {
-        const visible = filterCourseId === 'all'
-          ? enrolled
-          : enrolled.filter(s => enrollments.some(e => e.student_id === s.id && e.course_id === filterCourseId))
+        let visible = enrolled
+        if (filterSection !== 'all') visible = visible.filter(s => s.section === filterSection)
+        if (filterCourseId !== 'all') visible = visible.filter(s => enrollments.some(e => e.student_id === s.id && e.course_id === filterCourseId))
         return visible.length === 0
-          ? <div style={{ fontSize: '13px', color: '#888' }}>No students in this course yet.</div>
+          ? <div style={{ fontSize: '13px', color: '#888' }}>No students match the selected filters.</div>
           : visible.map(s => (
               <EnrolledStudentCard
                 key={s.id}
@@ -411,6 +434,11 @@ function PendingStudentCard({
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
           <div style={{ fontSize: '12px', color: '#888' }}>{student.email}</div>
+          {(student.program || student.section) && (
+            <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500, marginTop: '2px' }}>
+              {[student.program, student.section].filter(Boolean).join(' · ')}
+            </div>
+          )}
         </div>
         <Badge label={badgeLabel} color={badgeLabel === 'Rejected' ? 'red' : 'amber'} />
         {!isExpanded && (
@@ -489,6 +517,11 @@ function EnrolledStudentCard({ student, assignedCourses, onClick, onUnenroll }: 
           <span style={{ fontSize: '11px', color: '#aaa', marginLeft: 'auto' }}>View →</span>
         </div>
         <div style={{ fontSize: '12px', color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '1px' }}>{student.email}</div>
+          {(student.program || student.section) && (
+            <div style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500, marginTop: '1px' }}>
+              {[student.program, student.section].filter(Boolean).join(' · ')}
+            </div>
+          )}
         {assignedCourses.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '5px' }}>
             {assignedCourses.map(c => (

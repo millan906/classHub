@@ -11,7 +11,7 @@ const FACULTY_INVITE_CODE = Deno.env.get('FACULTY_INVITE_CODE') ?? ''
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
-  const { firstName, lastName, email, password, inviteCode } = await req.json()
+  const { firstName, lastName, email, password, inviteCode, program, section } = await req.json()
 
   if (!email || !password || !firstName || !lastName) {
     return new Response(JSON.stringify({ error: 'Missing required fields' }), {
@@ -61,6 +61,8 @@ Deno.serve(async (req) => {
     email,
     role,
     status,
+    ...(role === 'student' && program ? { program: program.trim() } : {}),
+    ...(role === 'student' && section ? { section: section.trim() } : {}),
   })
 
   if (profileError) {
