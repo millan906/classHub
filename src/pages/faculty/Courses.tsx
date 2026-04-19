@@ -665,9 +665,6 @@ function CourseRow({ course, facultyId, institutionId, courses, onEdit, onDelete
         <Button onClick={() => setPanel(p => p === 'students' ? 'none' : 'students')} style={{ fontSize: '12px', background: panel === 'students' ? '#F1EFE8' : undefined }}>
           {panel === 'students' ? 'Hide students' : 'Students'}
         </Button>
-        <Button onClick={() => setPanel(p => p === 'faculty' ? 'none' : 'faculty')} style={{ fontSize: '12px', background: panel === 'faculty' ? '#F1EFE8' : undefined }}>
-          {panel === 'faculty' ? 'Hide faculty' : 'Faculty'}
-        </Button>
         <Button onClick={() => onEdit(course)}>Edit</Button>
         {otherCourses.length > 0 && !copying && (
           <Button onClick={() => { setCopying(true); setCopySource(otherCourses[0].id) }} style={{ fontSize: '12px' }}>

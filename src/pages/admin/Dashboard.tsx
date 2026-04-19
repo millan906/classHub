@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
+import { useCourses } from '../../hooks/useCourses'
+import { useCourseFaculty } from '../../hooks/useCourseFaculty'
 import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
@@ -19,6 +21,7 @@ interface Member {
 export default function AdminDashboard() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
+  const { courses } = useCourses(institution?.id)
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'admin' | 'faculty' | 'student'>('all')
@@ -392,6 +395,28 @@ export default function AdminDashboard() {
         )}
       </div>
 
+      {/* Course Assignments */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+          Course Assignments
+        </div>
+        {courses.length === 0 ? (
+          <div style={{ fontSize: '13px', color: '#aaa' }}>No courses yet.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {courses.map(course => (
+              <CourseAssignmentRow
+                key={course.id}
+                courseId={course.id}
+                courseName={`${course.name}${course.section ? ` · Section ${course.section}` : ''}`}
+                institutionId={institution?.id}
+                facultyMembers={members.filter(m => m.role === 'faculty' || m.role === 'admin')}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Members list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {filtered.map(member => {
@@ -434,6 +459,89 @@ export default function AdminDashboard() {
           <div style={{ fontSize: '13px', color: '#888', textAlign: 'center', padding: '2rem' }}>No members found.</div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── CourseAssignmentRow ──────────────────────────────────────────────────────
+
+function CourseAssignmentRow({ courseId, courseName, institutionId, facultyMembers }: {
+  courseId: string
+  courseName: string
+  institutionId: string | null | undefined
+  facultyMembers: Member[]
+}) {
+  const { assignedIds, assign, unassign } = useCourseFaculty(courseId, institutionId)
+  const [saving, setSaving] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState(false)
+
+  async function toggle(facultyId: string, isAssigned: boolean) {
+    setSaving(facultyId)
+    try {
+      if (isAssigned) await unassign(facultyId)
+      else await assign(facultyId)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const assignedNames = facultyMembers
+    .filter(f => assignedIds.includes(f.user_id))
+    .map(f => f.full_name)
+
+  return (
+    <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', cursor: 'pointer' }}
+      >
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '13px', fontWeight: 500 }}>{courseName}</div>
+          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+            {assignedNames.length === 0 ? 'No faculty assigned' : assignedNames.join(', ')}
+          </div>
+        </div>
+        <span style={{ fontSize: '11px', color: '#aaa' }}>{expanded ? '▲' : '▼'}</span>
+      </div>
+
+      {expanded && (
+        <div style={{ borderTop: '0.5px solid #F1EFE8', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {facultyMembers.length === 0 ? (
+            <div style={{ fontSize: '12px', color: '#aaa' }}>No faculty in this institution yet.</div>
+          ) : facultyMembers.map(f => {
+            const isAssigned = assignedIds.includes(f.user_id)
+            const colors = getAvatarColors(f.full_name)
+            return (
+              <div key={f.user_id} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '7px 10px', borderRadius: '8px',
+                background: isAssigned ? '#F0FBF6' : '#fafafa',
+                border: `0.5px solid ${isAssigned ? '#B6E8D4' : 'rgba(0,0,0,0.07)'}`,
+              }}>
+                <Avatar initials={getInitials(f.full_name)} bg={colors.bg} color={colors.color} seed={f.avatar_seed} size={26} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 500 }}>{f.full_name}</div>
+                  <div style={{ fontSize: '11px', color: '#aaa' }}>{f.email}</div>
+                </div>
+                <button
+                  onClick={() => toggle(f.user_id, isAssigned)}
+                  disabled={saving === f.user_id}
+                  style={{
+                    fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: 'none',
+                    background: isAssigned ? '#FCEBEB' : '#1D9E75',
+                    color: isAssigned ? '#A32D2D' : '#fff',
+                    cursor: saving === f.user_id ? 'not-allowed' : 'pointer',
+                    fontFamily: 'Inter, sans-serif', fontWeight: 500,
+                    opacity: saving === f.user_id ? 0.6 : 1,
+                  }}
+                >
+                  {saving === f.user_id ? '…' : isAssigned ? 'Remove' : 'Assign'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
