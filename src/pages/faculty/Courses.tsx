@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useCourses } from '../../hooks/useCourses'
+import { useCourseFaculty } from '../../hooks/useCourseFaculty'
 import { useStudents } from '../../hooks/useStudents'
 import { useCourseEnrollments } from '../../hooks/useEnrollments'
 import { PageHeader } from '../../components/ui/Card'
@@ -541,17 +542,98 @@ function CourseStudentsPanel({ course, facultyId }: { course: Course; facultyId:
   )
 }
 
+// ─── CourseFacultyPanel ───────────────────────────────────────────────────────
+
+function CourseFacultyPanel({ courseId, institutionId, currentFacultyId }: {
+  courseId: string
+  institutionId: string | null | undefined
+  currentFacultyId: string
+}) {
+  const { assignedIds, institutionFaculty, loading, assign, unassign } = useCourseFaculty(courseId, institutionId)
+  const [saving, setSaving] = useState<string | null>(null)
+
+  if (loading) return <div style={{ padding: '12px 0', fontSize: '12px', color: '#aaa' }}>Loading…</div>
+
+  const unassigned = institutionFaculty.filter(f => !assignedIds.includes(f.id))
+
+  async function toggle(facultyId: string, isAssigned: boolean) {
+    setSaving(facultyId)
+    try {
+      if (isAssigned) await unassign(facultyId)
+      else await assign(facultyId)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <div style={{ borderTop: '0.5px solid #F1EFE8', marginTop: '10px', paddingTop: '12px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+        Faculty assigned to this course
+      </div>
+
+      {institutionFaculty.length === 0 ? (
+        <div style={{ fontSize: '12px', color: '#aaa' }}>No other faculty in this institution yet.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {institutionFaculty.map(f => {
+            const isAssigned = assignedIds.includes(f.id)
+            const isSelf = f.id === currentFacultyId
+            const colors = getAvatarColors(f.full_name)
+            return (
+              <div key={f.id} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '8px 10px', borderRadius: '10px',
+                background: isAssigned ? '#F0FBF6' : '#fafafa',
+                border: `0.5px solid ${isAssigned ? '#B6E8D4' : 'rgba(0,0,0,0.08)'}`,
+              }}>
+                <Avatar initials={getInitials(f.full_name)} bg={colors.bg} color={colors.color} seed={f.avatar_seed} size={28} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 500 }}>{f.full_name}</div>
+                  <div style={{ fontSize: '11px', color: '#888' }}>{f.email}</div>
+                </div>
+                {isSelf ? (
+                  <span style={{ fontSize: '11px', color: '#1D9E75', fontWeight: 500 }}>You</span>
+                ) : (
+                  <button
+                    onClick={() => toggle(f.id, isAssigned)}
+                    disabled={saving === f.id}
+                    style={{
+                      fontSize: '12px', padding: '4px 10px', borderRadius: '6px', border: 'none',
+                      background: isAssigned ? '#FCEBEB' : '#1D9E75',
+                      color: isAssigned ? '#A32D2D' : '#fff',
+                      cursor: saving === f.id ? 'not-allowed' : 'pointer',
+                      fontFamily: 'Inter, sans-serif', fontWeight: 500,
+                      opacity: saving === f.id ? 0.6 : 1,
+                    }}
+                  >
+                    {saving === f.id ? '…' : isAssigned ? 'Remove' : 'Assign'}
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {unassigned.length === 0 && institutionFaculty.length > 0 && (
+        <div style={{ fontSize: '11px', color: '#aaa', marginTop: '8px' }}>All faculty in this institution are assigned.</div>
+      )}
+    </div>
+  )
+}
+
 // ─── CourseRow ────────────────────────────────────────────────────────────────
 
-function CourseRow({ course, facultyId, courses, onEdit, onDelete, onToggle, onCopyInfo, getResourceUrl }: {
-  course: Course; facultyId: string; courses: Course[]
+function CourseRow({ course, facultyId, institutionId, courses, onEdit, onDelete, onToggle, onCopyInfo, getResourceUrl }: {
+  course: Course; facultyId: string; institutionId: string | null | undefined; courses: Course[]
   onEdit: (c: Course) => void; onDelete: (c: Course) => void
   onToggle: (id: string, s: 'open' | 'closed') => void
   onCopyInfo: (sourceId: string, targetId: string) => Promise<void>
   getResourceUrl: (p: string) => string
 }) {
   const isOpen = course.status === 'open'
-  const [panel, setPanel] = useState<'none' | 'info' | 'students'>('none')
+  const [panel, setPanel] = useState<'none' | 'info' | 'students' | 'faculty'>('none')
   const [confirmClose, setConfirmClose] = useState(false)
   const [copying, setCopying] = useState(false)
   const [copyLoading, setCopyLoading] = useState(false)
@@ -582,6 +664,9 @@ function CourseRow({ course, facultyId, courses, onEdit, onDelete, onToggle, onC
         </Button>
         <Button onClick={() => setPanel(p => p === 'students' ? 'none' : 'students')} style={{ fontSize: '12px', background: panel === 'students' ? '#F1EFE8' : undefined }}>
           {panel === 'students' ? 'Hide students' : 'Students'}
+        </Button>
+        <Button onClick={() => setPanel(p => p === 'faculty' ? 'none' : 'faculty')} style={{ fontSize: '12px', background: panel === 'faculty' ? '#F1EFE8' : undefined }}>
+          {panel === 'faculty' ? 'Hide faculty' : 'Faculty'}
         </Button>
         <Button onClick={() => onEdit(course)}>Edit</Button>
         {otherCourses.length > 0 && !copying && (
@@ -625,6 +710,7 @@ function CourseRow({ course, facultyId, courses, onEdit, onDelete, onToggle, onC
       </div>
       {panel === 'info' && <CourseInfoPanel course={course} getResourceUrl={getResourceUrl} />}
       {panel === 'students' && <CourseStudentsPanel course={course} facultyId={facultyId} />}
+      {panel === 'faculty' && <CourseFacultyPanel courseId={course.id} institutionId={institutionId} currentFacultyId={facultyId} />}
     </div>
   )
 }
@@ -703,6 +789,7 @@ export default function FacultyCourses() {
             />
           ) : (
             <CourseRow key={course.id} course={course} facultyId={profile.id}
+              institutionId={institution?.id}
               courses={courses}
               onEdit={setEditingCourse} onDelete={setConfirmDelete}
               onToggle={toggleCourseStatus} getResourceUrl={getResourceUrl}
