@@ -35,11 +35,27 @@ export default function StudentDashboard() {
     if (!due_date) return { text: 'No deadline', color: '#bbb' }
     const d = new Date(due_date)
     const diffMs = d.getTime() - now.getTime()
+    const diffHours = diffMs / (1000 * 60 * 60)
     const diffDays = diffMs / (1000 * 60 * 60 * 24)
-    if (diffMs < 0)       return { text: 'Overdue',    color: '#A32D2D' }
-    if (diffDays < 1)     return { text: 'Due today',  color: '#C87000' }
-    if (diffDays < 7)     return { text: `${Math.ceil(diffDays)}d left`, color: '#185FA5' }
-    return { text: d.toLocaleDateString(), color: '#aaa' }
+    const timeStr = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    const dateStr = d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    // Past deadline but still open
+    if (diffMs < 0)     return { text: `Due ${dateStr} · Still open`, color: '#C87000' }
+    // Closes within the hour
+    if (diffHours < 1) {
+      const mins = Math.ceil(diffMs / (1000 * 60))
+      return { text: `Due today · ${mins}m left!`, color: '#A32D2D' }
+    }
+    // Closes today — show the time
+    if (diffHours < 24) return { text: `Due today at ${timeStr}`, color: '#C87000' }
+    // Closes tomorrow
+    if (diffDays < 2)   return { text: `Due tomorrow at ${timeStr}`, color: '#185FA5' }
+    // Closes within 7 days — show day name + date
+    if (diffDays < 7) {
+      const dayStr = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+      return { text: `Due ${dayStr}`, color: '#185FA5' }
+    }
+    return { text: `Due ${dateStr}`, color: '#aaa' }
   }
 
   const dueItems = visibleQuizzes

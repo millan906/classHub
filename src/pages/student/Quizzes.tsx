@@ -30,6 +30,7 @@ export default function StudentQuizzes() {
   const [takingPdfQuiz, setTakingPdfQuiz] = useState<PdfQuiz | null>(null)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
   const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
+  const [closedCollapsed, setClosedCollapsed] = useState(true)
 
   useEffect(() => {
     if (profile) {
@@ -111,60 +112,107 @@ export default function StudentQuizzes() {
           return q.course_id === filterCourseId
         })
 
-        const grouped = TYPE_ORDER.map(({ type, label }) => ({
-          type, label,
-          items: filtered.filter(q => (q.item_type ?? 'quiz') === type),
-        })).filter(g => g.items.length > 0)
-
-        if (grouped.length === 0) {
+        if (filtered.length === 0) {
           return <div style={{ fontSize: '13px', color: '#888' }}>No assessments yet.</div>
         }
 
-        return grouped.map(({ type, label, items }) => {
-          const isCollapsed = collapsedTypes.has(type)
-          const toggle = () => setCollapsedTypes(prev => {
-            const next = new Set(prev)
-            if (next.has(type)) { next.delete(type) } else { next.add(type) }
-            return next
-          })
-          return (
-            <div key={type} style={{ marginBottom: '16px' }}>
-              <button
-                onClick={toggle}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  padding: '4px 0', marginBottom: '8px', width: '100%', textAlign: 'left',
-                }}
-              >
-                <span style={{ fontSize: '11px', color: '#888', transition: 'transform 0.15s', display: 'inline-block', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>▼</span>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-                <span style={{ fontSize: '11px', color: '#aaa', fontWeight: 400 }}>({items.length})</span>
-              </button>
+        const openItems = filtered.filter(q => q.is_open)
+        const closedItems = filtered.filter(q => !q.is_open)
 
-              {!isCollapsed && items.map(quiz => {
-                const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
-                const attemptsUsed = quizSubs.length
-                const maxAttempts = quiz.max_attempts ?? 1
-                const bestSub = quizSubs.length > 0
-                  ? quizSubs.reduce((best, s) => (s.score > best.score ? s : best))
-                  : undefined
-                return (
-                  <QuizCard
-                    key={quiz.id}
-                    quiz={quiz}
-                    mySubmission={bestSub}
-                    attemptsUsed={attemptsUsed}
-                    onTake={attemptsUsed < maxAttempts ? setTakingQuiz : undefined}
-                  />
-                )
-              })}
+        function renderTypeGroups(items: typeof filtered, keyPrefix: string) {
+          const grouped = TYPE_ORDER.map(({ type, label }) => ({
+            type, label,
+            items: items.filter(q => (q.item_type ?? 'quiz') === type),
+          })).filter(g => g.items.length > 0)
+
+          return grouped.map(({ type, label, items: typeItems }) => {
+            const colKey = `${keyPrefix}-${type}`
+            const isCollapsed = collapsedTypes.has(colKey)
+            const toggle = () => setCollapsedTypes(prev => {
+              const next = new Set(prev)
+              if (next.has(colKey)) { next.delete(colKey) } else { next.add(colKey) }
+              return next
+            })
+            return (
+              <div key={colKey} style={{ marginBottom: '12px' }}>
+                <button
+                  onClick={toggle}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0', marginBottom: '6px', width: '100%', textAlign: 'left' }}
+                >
+                  <span style={{ fontSize: '11px', color: '#aaa', display: 'inline-block', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>▼</span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
+                  <span style={{ fontSize: '11px', color: '#bbb' }}>({typeItems.length})</span>
+                </button>
+                {!isCollapsed && typeItems.map(quiz => {
+                  const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
+                  const attemptsUsed = quizSubs.length
+                  const maxAttempts = quiz.max_attempts ?? 1
+                  const bestSub = quizSubs.length > 0
+                    ? quizSubs.reduce((best, s) => (s.score > best.score ? s : best))
+                    : undefined
+                  return (
+                    <QuizCard
+                      key={quiz.id}
+                      quiz={quiz}
+                      mySubmission={bestSub}
+                      attemptsUsed={attemptsUsed}
+                      onTake={attemptsUsed < maxAttempts ? setTakingQuiz : undefined}
+                    />
+                  )
+                })}
+              </div>
+            )
+          })
+        }
+
+        return (
+          <>
+            {/* Open */}
+            <div style={{ marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#1D9E75', display: 'inline-block', flexShrink: 0 }} />
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#1D9E75' }}>Open</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, background: '#E6F7F1', color: '#1D9E75', padding: '1px 8px', borderRadius: '999px' }}>{openItems.length}</span>
+              </div>
+              {openItems.length === 0
+                ? <div style={{ fontSize: '13px', color: '#aaa', padding: '12px 0' }}>No open assessments right now.</div>
+                : renderTypeGroups(openItems, 'open')
+              }
             </div>
-          )
-        })
+
+            {/* Closed — pill toggle button */}
+            {closedItems.length > 0 && (
+              <div>
+                <button
+                  onClick={() => setClosedCollapsed(v => !v)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    background: closedCollapsed ? '#F4F3EF' : '#ECEAE4',
+                    border: '0.5px solid rgba(0,0,0,0.1)',
+                    borderRadius: '999px',
+                    padding: '6px 14px 6px 10px',
+                    cursor: 'pointer',
+                    marginBottom: closedCollapsed ? '0' : '12px',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#aaa', display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>Closed</span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, background: '#fff', color: '#888', padding: '1px 7px', borderRadius: '999px', border: '0.5px solid rgba(0,0,0,0.1)' }}>{closedItems.length}</span>
+                  <span style={{ fontSize: '10px', color: '#aaa', display: 'inline-block', transform: closedCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s', marginLeft: '2px' }}>▼</span>
+                </button>
+                {!closedCollapsed && (
+                  <div style={{ marginTop: '12px' }}>
+                    {renderTypeGroups(closedItems, 'closed')}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )
       })()}
 
-      {/* PDF Quizzes */}
+      {/* PDF Quizzes — folded into Open/Closed */}
       {(() => {
         const visiblePdf = pdfQuizzes.filter(q =>
           q.course_id == null || enrolledCourseIds.includes(q.course_id)
@@ -174,26 +222,39 @@ export default function StudentQuizzes() {
           return q.course_id === filterCourseId
         })
         if (visiblePdf.length === 0) return null
+        const openPdf = visiblePdf.filter(q => q.is_open)
+        const closedPdf = visiblePdf.filter(q => !q.is_open)
+        function renderPdfCards(items: typeof visiblePdf) {
+          return items.map(quiz => {
+            const subs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
+            const best = subs.length > 0 ? subs.reduce((b, s) => s.earned_points > b.earned_points ? s : b) : undefined
+            const attemptsUsed = subs.length
+            return (
+              <PdfQuizCard
+                key={quiz.id}
+                quiz={quiz}
+                mySubmission={best}
+                attemptsUsed={attemptsUsed}
+                onTake={quiz.is_open && attemptsUsed < quiz.max_attempts ? setTakingPdfQuiz : undefined}
+              />
+            )
+          })
+        }
         return (
-          <div style={{ marginTop: '24px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-              Paper Assessments
-            </div>
-            {visiblePdf.map(quiz => {
-              const subs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
-              const best = subs.length > 0 ? subs.reduce((b, s) => s.earned_points > b.earned_points ? s : b) : undefined
-              const attemptsUsed = subs.length
-              return (
-                <PdfQuizCard
-                  key={quiz.id}
-                  quiz={quiz}
-                  mySubmission={best}
-                  attemptsUsed={attemptsUsed}
-                  onTake={quiz.is_open && attemptsUsed < quiz.max_attempts ? setTakingPdfQuiz : undefined}
-                />
-              )
-            })}
-          </div>
+          <>
+            {openPdf.length > 0 && (
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Paper Assessments</div>
+                {renderPdfCards(openPdf)}
+              </div>
+            )}
+            {closedPdf.length > 0 && !closedCollapsed && (
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ fontSize: '11px', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Paper Assessments</div>
+                {renderPdfCards(closedPdf)}
+              </div>
+            )}
+          </>
         )
       })()}
 
@@ -201,7 +262,7 @@ export default function StudentQuizzes() {
       {manualColumns.length > 0 && (
         <div style={{ marginTop: '24px' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Instructor Grades
+            Assessment Results
           </div>
           {manualColumns.map(col => {
             const group = groups.find(g => g.id === col.group_id)

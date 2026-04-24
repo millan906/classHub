@@ -109,7 +109,14 @@ export function useGradeBook(courseId?: string | null) {
       .select('*')
       .eq('linked_quiz_id', quizId)
       .maybeSingle()
-    if (existing) return existing as GradeColumn
+    if (existing) {
+      // Backfill course_id if it was created before course tracking was added
+      if (!existing.course_id && quizCourseId) {
+        await supabase.from('grade_columns').update({ course_id: quizCourseId }).eq('id', existing.id)
+        return { ...existing, course_id: quizCourseId } as GradeColumn
+      }
+      return existing as GradeColumn
+    }
     const { data: created, error } = await supabase
       .from('grade_columns')
       .insert({

@@ -17,11 +17,19 @@ export default function ResetPassword() {
   const [ready, setReady] = useState(false)
   const navigate = useNavigate()
 
+  const [expired, setExpired] = useState(false)
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setReady(true)
     })
-    return () => subscription.unsubscribe()
+    const timeout = setTimeout(() => {
+      setExpired(true)
+    }, 6000)
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   async function handleReset(e: React.FormEvent) {
@@ -51,8 +59,19 @@ export default function ResetPassword() {
         <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.5rem' }}>Set a new password</div>
 
         {!ready ? (
-          <div style={{ fontSize: '13px', color: '#888', textAlign: 'center', padding: '1rem 0' }}>
-            Verifying reset link…
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            {expired ? (
+              <>
+                <div style={{ background: '#FCEBEB', border: '0.5px solid rgba(163,45,45,0.3)', borderRadius: '8px', padding: '12px 14px', fontSize: '13px', color: '#A32D2D', marginBottom: '1rem', textAlign: 'left' }}>
+                  This link has expired or is invalid. Please request a new one.
+                </div>
+                <a href="/forgot-password" style={{ fontSize: '13px', color: '#1D9E75', textDecoration: 'none', fontWeight: 500 }}>
+                  Request a new reset link →
+                </a>
+              </>
+            ) : (
+              <div style={{ fontSize: '13px', color: '#888' }}>Verifying reset link…</div>
+            )}
           </div>
         ) : (
           <form onSubmit={handleReset}>
