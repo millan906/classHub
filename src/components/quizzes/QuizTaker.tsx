@@ -411,9 +411,9 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
         </div>
       ))}
 
-      {quiz.item_type && quiz.item_type !== 'quiz' && quiz.allow_file_upload && !submitted && (
+      {quiz.allow_file_upload && !submitted && (
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '1rem 1.1rem', marginBottom: '10px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Submit your work</div>
+          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>File upload</div>
           {existingFile ? (
             <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', padding: '7px 10px', background: '#FEF3CD', borderRadius: '8px', border: '0.5px solid #E5C100' }}>
               📎 Current submission: <a href={existingFile.file_url} target="_blank" rel="noreferrer" style={{ color: '#185FA5' }}>{existingFile.file_name}</a>
@@ -446,7 +446,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
             <Button onClick={onCancel}>Cancel</Button>
             <Button variant="primary" onClick={() => handleSubmit(false)} disabled={submitting}>
-              {submitting ? 'Submitting...' : (quiz.item_type && quiz.item_type !== 'quiz') ? 'Submit' : 'Submit quiz'}
+              {submitting ? 'Submitting...' : quiz.item_type === 'quiz' ? 'Submit quiz' : 'Submit'}
             </Button>
           </div>
         </>
