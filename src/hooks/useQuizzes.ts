@@ -205,12 +205,12 @@ export function useQuizzes() {
 
   async function uploadAttachment(file: File): Promise<{ url: string; name: string }> {
     const ext = file.name.split('.').pop()
-    const path = `attachments/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
     const { error: upErr } = await supabase.storage
-      .from('submissions')
+      .from('attachments')
       .upload(path, file, { upsert: false })
     if (upErr) throw upErr
-    const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(path)
+    const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(path)
     return { url: publicUrl, name: file.name }
   }
 
