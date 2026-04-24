@@ -153,7 +153,7 @@ export default function StudentDashboard() {
             {allDueItems.length === 0
               ? <div style={{ fontSize: '12px', color: '#aaa' }}>Nothing due right now.</div>
               : allDueItems.map(q => {
-                  const { text, color } = urgencyLabel(q.due_date)
+                  const { text, color } = urgencyLabel(q.due_date ?? undefined)
                   const typeLabel = q.item_type ? q.item_type.charAt(0).toUpperCase() + q.item_type.slice(1) : 'Quiz'
                   return (
                     <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '7px' }}>

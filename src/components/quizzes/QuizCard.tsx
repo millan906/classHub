@@ -28,7 +28,6 @@ const TYPE_ICONS: Record<string, string> = {
 export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, courses = [], onToggle, onReleaseResults, onCopy, onViewResults, onEdit, onDelete, onTake, mySubmission, mySubmissions, attemptsUsed }: QuizCardProps) {
   const [copying, setCopying] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [viewingAttemptId, setViewingAttemptId] = useState<string | null>(null)
   const [copyTarget, setCopyTarget] = useState('')
   const [copyLoading, setCopyLoading] = useState(false)
   const otherCourses = courses.filter(c => c.id !== quiz.course_id)
