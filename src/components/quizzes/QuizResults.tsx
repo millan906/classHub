@@ -13,6 +13,7 @@ interface QuizResultsProps {
   fileSubmissions: FileSubmission[]
   onBack: () => void
   onSaveEssayScores: (submissionId: string, studentId: string, essayScores: Record<string, number>, earned: number, total: number) => Promise<void>
+  onSaveFileScore?: (studentId: string, earned: number, max: number) => Promise<void>
 }
 
 // ─── Submission detail ────────────────────────────────────────────────────────
@@ -195,12 +196,16 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBack, onSaveEssayScores }: QuizResultsProps) {
+export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBack, onSaveEssayScores, onSaveFileScore }: QuizResultsProps) {
   const PAGE_SIZE = 20
   const showFilesTab = !!(quiz.item_type && quiz.item_type !== 'quiz' && quiz.allow_file_upload)
   const [resultsTab, setResultsTab] = useState<'scores' | 'integrity' | 'files'>('scores')
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [page, setPage] = useState(0)
+  const [fileScores, setFileScores] = useState<Record<string, string>>({})
+  const [maxPoints, setMaxPoints] = useState('100')
+  const [savingFileScore, setSavingFileScore] = useState<string | null>(null)
+  const [savedFileScores, setSavedFileScores] = useState<Set<string>>(new Set())
   const { fetchLogsForQuiz } = useIntegrityLogs()
 
   useEffect(() => {
@@ -315,31 +320,104 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
 
       {resultsTab === 'files' && showFilesTab && (
         <>
-          {fileSubmissions.length === 0
-            ? <div style={{ fontSize: '13px', color: '#888' }}>No file submissions yet.</div>
-            : fileSubmissions.map(fs => {
-                const student = enrolled.find(s => s.id === fs.student_id)
-                return (
-                  <div key={fs.id} style={{
-                    display: 'flex', alignItems: 'center', gap: '10px',
-                    padding: '9px 14px', background: '#fff',
-                    border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 500 }}>{student?.full_name ?? fs.student_id}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '12px', color: '#888' }}>
+              {fileSubmissions.length} / {enrolled.length} submitted
+            </div>
+            {onSaveFileScore && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '12px', color: '#555' }}>Max points:</span>
+                <input
+                  type="number" min="1" value={maxPoints}
+                  onChange={e => setMaxPoints(e.target.value)}
+                  style={{ ...inputStyle, width: '64px', marginBottom: 0 }}
+                />
+              </div>
+            )}
+            {!quiz.grade_group_id && onSaveFileScore && (
+              <span style={{ fontSize: '11px', color: '#7A4F00' }}>⚠ Link this assessment to a grade group to save scores to gradebook</span>
+            )}
+          </div>
+
+          {enrolled.length === 0 && <div style={{ fontSize: '13px', color: '#888' }}>No enrolled students.</div>}
+          {enrolled.map(student => {
+            const fs = fileSubmissions.find(f => f.student_id === student.id)
+            const colors = getAvatarColors(student.full_name)
+            const isSaving = savingFileScore === student.id
+            const isSaved = savedFileScores.has(student.id)
+
+            async function handleSaveScore() {
+              if (!onSaveFileScore || !fs) return
+              const earned = parseFloat(fileScores[student.id] || '0') || 0
+              const max = parseFloat(maxPoints) || 100
+              setSavingFileScore(student.id)
+              try {
+                await onSaveFileScore(student.id, earned, max)
+                setSavedFileScores(prev => new Set(prev).add(student.id))
+                setTimeout(() => setSavedFileScores(prev => { const s = new Set(prev); s.delete(student.id); return s }), 2000)
+              } finally { setSavingFileScore(null) }
+            }
+
+            return (
+              <div key={student.id} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '9px 14px', background: '#fff',
+                border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
+              }}>
+                <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
+                  {fs ? (
+                    <>
                       <div style={{ fontSize: '12px', color: '#888' }}>
                         {fs.file_name}{fs.file_size ? ` · ${(fs.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#aaa' }}>{new Date(fs.submitted_at).toLocaleString()}</div>
-                    </div>
-                    <a href={fs.file_url} target="_blank" rel="noreferrer"
-                      style={{ fontSize: '12px', color: '#185FA5', textDecoration: 'none' }}>
-                      Download
-                    </a>
+                      <div style={{ fontSize: '11px', color: '#aaa' }}>
+                        Submitted {new Date(fs.submitted_at).toLocaleString()}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#aaa' }}>No submission</div>
+                  )}
+                </div>
+                {fs && onSaveFileScore && quiz.grade_group_id && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <input
+                      type="number" min="0" max={maxPoints} step="0.5"
+                      placeholder="—"
+                      value={fileScores[student.id] ?? ''}
+                      onChange={e => setFileScores(prev => ({ ...prev, [student.id]: e.target.value }))}
+                      style={{ ...inputStyle, width: '56px', marginBottom: 0, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: '12px', color: '#888' }}>/ {maxPoints}</span>
+                    <button
+                      onClick={handleSaveScore}
+                      disabled={isSaving || fileScores[student.id] === undefined || fileScores[student.id] === ''}
+                      style={{
+                        fontSize: '12px', padding: '5px 10px', borderRadius: '8px',
+                        border: 'none', background: isSaved ? '#1D9E75' : '#185FA5',
+                        color: '#fff', cursor: 'pointer', opacity: (isSaving || !fileScores[student.id]) ? 0.5 : 1,
+                        fontFamily: 'Inter, sans-serif',
+                      }}>
+                      {isSaved ? '✓' : isSaving ? '…' : 'Save'}
+                    </button>
                   </div>
-                )
-              })
-          }
+                )}
+                {fs ? (
+                  <a href={fs.file_url} target="_blank" rel="noreferrer"
+                    style={{
+                      fontSize: '12px', color: '#185FA5', textDecoration: 'none',
+                      padding: '5px 12px', border: '0.5px solid #185FA5',
+                      borderRadius: '8px', whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                    View →
+                  </a>
+                ) : (
+                  <span style={{ fontSize: '11px', color: '#ccc' }}>—</span>
+                )}
+              </div>
+            )
+          })}
         </>
       )}
     </div>

@@ -25,7 +25,7 @@ import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } fro
 
 export default function FacultyQuizzes() {
   const { profile } = useAuth()
-  const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz } = useQuizzes()
+  const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz, uploadAttachment } = useQuizzes()
   const { slides } = useSlides()
   const { students } = useStudents()
   const { courses } = useCourses(null, profile?.id)
@@ -163,6 +163,19 @@ export default function FacultyQuizzes() {
     }
   }
 
+  async function handleSaveFileScore(studentId: string, earned: number, max: number) {
+    if (!viewingResults || !profile || !viewingResults.grade_group_id) return
+    try {
+      const col = await findOrCreateLinkedColumn(
+        viewingResults.id, viewingResults.title, viewingResults.grade_group_id, max, profile.id,
+      )
+      if (col.max_score !== max) await updateColumnMaxScore(col.id, max)
+      await upsertEntry(col.id, studentId, earned)
+    } catch (err) {
+      console.error('[GradeBook] handleSaveFileScore failed:', err)
+    }
+  }
+
   async function handleCreatePdf(file: File | undefined, formData: PdfQuizFormData) {
     if (!profile) return
     const quizId = await createPdfQuiz(file, formData, profile.id)
@@ -275,6 +288,7 @@ export default function FacultyQuizzes() {
         fileSubmissions={fileSubmissions}
         onBack={() => setViewingResults(null)}
         onSaveEssayScores={handleSaveEssayScores}
+        onSaveFileScore={handleSaveFileScore}
       />
     )
   }
@@ -291,6 +305,7 @@ export default function FacultyQuizzes() {
           onCancel={() => setEditingQuiz(null)}
           initialQuiz={editingQuiz}
           onUpdate={handleUpdate}
+          uploadAttachment={uploadAttachment}
         />
       </div>
     )
@@ -306,6 +321,7 @@ export default function FacultyQuizzes() {
           groups={groups}
           onCreate={handleCreate}
           onCancel={() => setShowBuilder(false)}
+          uploadAttachment={uploadAttachment}
         />
       </div>
     )

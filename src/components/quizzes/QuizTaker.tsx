@@ -300,6 +300,21 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
         </div>
       )}
 
+      {quiz.attachment_url && quiz.attachment_name && (
+        <div style={{ marginBottom: '14px' }}>
+          <a href={quiz.attachment_url} target="_blank" rel="noreferrer"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              fontSize: '13px', color: '#185FA5', textDecoration: 'none',
+              padding: '7px 12px', border: '0.5px solid #185FA5',
+              borderRadius: '8px', background: '#E6F1FB',
+            }}>
+            📎 {quiz.attachment_name}
+          </a>
+          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>Attached by your instructor</div>
+        </div>
+      )}
+
       {questions.map((q, i) => (
         <div key={q.id} style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '1rem 1.1rem', marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>

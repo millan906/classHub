@@ -63,6 +63,8 @@ export function useQuizzes() {
         grade_group_id: data.gradeGroupId,
         allow_file_upload: data.allowFileUpload,
         description: data.description,
+        attachment_url: data.attachmentUrl,
+        attachment_name: data.attachmentName,
       })
       .select()
       .single()
@@ -93,6 +95,8 @@ export function useQuizzes() {
       allow_file_upload: data.allowFileUpload,
       description: data.description,
       grade_group_id: data.gradeGroupId,
+      attachment_url: data.attachmentUrl,
+      attachment_name: data.attachmentName,
     }).eq('id', quizId)
     await supabase.from('quiz_questions').delete().eq('quiz_id', quizId)
     if (data.questions.length > 0) {
@@ -199,6 +203,17 @@ export function useQuizzes() {
     if (error) throw error
   }
 
+  async function uploadAttachment(file: File): Promise<{ url: string; name: string }> {
+    const ext = file.name.split('.').pop()
+    const path = `attachments/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('submissions')
+      .upload(path, file, { upsert: false })
+    if (upErr) throw upErr
+    const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(path)
+    return { url: publicUrl, name: file.name }
+  }
+
   async function fetchFileSubmissions(quizId: string): Promise<FileSubmission[]> {
     const { data } = await supabase.from('file_submissions').select('*').eq('quiz_id', quizId)
     return (data || []) as FileSubmission[]
@@ -269,5 +284,5 @@ export function useQuizzes() {
     return newQuiz.id
   }
 
-  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz }
+  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, uploadAttachment, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz }
 }

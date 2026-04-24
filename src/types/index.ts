@@ -112,6 +112,8 @@ export interface Quiz {
   description?: string | null
   grade_group_id?: string | null
   results_visible?: boolean
+  attachment_url?: string | null
+  attachment_name?: string | null
 }
 
 export interface QuizQuestion {
@@ -160,6 +162,8 @@ export interface QuizFormData {
   allowFileUpload: boolean
   description: string | null
   notifyStudents: boolean
+  attachmentUrl: string | null
+  attachmentName: string | null
 }
 
 export interface FileSubmission {

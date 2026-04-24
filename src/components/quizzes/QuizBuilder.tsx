@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { DraftQuestionEditor } from './DraftQuestionEditor'
@@ -38,6 +38,7 @@ interface QuizBuilderProps {
   onCancel: () => void
   initialQuiz?: Quiz
   onUpdate?: (quizId: string, data: QuizFormData) => Promise<void>
+  uploadAttachment?: (file: File) => Promise<{ url: string; name: string }>
 }
 
 function makeMcqOptions(): { label: string; text: string }[] {
@@ -62,7 +63,7 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
   )
 }
 
-export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, initialQuiz, onUpdate }: QuizBuilderProps) {
+export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, initialQuiz, onUpdate, uploadAttachment }: QuizBuilderProps) {
   const [itemType, setItemType] = useState<ItemType>((initialQuiz?.item_type as ItemType) ?? 'quiz')
   const [title, setTitle] = useState(initialQuiz?.title ?? '')
   const [courseId, setCourseId] = useState(initialQuiz?.course_id ?? '')
@@ -77,6 +78,10 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
   const [manualGroupId, setManualGroupId] = useState(initialQuiz?.grade_group_id ?? '')
   const [allowFileUpload, setAllowFileUpload] = useState(initialQuiz?.allow_file_upload ?? false)
   const [notifyStudents, setNotifyStudents] = useState(!initialQuiz)
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(initialQuiz?.attachment_url ?? null)
+  const [attachmentName, setAttachmentName] = useState<string | null>(initialQuiz?.attachment_name ?? null)
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const attachmentRef = useRef<HTMLInputElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -149,7 +154,20 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       allowFileUpload: isQuiz ? false : allowFileUpload,
       description: description.trim() || null,
       notifyStudents,
+      attachmentUrl,
+      attachmentName,
     }
+  }
+
+  async function handleAttachmentFile(file: File) {
+    if (!uploadAttachment) return
+    setUploadingAttachment(true)
+    try {
+      const { url, name } = await uploadAttachment(file)
+      setAttachmentUrl(url)
+      setAttachmentName(name)
+    } catch { setError('File upload failed. Try again.') }
+    finally { setUploadingAttachment(false) }
   }
 
   async function handleSave() {
@@ -229,6 +247,37 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
         rows={3}
         style={{ ...formInputStyle, resize: 'vertical', lineHeight: '1.5' }}
       />
+
+      {/* Attachment — faculty can attach a reference file for students */}
+      {uploadAttachment && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Attachment (optional)</div>
+          {attachmentUrl && attachmentName ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <a href={attachmentUrl} target="_blank" rel="noreferrer"
+                style={{ fontSize: '12px', color: '#185FA5', textDecoration: 'none' }}>
+                📎 {attachmentName}
+              </a>
+              <button onClick={() => { setAttachmentUrl(null); setAttachmentName(null) }}
+                style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>
+                Remove
+              </button>
+            </div>
+          ) : (
+            <>
+              <input type="file" ref={attachmentRef} style={{ display: 'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleAttachmentFile(f) }} />
+              <Button onClick={() => attachmentRef.current?.click()} disabled={uploadingAttachment}
+                style={{ fontSize: '12px' }}>
+                {uploadingAttachment ? 'Uploading…' : '📎 Attach file'}
+              </Button>
+            </>
+          )}
+          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>
+            Students will see this file when they open the assessment.
+          </div>
+        </div>
+      )}
 
       {/* Grade group — shown for all types */}
       {groups.length > 0 && (
