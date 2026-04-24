@@ -150,8 +150,10 @@ export function useQuizzes() {
       }
     }
 
-    // Email notification
-    if (session) fireQuizOpenEmail(session.access_token, id)
+    // Email notification — refresh session first to ensure a non-expired token
+    const { data: { session: freshSession } } = await supabase.auth.refreshSession()
+    const emailSession = freshSession ?? session
+    if (emailSession) fireQuizOpenEmail(emailSession.access_token, id)
   }
 
   async function submitQuiz(
