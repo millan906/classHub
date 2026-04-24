@@ -198,7 +198,8 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
 
 export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBack, onSaveEssayScores, onSaveFileScore }: QuizResultsProps) {
   const PAGE_SIZE = 20
-  const showFilesTab = !!(quiz.item_type && quiz.item_type !== 'quiz' && quiz.allow_file_upload)
+  const isActivity = quiz.item_type === 'activity'
+  const showFilesTab = !!(quiz.item_type && quiz.item_type !== 'quiz' && !isActivity && quiz.allow_file_upload)
   const [resultsTab, setResultsTab] = useState<'scores' | 'integrity' | 'files'>('scores')
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [page, setPage] = useState(0)
@@ -254,7 +255,85 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
         )}
       </div>
 
-      {resultsTab === 'scores' && (
+      {resultsTab === 'scores' && isActivity && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <div style={{ fontSize: '12px', color: '#888' }}>
+              {submissions.length} / {enrolled.length} marked done
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '12px', color: '#555' }}>Max points:</span>
+              <input
+                type="number" min="1" value={maxPoints}
+                onChange={e => setMaxPoints(e.target.value)}
+                style={{ ...inputStyle, width: '64px', marginBottom: 0 }}
+              />
+            </div>
+            {!quiz.grade_group_id && (
+              <span style={{ fontSize: '11px', color: '#7A4F00' }}>⚠ Link this activity to a grade group to save scores to gradebook</span>
+            )}
+          </div>
+          {enrolled.length === 0 && <div style={{ fontSize: '13px', color: '#888' }}>No enrolled students.</div>}
+          {enrolled.map(student => {
+            const sub = submissions.filter(s => s.student_id === student.id)[0]
+            const colors = getAvatarColors(student.full_name)
+            const isSaving = savingFileScore === student.id
+            const isSaved = savedFileScores.has(student.id)
+            async function handleSaveManual() {
+              if (!onSaveFileScore) return
+              const earned = parseFloat(fileScores[student.id] || '0') || 0
+              const max = parseFloat(maxPoints) || 100
+              setSavingFileScore(student.id)
+              try {
+                await onSaveFileScore(student.id, earned, max)
+                setSavedFileScores(prev => new Set(prev).add(student.id))
+                setTimeout(() => setSavedFileScores(prev => { const s = new Set(prev); s.delete(student.id); return s }), 2000)
+              } finally { setSavingFileScore(null) }
+            }
+            return (
+              <div key={student.id} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '9px 14px', background: '#fff',
+                border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
+              }}>
+                <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
+                  <div style={{ fontSize: '12px', color: sub ? '#1D9E75' : '#aaa' }}>
+                    {sub ? `Marked done · ${new Date(sub.submitted_at).toLocaleDateString()}` : 'Not yet done'}
+                  </div>
+                </div>
+                {onSaveFileScore && quiz.grade_group_id && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    <input
+                      type="number" min="0" max={maxPoints} step="0.5"
+                      placeholder="—"
+                      value={fileScores[student.id] ?? ''}
+                      onChange={e => setFileScores(prev => ({ ...prev, [student.id]: e.target.value }))}
+                      style={{ ...inputStyle, width: '56px', marginBottom: 0, textAlign: 'center' }}
+                    />
+                    <span style={{ fontSize: '12px', color: '#888' }}>/ {maxPoints}</span>
+                    <button
+                      onClick={handleSaveManual}
+                      disabled={isSaving || fileScores[student.id] === undefined || fileScores[student.id] === ''}
+                      style={{
+                        fontSize: '12px', padding: '5px 10px', borderRadius: '8px',
+                        border: 'none', background: isSaved ? '#1D9E75' : '#6B4E9E',
+                        color: '#fff', cursor: 'pointer',
+                        opacity: (isSaving || !fileScores[student.id]) ? 0.5 : 1,
+                        fontFamily: 'Inter, sans-serif',
+                      }}>
+                      {isSaved ? '✓' : isSaving ? '…' : 'Save'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </>
+      )}
+
+      {resultsTab === 'scores' && !isActivity && (
         <>
           {enrolled.length === 0 && <div style={{ fontSize: '13px', color: '#888' }}>No enrolled students.</div>}
           {enrolled.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(student => {

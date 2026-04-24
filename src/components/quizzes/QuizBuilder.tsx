@@ -28,6 +28,7 @@ export const TYPE_CONFIG: Record<ItemType, { label: string; color: string; group
   assignment: { label: 'Assignment', color: '#3C3489', groupName: 'Assignments' },
   project:    { label: 'Project',    color: '#E65100', groupName: 'Project' },
   exam:       { label: 'Exam',       color: '#A32D2D', groupName: 'Exam' },
+  activity:   { label: 'Activity',   color: '#6B4E9E', groupName: 'Activities' },
 }
 
 interface QuizBuilderProps {
@@ -320,8 +321,8 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
         />
       )}
 
-      {/* Questions — shown for ALL types */}
-      <div style={{ marginBottom: '8px' }}>
+      {/* Questions — hidden for activity type */}
+      {itemType !== 'activity' && <div style={{ marginBottom: '8px' }}>
         {questions.length > 0 && (
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '6px', fontWeight: 500 }}>
             Questions ({questions.length})
@@ -337,7 +338,7 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
             onRemove={() => removeQuestion(i)}
           />
         ))}
-      </div>
+      </div>}
 
       {error && (
         <div style={{ fontSize: '12px', color: '#A32D2D', background: '#FCEBEB', padding: '8px 12px', borderRadius: '8px', marginBottom: '10px' }}>

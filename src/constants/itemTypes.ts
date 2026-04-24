@@ -4,4 +4,5 @@ export const TYPE_ORDER: { type: string; label: string }[] = [
   { type: 'assignment', label: 'Assignments' },
   { type: 'lab',        label: 'Labs' },
   { type: 'project',    label: 'Projects' },
+  { type: 'activity',   label: 'Activities' },
 ]

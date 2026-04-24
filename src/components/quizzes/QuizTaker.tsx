@@ -323,7 +323,9 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
           <QuizTimer totalSeconds={quiz.time_limit_minutes * 60} onExpire={() => handleSubmit(true)} />
         )}
       </div>
-      <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.1rem' }}>{questions.length} questions</div>
+      {quiz.item_type !== 'activity' && (
+        <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.1rem' }}>{questions.length} questions</div>
+      )}
 
       {quiz.description && (
         <div style={{ background: '#F8F7F2', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#444', lineHeight: '1.6', whiteSpace: 'pre-wrap', marginBottom: '14px' }}>
@@ -446,7 +448,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
             <Button onClick={onCancel}>Cancel</Button>
             <Button variant="primary" onClick={() => handleSubmit(false)} disabled={submitting}>
-              {submitting ? 'Submitting...' : quiz.item_type === 'quiz' ? 'Submit quiz' : 'Submit'}
+              {submitting ? 'Submitting...' : quiz.item_type === 'quiz' ? 'Submit quiz' : quiz.item_type === 'activity' ? 'Mark as done' : 'Submit'}
             </Button>
           </div>
         </>

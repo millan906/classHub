@@ -89,7 +89,7 @@ export interface Announcement {
   course_id?: string | null
 }
 
-export type ItemType = 'quiz' | 'lab' | 'assignment' | 'project' | 'exam'
+export type ItemType = 'quiz' | 'lab' | 'assignment' | 'project' | 'exam' | 'activity'
 
 export interface Quiz {
   id: string

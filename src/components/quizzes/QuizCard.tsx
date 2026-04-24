@@ -22,7 +22,7 @@ interface QuizCardProps {
 }
 
 const TYPE_ICONS: Record<string, string> = {
-  quiz: '📝', lab: '🧪', assignment: '📋', project: '📁', exam: '📄'
+  quiz: '📝', lab: '🧪', assignment: '📋', project: '📁', exam: '📄', activity: '✅'
 }
 
 export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, courses = [], onToggle, onReleaseResults, onCopy, onViewResults, onEdit, onDelete, onTake, mySubmission, mySubmissions, attemptsUsed }: QuizCardProps) {
