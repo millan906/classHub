@@ -71,7 +71,7 @@ function SyllabusCellEditor({ col, label, row, fileRef, isUploading, onUpdate, o
       {c.file_path ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '12px', color: '#1D9E75' }}>📎 {c.file_name}</span>
-          <button onClick={() => { updateCell('file_path', ''); updateCell('file_name', '') }}
+          <button onClick={() => onUpdate(row.id, { ...row, [col]: { ...row[col], file_path: '', file_name: '' } })}
             style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
         </div>
       ) : (
@@ -297,7 +297,7 @@ function CourseForm({ courseId, initial, onSave, onCancel, uploadResource, delet
           {r.file_path ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '12px', color: '#1D9E75' }}>📎 {r.file_name}</span>
-              <button onClick={() => { updateResource(r.id, 'file_path', ''); updateResource(r.id, 'file_name', '') }} style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+              <button onClick={() => setResources(prev => prev.map(res => res.id === r.id ? { ...res, file_path: '', file_name: '' } : res))} style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
