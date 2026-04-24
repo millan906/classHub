@@ -1,8 +1,8 @@
-import React from 'react'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { toTitleCase } from '../../utils/nameFormat'
+import { checkRateLimit, recordFailure, registerKey } from '../../utils/rateLimiter'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '8px 12px', fontSize: '13px',
@@ -42,6 +42,8 @@ export default function Register() {
     e.preventDefault()
     const pwValidation = validatePassword(password)
     if (pwValidation) { setError(pwValidation); return }
+    const { blocked, remainingMs } = checkRateLimit(registerKey())
+    if (blocked) { setError(`Too many attempts. Try again in ${Math.ceil(remainingMs / 1000)}s.`); return }
     setError('')
     setLoading(true)
     try {
@@ -59,6 +61,7 @@ export default function Register() {
 
       navigate('/')
     } catch (err: unknown) {
+      recordFailure(registerKey())
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
       setLoading(false)
