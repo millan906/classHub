@@ -7,7 +7,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function Button({ variant = 'default', children, style, ...props }: ButtonProps) {
   const base: React.CSSProperties = {
-    padding: '5px 12px', fontSize: '12px', borderRadius: '8px',
+    padding: '6px 16px', fontSize: '12px', borderRadius: '8px',
     border: '0.5px solid rgba(0,0,0,0.25)', background: 'transparent',
     color: '#1a1a1a', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
     display: 'inline-flex', alignItems: 'center', gap: '4px',

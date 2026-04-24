@@ -36,12 +36,14 @@ export function useQuizzes() {
   }
 
   async function fetchMySubmissions(studentId: string) {
-    const { data } = await supabase.from('quiz_submissions').select('*').eq('student_id', studentId)
+    const { data, error } = await supabase.from('quiz_submissions').select('*').eq('student_id', studentId)
+    if (error) { console.error('fetchMySubmissions failed:', error.message); return }
     setSubmissions(data || [])
   }
 
   async function fetchAllSubmissions() {
-    const { data } = await supabase.from('quiz_submissions').select('*')
+    const { data, error } = await supabase.from('quiz_submissions').select('*')
+    if (error) { console.error('fetchAllSubmissions failed:', error.message); return }
     setSubmissions(data || [])
   }
 
@@ -65,6 +67,8 @@ export function useQuizzes() {
         description: data.description,
         attachment_url: data.attachmentUrl,
         attachment_name: data.attachmentName,
+        randomize_questions: data.randomizeQuestions,
+        file_max_points: data.fileMaxPoints,
       })
       .select()
       .single()
@@ -97,6 +101,8 @@ export function useQuizzes() {
       grade_group_id: data.gradeGroupId,
       attachment_url: data.attachmentUrl,
       attachment_name: data.attachmentName,
+      randomize_questions: data.randomizeQuestions,
+      file_max_points: data.fileMaxPoints,
     }).eq('id', quizId)
     await supabase.from('quiz_questions').delete().eq('quiz_id', quizId)
     if (data.questions.length > 0) {
@@ -221,6 +227,11 @@ export function useQuizzes() {
     return (data || []) as FileSubmission[]
   }
 
+  async function fetchMyFileSubmission(quizId: string, studentId: string): Promise<FileSubmission | null> {
+    const { data } = await supabase.from('file_submissions').select('*').eq('quiz_id', quizId).eq('student_id', studentId).maybeSingle()
+    return data as FileSubmission | null
+  }
+
   async function saveEssayScores(
     submissionId: string,
     essayScores: Record<string, number>,
@@ -263,6 +274,8 @@ export function useQuizzes() {
         description: quiz.description ?? null,
         is_open: false,
         results_visible: false,
+        randomize_questions: quiz.randomize_questions ?? false,
+        file_max_points: quiz.file_max_points ?? null,
       })
       .select().single()
     if (error) throw error
@@ -286,5 +299,5 @@ export function useQuizzes() {
     return newQuiz.id
   }
 
-  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, uploadAttachment, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz }
+  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, uploadAttachment, fetchFileSubmissions, fetchMyFileSubmission, saveEssayScores, releaseResults, copyQuiz }
 }

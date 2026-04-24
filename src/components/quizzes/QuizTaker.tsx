@@ -88,6 +88,20 @@ function SubmitResult({ earnedPoints, autoTotal, allEssay, hasEssay, resultsVisi
   hasEssay: boolean
   resultsVisible: boolean
 }) {
+  if (autoTotal === 0 && !allEssay) {
+    return (
+      <div style={{
+        padding: '16px 18px', borderRadius: '8px', background: '#E1F5EE',
+        color: '#0F6E56', border: '0.5px solid #1D9E75',
+      }}>
+        <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Submitted</div>
+        <div style={{ fontSize: '13px', lineHeight: '1.6' }}>
+          Your submission has been received. Your instructor will review it shortly.
+        </div>
+      </div>
+    )
+  }
+
   if (!resultsVisible || allEssay) {
     return (
       <div style={{
@@ -129,11 +143,24 @@ function SubmitResult({ earnedPoints, autoTotal, allEssay, hasEssay, resultsVisi
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, existingFile }: QuizTakerProps) {
-  const questions = quiz.questions ?? []
+  const [questions] = useState(() => {
+    const raw = quiz.questions ?? []
+    return quiz.randomize_questions ? shuffleArray(raw) : raw
+  })
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [earnedPoints, setEarnedPoints] = useState(0)
   const [, setTotalPoints] = useState(0)
   const hasEssay = questions.some(q => q.type === 'essay')
@@ -229,6 +256,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
   async function handleSubmit(auto = false) {
     if (submitting) return
     setSubmitting(true)
+    setSubmitError('')
     let earned = 0
     let total = 0
     for (const q of questions) {
@@ -239,10 +267,13 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
     setEarnedPoints(earned)
     setTotalPoints(total)
     submittedRef.current = true
-    setSubmitted(true)
     try {
       if (pendingFile && onFileUpload) await onFileUpload(pendingFile)
       await onSubmit(answers, earned, total, auto, keystrokeCountRef.current, startedAtRef.current, answerTimestampsRef.current)
+      setSubmitted(true)
+    } catch (err) {
+      submittedRef.current = false
+      setSubmitError(err instanceof Error ? err.message : 'Submission failed. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -318,7 +349,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
       {questions.map((q, i) => (
         <div key={q.id} style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '1rem 1.1rem', marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 500 }}>{i + 1}. {q.question_text}</div>
+            <div style={{ fontSize: '13px', fontWeight: 500, lineHeight: '1.65', whiteSpace: 'pre-wrap' }}>{i + 1}. {q.question_text}</div>
             <span style={{ fontSize: '11px', color: '#888', flexShrink: 0, marginLeft: '8px' }}>
               {q.points ?? 1} pt{(q.points ?? 1) !== 1 ? 's' : ''}
             </span>
@@ -382,37 +413,43 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
 
       {quiz.item_type && quiz.item_type !== 'quiz' && quiz.allow_file_upload && !submitted && (
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '1rem 1.1rem', marginBottom: '10px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '8px' }}>
-            File Upload {existingFile ? '(replace existing)' : ''}
-          </div>
-          {existingFile && (
-            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px' }}>
-              Current: <a href={existingFile.file_url} target="_blank" rel="noreferrer" style={{ color: '#185FA5' }}>{existingFile.file_name}</a>
+          <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Submit your work</div>
+          {existingFile ? (
+            <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', padding: '7px 10px', background: '#FEF3CD', borderRadius: '8px', border: '0.5px solid #E5C100' }}>
+              📎 Current submission: <a href={existingFile.file_url} target="_blank" rel="noreferrer" style={{ color: '#185FA5' }}>{existingFile.file_name}</a>
+              <div style={{ fontSize: '11px', color: '#7A4F00', marginTop: '3px' }}>Uploading a new file will replace this submission.</div>
             </div>
-          )}
-          <input type="file" accept="video/*,application/pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.zip"
+          ) : null}
+          <input type="file" accept="application/pdf,image/*"
             onChange={e => {
               const f = e.target.files?.[0] ?? null
-              if (f && f.size > 100 * 1024 * 1024) { alert('File too large. Maximum size is 100 MB.'); e.target.value = ''; return }
+              if (f && f.size > 50 * 1024 * 1024) { alert('File too large. Maximum size is 50 MB.'); e.target.value = ''; return }
               setPendingFile(f)
             }}
             style={{ fontSize: '13px' }} />
-          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '3px' }}>Max 100 MB</div>
+          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>PDF or image only · Max 50 MB</div>
           {pendingFile && (
             <div style={{ fontSize: '12px', color: '#0F6E56', marginTop: '6px' }}>
-              Selected: {pendingFile.name} ({(pendingFile.size / 1024 / 1024).toFixed(1)} MB)
+              ✓ Ready to submit: {pendingFile.name} ({(pendingFile.size / 1024 / 1024).toFixed(1)} MB)
             </div>
           )}
         </div>
       )}
 
       {!submitted && (
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-          <Button onClick={onCancel}>Cancel</Button>
-          <Button variant="primary" onClick={() => handleSubmit(false)} disabled={submitting}>
-            {submitting ? 'Submitting...' : (quiz.item_type && quiz.item_type !== 'quiz') ? 'Submit' : 'Submit quiz'}
-          </Button>
-        </div>
+        <>
+          {submitError && (
+            <div style={{ background: '#FFF3F3', border: '0.5px solid #FFBCBC', borderRadius: '8px', padding: '10px 14px', fontSize: '13px', color: '#CC3333', marginBottom: '8px' }}>
+              {submitError}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <Button onClick={onCancel}>Cancel</Button>
+            <Button variant="primary" onClick={() => handleSubmit(false)} disabled={submitting}>
+              {submitting ? 'Submitting...' : (quiz.item_type && quiz.item_type !== 'quiz') ? 'Submit' : 'Submit quiz'}
+            </Button>
+          </div>
+        </>
       )}
 
       {submitted && (

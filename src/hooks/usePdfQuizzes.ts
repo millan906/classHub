@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
 import { fireQuizOpenEmail } from './useNotifications'
 import type { PdfQuiz, PdfQuizSubmission, PdfQuizFormData, Profile } from '../types'
-import * as XLSX from 'xlsx'
 
 export function usePdfQuizzes() {
   const [pdfQuizzes, setPdfQuizzes] = useState<PdfQuiz[]>([])
@@ -343,7 +342,7 @@ export function usePdfQuizzes() {
     return supabase.storage.from('pdf-quizzes').getPublicUrl(pdfPath).data.publicUrl
   }
 
-  function downloadScoresCsv(pdfQuiz: PdfQuiz, quizSubmissions: PdfQuizSubmission[], students: Profile[]) {
+  async function downloadScoresCsv(pdfQuiz: PdfQuiz, quizSubmissions: PdfQuizSubmission[], students: Profile[]) {
     const rubrics = pdfQuiz.essay_rubrics ?? []
     const essayQNums = [...new Set(rubrics.map(r => r.question_number))].sort((a, b) => a - b)
 
@@ -381,6 +380,7 @@ export function usePdfQuizzes() {
       ]
     })
 
+    const XLSX = await import('xlsx')
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Scores')

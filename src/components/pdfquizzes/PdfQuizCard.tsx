@@ -70,7 +70,7 @@ export function PdfQuizCard({
 
       {/* Bottom row: action buttons */}
       {isFaculty && (
-        <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button onClick={() => onEdit?.(quiz)}>Edit</Button>
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}

@@ -27,12 +27,16 @@ export function useGradeBook(courseId?: string | null) {
   async function fetchAll() {
     try {
       setError(null)
+      let groupsQuery = supabase.from('grade_groups').select('*').order('created_at', { ascending: true })
+      if (courseId) {
+        groupsQuery = groupsQuery.or(`course_id.is.null,course_id.eq.${courseId}`) as typeof groupsQuery
+      }
       let colsQuery = supabase.from('grade_columns').select('*').order('created_at', { ascending: true })
       if (courseId) {
         colsQuery = colsQuery.eq('course_id', courseId) as typeof colsQuery
       }
       const [groupsRes, colsRes, entsRes] = await Promise.all([
-        supabase.from('grade_groups').select('*').order('created_at', { ascending: true }),
+        groupsQuery,
         colsQuery,
         supabase.from('grade_entries').select('*'),
       ])

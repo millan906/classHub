@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
-import * as XLSX from 'xlsx'
 import { useAuth } from '../../hooks/useAuth'
 import { useCourses } from '../../hooks/useCourses'
 import { supabase } from '../../lib/supabase'
@@ -61,8 +60,9 @@ export default function RosterTab({ institutionId }: RosterTabProps) {
     setFileName(file.name)
 
     const reader = new FileReader()
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
+        const XLSX = await import('xlsx')
         const data = evt.target?.result
         const workbook = XLSX.read(data, { type: 'array' })
         const sheetName = workbook.SheetNames[0]

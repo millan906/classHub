@@ -73,10 +73,12 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
   const [closeAt, setCloseAt] = useState(initialQuiz?.close_at ? toLocalInput(initialQuiz.close_at) : '')
   const [timeLimit, setTimeLimit] = useState<string>(initialQuiz?.time_limit_minutes?.toString() ?? '')
   const [lockdown, setLockdown] = useState(initialQuiz?.lockdown_enabled ?? false)
-  const [maxAttempts, setMaxAttempts] = useState<string>(initialQuiz?.max_attempts?.toString() ?? '1')
+  const [maxAttempts, setMaxAttempts] = useState<string>(initialQuiz?.max_attempts?.toString() ?? (itemType === 'quiz' ? '1' : '3'))
   const [description, setDescription] = useState(initialQuiz?.description ?? '')
   const [manualGroupId, setManualGroupId] = useState(initialQuiz?.grade_group_id ?? '')
-  const [allowFileUpload, setAllowFileUpload] = useState(initialQuiz?.allow_file_upload ?? false)
+  const [allowFileUpload, setAllowFileUpload] = useState(initialQuiz?.allow_file_upload ?? (initialQuiz ? false : itemType !== 'quiz'))
+  const [randomizeQuestions, setRandomizeQuestions] = useState(initialQuiz?.randomize_questions ?? false)
+  const [fileMaxPoints, setFileMaxPoints] = useState<string>(initialQuiz?.file_max_points?.toString() ?? '100')
   const [notifyStudents, setNotifyStudents] = useState(!initialQuiz)
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(initialQuiz?.attachment_url ?? null)
   const [attachmentName, setAttachmentName] = useState<string | null>(initialQuiz?.attachment_name ?? null)
@@ -147,15 +149,17 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       closeAt: closeAt ? toUTCIso(closeAt) : null,
       timeLimitMinutes: isQuiz ? (timeLimit ? parseInt(timeLimit, 10) : null) : null,
       lockdownEnabled: isQuiz ? lockdown : false,
-      maxAttempts: isQuiz ? (parseInt(maxAttempts) || 1) : 1,
+      maxAttempts: parseInt(maxAttempts) || 1,
       questions: qs.map(q => ({ ...q, points: Number(q.points) || 1, code_snippet: q.code_snippet ?? undefined, code_language: q.code_language ?? undefined })),
       itemType,
       gradeGroupId: manualGroupId || null,
-      allowFileUpload: isQuiz ? false : allowFileUpload,
+      allowFileUpload,
       description: description.trim() || null,
       notifyStudents,
       attachmentUrl,
       attachmentName,
+      randomizeQuestions,
+      fileMaxPoints: allowFileUpload ? (parseInt(fileMaxPoints) || 100) : null,
     }
   }
 
@@ -301,6 +305,9 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
           maxAttempts={maxAttempts} setMaxAttempts={setMaxAttempts}
           slideId={slideId} setSlideId={setSlideId}
           slides={slides}
+          randomizeQuestions={randomizeQuestions} setRandomizeQuestions={setRandomizeQuestions}
+          allowFileUpload={allowFileUpload} setAllowFileUpload={setAllowFileUpload}
+          fileMaxPoints={fileMaxPoints} setFileMaxPoints={setFileMaxPoints}
         />
       ) : (
         <NonQuizSettings
@@ -308,6 +315,8 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
           openAt={openAt} setOpenAt={setOpenAt}
           closeAt={closeAt} setCloseAt={setCloseAt}
           allowFileUpload={allowFileUpload} setAllowFileUpload={setAllowFileUpload}
+          maxAttempts={maxAttempts} setMaxAttempts={setMaxAttempts}
+          fileMaxPoints={fileMaxPoints} setFileMaxPoints={setFileMaxPoints}
         />
       )}
 
@@ -339,10 +348,14 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       {/* Bottom row */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
         <div style={{ display: 'flex', gap: '6px' }}>
-          <Button onClick={() => addQuestion('mcq')} style={{ background: '#E6F1FB', color: '#185FA5', borderColor: '#185FA5', fontSize: '12px' }}>+ MCQ</Button>
-          <Button onClick={() => addQuestion('truefalse')} style={{ background: '#EEEDFE', color: '#3C3489', borderColor: '#3C3489', fontSize: '12px' }}>+ True/False</Button>
-          <Button onClick={() => addQuestion('codesnippet')} style={{ background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56', fontSize: '12px' }}>+ Code Snippet</Button>
-          <Button onClick={() => addQuestion('essay')} style={{ background: '#FEF3CD', color: '#7A4F00', borderColor: '#B8860B', fontSize: '12px' }}>+ Essay</Button>
+          {itemType === 'quiz' && (
+            <>
+              <Button onClick={() => addQuestion('mcq')} style={{ background: '#E6F1FB', color: '#185FA5', borderColor: '#185FA5', fontSize: '12px' }}>+ MCQ</Button>
+              <Button onClick={() => addQuestion('truefalse')} style={{ background: '#EEEDFE', color: '#3C3489', borderColor: '#3C3489', fontSize: '12px' }}>+ True/False</Button>
+              <Button onClick={() => addQuestion('codesnippet')} style={{ background: '#E1F5EE', color: '#0F6E56', borderColor: '#0F6E56', fontSize: '12px' }}>+ Code Snippet</Button>
+              <Button onClick={() => addQuestion('essay')} style={{ background: '#FEF3CD', color: '#7A4F00', borderColor: '#B8860B', fontSize: '12px' }}>+ Essay</Button>
+            </>
+          )}
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#555', cursor: 'pointer' }}>
           <input type="checkbox" checked={notifyStudents} onChange={e => setNotifyStudents(e.target.checked)} />
@@ -361,7 +374,7 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
 
 // ─── Settings sub-panels ──────────────────────────────────────────────────────
 
-function QuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setCloseAt, timeLimit, setTimeLimit, lockdown, setLockdown, maxAttempts, setMaxAttempts, slideId, setSlideId, slides }: {
+function QuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setCloseAt, timeLimit, setTimeLimit, lockdown, setLockdown, maxAttempts, setMaxAttempts, slideId, setSlideId, slides, randomizeQuestions, setRandomizeQuestions, allowFileUpload, setAllowFileUpload, fileMaxPoints, setFileMaxPoints }: {
   dueDate: string; setDueDate: (v: string) => void
   openAt: string; setOpenAt: (v: string) => void
   closeAt: string; setCloseAt: (v: string) => void
@@ -370,6 +383,9 @@ function QuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setClos
   maxAttempts: string; setMaxAttempts: (v: string) => void
   slideId: string; setSlideId: (v: string) => void
   slides: Slide[]
+  randomizeQuestions: boolean; setRandomizeQuestions: (v: boolean) => void
+  allowFileUpload: boolean; setAllowFileUpload: (v: boolean) => void
+  fileMaxPoints: string; setFileMaxPoints: (v: string) => void
 }) {
   return (
     <>
@@ -430,15 +446,38 @@ function QuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setClos
           {slides.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
         </select>
       </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <Toggle value={randomizeQuestions} onChange={setRandomizeQuestions} />
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 500 }}>Randomize question order</div>
+          <div style={{ fontSize: '11px', color: '#888' }}>Each student sees questions in a different order.</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: allowFileUpload ? '8px' : '12px' }}>
+        <Toggle value={allowFileUpload} onChange={setAllowFileUpload} />
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 500 }}>Allow file upload</div>
+          <div style={{ fontSize: '11px', color: '#888' }}>Students can attach a file alongside their answers.</div>
+        </div>
+      </div>
+      {allowFileUpload && (
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>File upload max points</div>
+          <input type="number" min="1" value={fileMaxPoints} onChange={e => setFileMaxPoints(e.target.value)}
+            style={{ ...formInputStyle, marginBottom: 0, width: '90px' }} />
+        </div>
+      )}
     </>
   )
 }
 
-function NonQuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setCloseAt, allowFileUpload, setAllowFileUpload }: {
+function NonQuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setCloseAt, allowFileUpload, setAllowFileUpload, maxAttempts, setMaxAttempts, fileMaxPoints, setFileMaxPoints }: {
   dueDate: string; setDueDate: (v: string) => void
   openAt: string; setOpenAt: (v: string) => void
   closeAt: string; setCloseAt: (v: string) => void
   allowFileUpload: boolean; setAllowFileUpload: (v: boolean) => void
+  maxAttempts: string; setMaxAttempts: (v: string) => void
+  fileMaxPoints: string; setFileMaxPoints: (v: string) => void
 }) {
   return (
     <div style={{ marginBottom: '12px' }}>
@@ -458,10 +497,27 @@ function NonQuizSettings({ dueDate, setDueDate, openAt, setOpenAt, closeAt, setC
         </div>
         <div style={{ fontSize: '11px', color: '#aaa', marginTop: '6px' }}>Students receive an email when it opens and a reminder 30 mins before it closes.</div>
       </div>
-      <div style={{ marginBottom: '8px' }}>
-        <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Deadline (optional)</div>
-        <input type="date" value={closeAt ? '' : dueDate} onChange={e => setDueDate(e.target.value)} disabled={!!closeAt}
-          style={{ ...formInputStyle, marginBottom: 0, opacity: closeAt ? 0.4 : 1 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+        <div>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Deadline (optional)</div>
+          <input type="date" value={closeAt ? '' : dueDate} onChange={e => setDueDate(e.target.value)} disabled={!!closeAt}
+            style={{ ...formInputStyle, marginBottom: 0, opacity: closeAt ? 0.4 : 1 }} />
+        </div>
+        <div>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Max points</div>
+          <input type="number" min="1" value={fileMaxPoints}
+            onChange={e => setFileMaxPoints(e.target.value)}
+            style={{ ...formInputStyle, marginBottom: 0 }} />
+        </div>
+        <div>
+          <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Max submissions</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <input type="number" min="1" max="20" value={maxAttempts}
+              onChange={e => setMaxAttempts(e.target.value)}
+              style={{ ...formInputStyle, marginBottom: 0, width: '70px' }} />
+            <span style={{ fontSize: '12px', color: '#888' }}>attempt{parseInt(maxAttempts) !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <Toggle value={allowFileUpload} onChange={setAllowFileUpload} />

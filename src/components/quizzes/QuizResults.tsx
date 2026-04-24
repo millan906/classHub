@@ -203,7 +203,7 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [page, setPage] = useState(0)
   const [fileScores, setFileScores] = useState<Record<string, string>>({})
-  const [maxPoints, setMaxPoints] = useState('100')
+  const [maxPoints, setMaxPoints] = useState(quiz.file_max_points?.toString() ?? '100')
   const [savingFileScore, setSavingFileScore] = useState<string | null>(null)
   const [savedFileScores, setSavedFileScores] = useState<Set<string>>(new Set())
   const { fetchLogsForQuiz } = useIntegrityLogs()
@@ -410,7 +410,7 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
                       padding: '5px 12px', border: '0.5px solid #185FA5',
                       borderRadius: '8px', whiteSpace: 'nowrap', flexShrink: 0,
                     }}>
-                    View →
+                    View File
                   </a>
                 ) : (
                   <span style={{ fontSize: '11px', color: '#ccc' }}>—</span>

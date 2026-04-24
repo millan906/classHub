@@ -106,6 +106,7 @@ export function AvatarPicker({ currentSeed, onSave }: AvatarPickerProps) {
               alt={seed}
               width={44}
               height={44}
+              loading="lazy"
             />
           </div>
         ))}

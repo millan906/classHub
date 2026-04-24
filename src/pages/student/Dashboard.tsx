@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useSlides } from '../../hooks/useSlides'
 import { useQuizzes } from '../../hooks/useQuizzes'
+import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
 import { useQA } from '../../hooks/useQA'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { useGradeBook } from '../../hooks/useGradeBook'
@@ -15,6 +16,7 @@ export default function StudentDashboard() {
   const { profile } = useAuth()
   const { slides } = useSlides()
   const { quizzes, submissions, fetchMySubmissions } = useQuizzes()
+  const { pdfQuizzes, submissions: pdfSubmissions, fetchMySubmissions: fetchMyPdfSubmissions } = usePdfQuizzes()
   const { questions } = useQA()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
   const { groups, columns, entries } = useGradeBook()
@@ -22,12 +24,17 @@ export default function StudentDashboard() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (profile) fetchMySubmissions(profile.id)
+    if (profile) {
+      fetchMySubmissions(profile.id)
+      fetchMyPdfSubmissions(profile.id)
+    }
   }, [profile])
 
   const visibleSlides = slides.filter(s => s.course_id == null || enrolledCourseIds.includes(s.course_id))
   const visibleQuizzes = quizzes.filter(q => q.course_id == null || enrolledCourseIds.includes(q.course_id))
+  const visiblePdfQuizzes = pdfQuizzes.filter(q => q.course_id == null || enrolledCourseIds.includes(q.course_id))
   const submittedQuizIds = new Set(submissions.map(s => s.quiz_id))
+  const submittedPdfQuizIds = new Set(pdfSubmissions.map(s => s.pdf_quiz_id))
 
   const now = new Date()
 
@@ -58,21 +65,34 @@ export default function StudentDashboard() {
     return { text: `Due ${dateStr}`, color: '#aaa' }
   }
 
-  const dueItems = visibleQuizzes
-    .filter(q => q.is_open && !submittedQuizIds.has(q.id))
-    .sort((a, b) => {
-      if (!a.due_date && !b.due_date) return 0
-      if (!a.due_date) return 1
-      if (!b.due_date) return -1
-      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-    })
+  type DueItem = { id: string; title: string; due_date?: string | null; is_open: boolean; item_type?: string }
 
-  const missedItems = visibleQuizzes.filter(q => !q.is_open && !submittedQuizIds.has(q.id))
+  const allDueItems: DueItem[] = [
+    ...visibleQuizzes.filter(q => q.is_open && !submittedQuizIds.has(q.id)),
+    ...visiblePdfQuizzes.filter(q => q.is_open && !submittedPdfQuizIds.has(q.id)).map(q => ({ ...q, item_type: 'paper' })),
+  ].sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0
+    if (!a.due_date) return 1
+    if (!b.due_date) return -1
+    return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+  })
 
-  // Grade summary
+  const allMissedItems: DueItem[] = [
+    ...visibleQuizzes.filter(q => !q.is_open && !submittedQuizIds.has(q.id)),
+    ...visiblePdfQuizzes.filter(q => !q.is_open && !submittedPdfQuizIds.has(q.id)).map(q => ({ ...q, item_type: 'paper' })),
+  ]
+
+  // Grade summary — scoped to enrolled courses only
+  const enrolledGroups = enrolledCourseIds.length > 0
+    ? groups.filter(g => !g.course_id || enrolledCourseIds.includes(g.course_id))
+    : groups
+  const enrolledColumns = enrolledCourseIds.length > 0
+    ? columns.filter(c => !c.course_id || enrolledCourseIds.includes(c.course_id))
+    : columns
+
   const myEntries = entries.filter(e => e.student_id === profile?.id)
-  const weightedRows = groups.map(g => {
-    const cols = columns.filter(c => c.group_id === g.id)
+  const weightedRows = enrolledGroups.map(g => {
+    const cols = enrolledColumns.filter(c => c.group_id === g.id)
     const graded = cols.filter(c => myEntries.some(e => e.column_id === c.id && e.score !== null))
     const totalEarned = graded.reduce((sum, c) => {
       const entry = myEntries.find(e => e.column_id === c.id)
@@ -103,7 +123,7 @@ export default function StudentDashboard() {
         {[
           { label: 'Slides', value: visibleSlides.length },
           { label: 'Submitted', value: completedQuizzes },
-          { label: 'Pending', value: dueItems.length, highlight: dueItems.length > 0 },
+          { label: 'Pending', value: allDueItems.length, highlight: allDueItems.length > 0 },
           { label: 'My Questions', value: myQuestions.length },
         ].map(({ label, value, highlight }) => (
           <div key={label} style={{
@@ -121,18 +141,18 @@ export default function StudentDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', marginBottom: '14px' }}>
         {/* Due */}
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', borderBottom: dueItems.length > 0 ? '0.5px solid rgba(0,0,0,0.07)' : undefined, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ padding: '10px 14px', borderBottom: allDueItems.length > 0 ? '0.5px solid rgba(0,0,0,0.07)' : undefined, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#185FA5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Due</span>
-            {dueItems.length > 0 && (
+            {allDueItems.length > 0 && (
               <span style={{ fontSize: '10px', fontWeight: 600, background: '#E6F1FB', color: '#185FA5', padding: '1px 7px', borderRadius: '999px' }}>
-                {dueItems.length}
+                {allDueItems.length}
               </span>
             )}
           </div>
-          <div style={{ padding: dueItems.length > 0 ? '8px 14px 10px' : '10px 14px' }}>
-            {dueItems.length === 0
+          <div style={{ padding: allDueItems.length > 0 ? '8px 14px 10px' : '10px 14px' }}>
+            {allDueItems.length === 0
               ? <div style={{ fontSize: '12px', color: '#aaa' }}>Nothing due right now.</div>
-              : dueItems.map(q => {
+              : allDueItems.map(q => {
                   const { text, color } = urgencyLabel(q.due_date)
                   const typeLabel = q.item_type ? q.item_type.charAt(0).toUpperCase() + q.item_type.slice(1) : 'Quiz'
                   return (
@@ -159,18 +179,18 @@ export default function StudentDashboard() {
 
         {/* Missed */}
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ padding: '10px 14px', borderBottom: missedItems.length > 0 ? '0.5px solid rgba(0,0,0,0.07)' : undefined, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ padding: '10px 14px', borderBottom: allMissedItems.length > 0 ? '0.5px solid rgba(0,0,0,0.07)' : undefined, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#A32D2D', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Missed</span>
-            {missedItems.length > 0 && (
+            {allMissedItems.length > 0 && (
               <span style={{ fontSize: '10px', fontWeight: 600, background: '#FCEBEB', color: '#A32D2D', padding: '1px 7px', borderRadius: '999px' }}>
-                {missedItems.length}
+                {allMissedItems.length}
               </span>
             )}
           </div>
-          <div style={{ padding: missedItems.length > 0 ? '8px 14px 10px' : '10px 14px' }}>
-            {missedItems.length === 0
+          <div style={{ padding: allMissedItems.length > 0 ? '8px 14px 10px' : '10px 14px' }}>
+            {allMissedItems.length === 0
               ? <div style={{ fontSize: '12px', color: '#aaa' }}>Nothing missed.</div>
-              : missedItems.map(q => (
+              : allMissedItems.map(q => (
                   <div key={q.id} style={{ marginBottom: '7px' }}>
                     <div style={{ fontSize: '13px', fontWeight: 500 }}>{q.title}</div>
                     <div style={{ fontSize: '11px', color: '#aaa' }}>

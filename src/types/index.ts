@@ -114,6 +114,8 @@ export interface Quiz {
   results_visible?: boolean
   attachment_url?: string | null
   attachment_name?: string | null
+  randomize_questions?: boolean
+  file_max_points?: number | null
 }
 
 export interface QuizQuestion {
@@ -164,6 +166,8 @@ export interface QuizFormData {
   notifyStudents: boolean
   attachmentUrl: string | null
   attachmentName: string | null
+  randomizeQuestions: boolean
+  fileMaxPoints: number | null
 }
 
 export interface FileSubmission {

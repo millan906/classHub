@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuizzes } from '../../hooks/useQuizzes'
 import { useSlides } from '../../hooks/useSlides'
@@ -54,39 +55,75 @@ export default function FacultyQuizzes() {
   useEffect(() => { fetchAllPdfSubmissions() }, [])
 
   useEffect(() => {
-    if (!viewingResults) return
-    if (viewingResults.allow_file_upload) {
-      fetchFileSubmissions(viewingResults.id).then(setFileSubmissions)
-    } else {
-      setFileSubmissions([])
-    }
-
-    if (!viewingResults.grade_group_id || !profile) return
-
-    const quiz = viewingResults
-    const questions = quiz.questions ?? []
-    const hasEssay = questions.some(q => q.type === 'essay')
-    const correctMax = questions.length > 0
-      ? questions.reduce((sum, q) => sum + (Number(q.points) || 1), 0)
-      : 100
-    const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
-
-    async function syncToGradebook() {
+    if (!viewingPdfResults || !profile || !viewingPdfResults.grade_group_id) return
+    const quizSubs = pdfSubmissions.filter(s => s.pdf_quiz_id === viewingPdfResults.id)
+    const hasEssay = (viewingPdfResults.answer_key ?? []).some(k => k.question_type === 'essay')
+    async function syncPdfOnView() {
       try {
         const col = await findOrCreateLinkedColumn(
-          quiz.id, quiz.title, quiz.grade_group_id!, correctMax, profile!.id,
+          viewingPdfResults!.id, viewingPdfResults!.title,
+          viewingPdfResults!.grade_group_id!, viewingPdfResults!.total_points, profile!.id,
         )
-        if (col.max_score !== correctMax) await updateColumnMaxScore(col.id, correctMax)
+        if (col.max_score !== viewingPdfResults!.total_points) {
+          await updateColumnMaxScore(col.id, viewingPdfResults!.total_points)
+        }
         await Promise.all(
           quizSubs
             .filter(sub => !hasEssay || sub.essay_scores)
             .map(sub => upsertEntry(col.id, sub.student_id, sub.earned_points ?? 0))
         )
       } catch (err) {
-        console.error('[GradeBook] syncToGradebook failed:', err)
+        console.error('[GradeBook] PDF quiz auto-sync failed:', err)
       }
     }
-    syncToGradebook()
+    syncPdfOnView()
+  }, [viewingPdfResults?.id])
+
+  useEffect(() => {
+    if (!viewingResults) return
+
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    if (viewingResults.allow_file_upload) {
+      fetchFileSubmissions(viewingResults.id).then(setFileSubmissions)
+      channel = supabase
+        .channel(`file-submissions-${viewingResults.id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'file_submissions', filter: `quiz_id=eq.${viewingResults.id}` },
+          () => fetchFileSubmissions(viewingResults.id).then(setFileSubmissions)
+        )
+        .subscribe()
+    } else {
+      setFileSubmissions([])
+
+      if (viewingResults.grade_group_id && profile) {
+        const quiz = viewingResults
+        const questions = quiz.questions ?? []
+        const hasEssay = questions.some(q => q.type === 'essay')
+        const correctMax = questions.length > 0
+          ? questions.reduce((sum, q) => sum + (Number(q.points) || 1), 0)
+          : 100
+        const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
+
+        async function syncToGradebook() {
+          try {
+            const col = await findOrCreateLinkedColumn(
+              quiz.id, quiz.title, quiz.grade_group_id!, correctMax, profile!.id,
+            )
+            if (col.max_score !== correctMax) await updateColumnMaxScore(col.id, correctMax)
+            await Promise.all(
+              quizSubs
+                .filter(sub => !hasEssay || sub.essay_scores)
+                .map(sub => upsertEntry(col.id, sub.student_id, sub.earned_points ?? 0))
+            )
+          } catch (err) {
+            console.error('[GradeBook] syncToGradebook failed:', err)
+          }
+        }
+        syncToGradebook()
+      }
+    }
+
+    return () => { if (channel) supabase.removeChannel(channel) }
   }, [viewingResults?.id])
 
   const approvedStudents = students.filter(s => s.status === 'approved')
@@ -164,15 +201,20 @@ export default function FacultyQuizzes() {
   }
 
   async function handleSaveFileScore(studentId: string, earned: number, max: number) {
-    if (!viewingResults || !profile || !viewingResults.grade_group_id) return
+    if (!viewingResults || !profile) return
+    if (!viewingResults.grade_group_id) {
+      showToast('Link this assessment to a grade group first.', 'error')
+      return
+    }
     try {
       const col = await findOrCreateLinkedColumn(
-        viewingResults.id, viewingResults.title, viewingResults.grade_group_id, max, profile.id,
+        viewingResults.id, viewingResults.title, viewingResults.grade_group_id, max, profile.id, viewingResults.course_id,
       )
       if (col.max_score !== max) await updateColumnMaxScore(col.id, max)
       await upsertEntry(col.id, studentId, earned)
     } catch (err) {
       console.error('[GradeBook] handleSaveFileScore failed:', err)
+      showToast(err instanceof Error ? err.message : 'Failed to save score.', 'error')
     }
   }
 
@@ -253,7 +295,7 @@ export default function FacultyQuizzes() {
         submissions={quizSubs}
         enrolled={pdfEnrolled}
         onBack={() => setViewingPdfResults(null)}
-        onDownloadCsv={() => downloadScoresCsv(viewingPdfResults, quizSubs, pdfEnrolled)}
+        onDownloadCsv={() => void downloadScoresCsv(viewingPdfResults, quizSubs, pdfEnrolled)}
         onScanAnswers={handlePdfScanAnswers}
         onSaveEssayScores={handlePdfEssayScores}
       />

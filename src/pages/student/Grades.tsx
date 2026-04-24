@@ -3,6 +3,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useGradeBook } from '../../hooks/useGradeBook'
 import { useGradesVisible } from '../../hooks/useSettings'
 import { useMyFinalGrades } from '../../hooks/useFinalGrades'
+import { useMyEnrollments } from '../../hooks/useEnrollments'
+import { useCourses } from '../../hooks/useCourses'
 import { PageHeader } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
 import { scoreBarColor } from '../../utils/scoreColors'
@@ -13,12 +15,24 @@ export default function StudentGrades() {
   const { groups, columns, entries, loading } = useGradeBook()
   const { gradesVisible, loading: settingsLoading } = useGradesVisible(profile?.id ?? null)
   const { grades: finalGrades } = useMyFinalGrades(profile?.id ?? null)
+  const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
+  const { courses } = useCourses()
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+
+  const enrolledCourses = courses.filter(c => enrolledCourseIds.includes(c.id))
+  const activeCourseId = selectedCourseId ?? enrolledCourseIds[0] ?? null
+  const visibleGroups = activeCourseId
+    ? groups.filter(g => !g.course_id || g.course_id === activeCourseId)
+    : groups
+  const visibleColumns = activeCourseId
+    ? columns.filter(c => !c.course_id || c.course_id === activeCourseId)
+    : columns
 
   const myEntries = entries.filter(e => e.student_id === profile?.id)
 
-  const weightedRows = groups.map(g => {
-    const cols = columns.filter(c => c.group_id === g.id)
+  const weightedRows = visibleGroups.map(g => {
+    const cols = visibleColumns.filter(c => c.group_id === g.id)
     const graded = cols.filter(c => myEntries.some(e => e.column_id === c.id && e.score !== null))
     const totalEarned = graded.reduce((sum, c) => {
       const entry = myEntries.find(e => e.column_id === c.id)
@@ -36,14 +50,14 @@ export default function StudentGrades() {
   const gwa = hasAnyGrade ? percentageToGWA(finalGrade) : null
 
   const activeGroup = selectedGroupId
-    ? groups.find(g => g.id === selectedGroupId)
-    : groups[0] ?? null
+    ? visibleGroups.find(g => g.id === selectedGroupId)
+    : visibleGroups[0] ?? null
 
   useEffect(() => {
-    if (groups.length > 0 && !selectedGroupId) setSelectedGroupId(groups[0].id)
-  }, [groups])
+    if (visibleGroups.length > 0) setSelectedGroupId(visibleGroups[0].id)
+  }, [activeCourseId, visibleGroups.length === 0])
 
-  const detailCols = activeGroup ? columns.filter(c => c.group_id === activeGroup.id) : []
+  const detailCols = activeGroup ? visibleColumns.filter(c => c.group_id === activeGroup.id) : []
 
   if (loading || settingsLoading) return <Spinner />
 
@@ -96,6 +110,21 @@ export default function StudentGrades() {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Course selector */}
+      {enrolledCourses.length > 1 && (
+        <div style={{ marginBottom: '12px' }}>
+          <select
+            value={activeCourseId ?? ''}
+            onChange={e => setSelectedCourseId(e.target.value || null)}
+            style={{ fontSize: '13px', padding: '8px 12px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+          >
+            {enrolledCourses.map(c => (
+              <option key={c.id} value={c.id}>{c.name}{c.section ? ` · Section ${c.section}` : ''}</option>
+            ))}
+          </select>
         </div>
       )}
 
@@ -198,7 +227,7 @@ export default function StudentGrades() {
             <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
               {/* Group tabs */}
               <div style={{ display: 'flex', gap: '4px', padding: '10px 12px', borderBottom: '0.5px solid rgba(0,0,0,0.07)', overflowX: 'auto' }}>
-                {groups.map(g => (
+                {visibleGroups.map(g => (
                   <button key={g.id} onClick={() => setSelectedGroupId(g.id)} style={{
                     padding: '5px 14px', fontSize: '12px', borderRadius: '999px', cursor: 'pointer',
                     fontFamily: 'Inter, sans-serif', border: 'none', flexShrink: 0,

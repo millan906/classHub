@@ -42,8 +42,10 @@ export function DraftQuestionEditor({ question: q, index: i, onUpdate, onUpdateO
         <Button variant="danger" onClick={onRemove} style={{ fontSize: '11px', padding: '2px 8px' }}>Remove</Button>
       </div>
 
-      <input value={q.question_text} onChange={e => onUpdate('question_text', e.target.value)}
-        placeholder="Question text" style={{ ...formInputStyle, background: '#fff' }} />
+      <textarea value={q.question_text} onChange={e => onUpdate('question_text', e.target.value)}
+        placeholder="Question text (use new lines to separate instructions)"
+        rows={3}
+        style={{ ...formInputStyle, background: '#fff', resize: 'vertical', fontFamily: 'Inter, sans-serif', lineHeight: '1.5' }} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
         <span style={{ fontSize: '12px', color: '#888' }}>Points:</span>

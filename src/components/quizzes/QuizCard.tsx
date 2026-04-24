@@ -17,6 +17,7 @@ interface QuizCardProps {
   onDelete?: (quiz: Quiz) => void
   onTake?: (quiz: Quiz) => void
   mySubmission?: QuizSubmission
+  mySubmissions?: QuizSubmission[]
   attemptsUsed?: number
 }
 
@@ -24,8 +25,10 @@ const TYPE_ICONS: Record<string, string> = {
   quiz: '📝', lab: '🧪', assignment: '📋', project: '📁', exam: '📄'
 }
 
-export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, courses = [], onToggle, onReleaseResults, onCopy, onViewResults, onEdit, onDelete, onTake, mySubmission, attemptsUsed }: QuizCardProps) {
+export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, courses = [], onToggle, onReleaseResults, onCopy, onViewResults, onEdit, onDelete, onTake, mySubmission, mySubmissions, attemptsUsed }: QuizCardProps) {
   const [copying, setCopying] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [viewingAttemptId, setViewingAttemptId] = useState<string | null>(null)
   const [copyTarget, setCopyTarget] = useState('')
   const [copyLoading, setCopyLoading] = useState(false)
   const otherCourses = courses.filter(c => c.id !== quiz.course_id)
@@ -65,7 +68,7 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, cour
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '14px', fontWeight: 600 }}>{quiz.title}</div>
           <div style={{ fontSize: '12px', color: '#888', marginTop: '3px' }}>
-            {questionCount} question{questionCount !== 1 ? 's' : ''}
+            {questionCount === 0 ? 'File submission' : `${questionCount} question${questionCount !== 1 ? 's' : ''}`}
             {isFaculty ? ` · ${submittedCount}/${totalStudents} submitted` : ''}
             {quiz.due_date ? ` · Due ${new Date(quiz.due_date).toLocaleDateString()}` : ''}
             {quiz.max_attempts && quiz.max_attempts > 1 ? ` · ${quiz.max_attempts} attempts` : ''}
@@ -81,7 +84,7 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, cour
 
       {/* Bottom row: action buttons */}
       {isFaculty && (
-        <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button onClick={() => onEdit?.(quiz)}>Edit</Button>
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}
@@ -126,32 +129,80 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, cour
         </div>
       )}
       {!isFaculty && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', flexWrap: 'wrap', gap: '8px' }}>
-          {quiz.is_open && (attemptsUsed ?? 0) < (quiz.max_attempts ?? 1) && (
-            <Button variant="primary" onClick={() => onTake?.(quiz)}>
-              {actionLabel}
-            </Button>
-          )}
-          {mySubmission && (
-            <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
-              {quiz.results_visible
-                ? <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
-                    {mySubmission.earned_points ?? mySubmission.score} {mySubmission.total_points ? `/ ${mySubmission.total_points} pts` : '%'}
-                  </div>
-                : <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic' }}>Results pending</div>
-              }
-              <div style={{ fontSize: '11px', color: '#888' }}>
-                {attemptsUsed ?? 0}/{quiz.max_attempts ?? 1} attempt{(quiz.max_attempts ?? 1) !== 1 ? 's' : ''}
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {quiz.is_open && (attemptsUsed ?? 0) < (quiz.max_attempts ?? 1) && (
+                <Button variant="primary" onClick={() => onTake?.(quiz)}>
+                  {actionLabel}
+                </Button>
+              )}
+              {(mySubmissions?.length ?? 0) > 0 && (
+                <button
+                  onClick={() => setShowHistory(v => !v)}
+                  style={{ fontSize: '12px', color: '#555', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline', textDecorationStyle: 'dotted' }}
+                >
+                  {showHistory ? 'Hide attempts' : `View attempts (${mySubmissions!.length})`}
+                </button>
+              )}
+            </div>
+            {mySubmission && (
+              <div style={{ textAlign: 'right', marginLeft: 'auto' }}>
+                {quiz.results_visible
+                  ? <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F6E56' }}>
+                      {mySubmission.earned_points ?? mySubmission.score} {mySubmission.total_points ? `/ ${mySubmission.total_points} pts` : '%'}
+                    </div>
+                  : <div style={{ fontSize: '12px', color: '#888', fontStyle: 'italic' }}>Results pending</div>
+                }
+                <div style={{ fontSize: '11px', color: '#888' }}>
+                  {attemptsUsed ?? 0}/{quiz.max_attempts ?? 1} attempt{(quiz.max_attempts ?? 1) !== 1 ? 's' : ''}
+                </div>
               </div>
+            )}
+            {!mySubmission && !quiz.is_open && (
+              <Badge label="Closed" color="green" />
+            )}
+            {(attemptsUsed ?? 0) >= (quiz.max_attempts ?? 1) && mySubmission && (
+              <Badge label="Submitted" color="green" />
+            )}
+          </div>
+
+          {/* Attempt history */}
+          {showHistory && mySubmissions && mySubmissions.length > 0 && (
+            <div style={{ marginTop: '10px', borderTop: '0.5px solid rgba(0,0,0,0.07)', paddingTop: '10px' }}>
+              {[...mySubmissions]
+                .sort((a, b) => (a.attempt_number ?? 0) - (b.attempt_number ?? 0))
+                .map(sub => {
+                  const timeTaken = sub.started_at && sub.submitted_at
+                    ? Math.round((new Date(sub.submitted_at).getTime() - new Date(sub.started_at).getTime()) / 1000 / 60)
+                    : null
+                  return (
+                    <div key={sub.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '6px 0', borderBottom: '0.5px solid rgba(0,0,0,0.05)',
+                      fontSize: '12px',
+                    }}>
+                      <div style={{ color: '#555' }}>
+                        <span style={{ fontWeight: 500 }}>Attempt {sub.attempt_number ?? '—'}</span>
+                        <span style={{ color: '#aaa', marginLeft: '8px' }}>
+                          {new Date(sub.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                          {timeTaken !== null && ` · ${timeTaken}m`}
+                        </span>
+                      </div>
+                      <div style={{ fontWeight: 600, color: '#0F6E56' }}>
+                        {quiz.results_visible
+                          ? (sub.earned_points != null && sub.total_points != null
+                              ? `${sub.earned_points} / ${sub.total_points} pts`
+                              : `${sub.score}%`)
+                          : <span style={{ color: '#aaa', fontWeight: 400, fontStyle: 'italic' }}>Pending</span>
+                        }
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           )}
-          {!mySubmission && !quiz.is_open && (
-            <Badge label="Closed" color="green" />
-          )}
-          {(attemptsUsed ?? 0) >= (quiz.max_attempts ?? 1) && mySubmission && (
-            <Badge label="Submitted" color="green" />
-          )}
-        </div>
+        </>
       )}
     </div>
   )

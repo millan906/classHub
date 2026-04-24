@@ -19,7 +19,7 @@ import type { Quiz, PdfQuiz } from '../../types'
 
 export default function StudentQuizzes() {
   const { profile } = useAuth()
-  const { quizzes, submissions, loading, error, fetchMySubmissions, submitQuiz, uploadFile } = useQuizzes()
+  const { quizzes, submissions, loading, error, fetchMySubmissions, submitQuiz, uploadFile, fetchMyFileSubmission } = useQuizzes()
   const { pdfQuizzes, submissions: pdfSubmissions, fetchMySubmissions: fetchMyPdfSubmissions, submitPdfQuiz, getPdfUrl } = usePdfQuizzes()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
   const { logEvent } = useIntegrityLogs()
@@ -27,6 +27,7 @@ export default function StudentQuizzes() {
   const { courses } = useCourses()
   const isMobile = useIsMobile()
   const [takingQuiz, setTakingQuiz] = useState<Quiz | null>(null)
+  const [existingFile, setExistingFile] = useState<{ file_name: string; file_url: string } | null>(null)
   const [takingPdfQuiz, setTakingPdfQuiz] = useState<PdfQuiz | null>(null)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
   const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
@@ -77,14 +78,15 @@ export default function StudentQuizzes() {
       <QuizTaker
         quiz={takingQuiz}
         onSubmit={handleSubmit}
-        onCancel={() => setTakingQuiz(null)}
+        onCancel={() => { setTakingQuiz(null); setExistingFile(null) }}
         onLogEvent={handleLogEvent}
         onFileUpload={profile ? async (file) => { await uploadFile(takingQuiz.id, profile.id, file) } : undefined}
+        existingFile={existingFile ?? undefined}
       />
     )
   }
 
-  const manualColumns = columns.filter(c => c.entry_type === 'manual')
+  const manualColumns = columns.filter(c => c.entry_type === 'manual' && (!c.course_id || enrolledCourseIds.includes(c.course_id)))
 
   return (
     <div>
@@ -155,8 +157,17 @@ export default function StudentQuizzes() {
                       key={quiz.id}
                       quiz={quiz}
                       mySubmission={bestSub}
+                      mySubmissions={quizSubs}
                       attemptsUsed={attemptsUsed}
-                      onTake={attemptsUsed < maxAttempts ? setTakingQuiz : undefined}
+                      onTake={attemptsUsed < maxAttempts ? async (q) => {
+                        if (profile && q.allow_file_upload) {
+                          const f = await fetchMyFileSubmission(q.id, profile.id)
+                          setExistingFile(f)
+                        } else {
+                          setExistingFile(null)
+                        }
+                        setTakingQuiz(q)
+                      } : undefined}
                     />
                   )
                 })}
