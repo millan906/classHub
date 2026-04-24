@@ -14,6 +14,8 @@ export default function FacultyFinalGrades() {
   const { students: allStudents } = useStudents()
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const { enrollments } = useCourseEnrollments(selectedCourseId)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'last_asc' | 'last_desc' | 'first_asc' | 'first_desc'>('last_asc')
   const [inputs, setInputs] = useState<Record<string, { midterm: string; final: string }>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [publishing, setPublishing] = useState<Record<string, boolean>>({})
@@ -115,9 +117,25 @@ export default function FacultyFinalGrades() {
 
       {selectedCourseId && (
         <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              {students.length} student{students.length !== 1 ? 's' : ''}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {students.length} student{students.length !== 1 ? 's' : ''}
+              </div>
+              <input
+                type="text"
+                placeholder="Search by name…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', outline: 'none', fontFamily: 'Inter, sans-serif', minWidth: '150px' }}
+              />
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                <option value="last_asc">Last Name A–Z</option>
+                <option value="last_desc">Last Name Z–A</option>
+                <option value="first_asc">First Name A–Z</option>
+                <option value="first_desc">First Name Z–A</option>
+              </select>
             </div>
             {unpublishedWithGrade.length > 0 && (
               <button
@@ -150,7 +168,19 @@ export default function FacultyFinalGrades() {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map(student => {
+                  {(() => {
+                    let list = students
+                    if (searchQuery.trim()) {
+                      const q = searchQuery.trim().toLowerCase()
+                      list = list.filter(s => s.full_name.toLowerCase().includes(q))
+                    }
+                    return [...list].sort((a, b) => {
+                      const last = (n: string) => n.trim().split(' ').slice(-1)[0] ?? n
+                      const first = (n: string) => n.trim().split(' ')[0] ?? n
+                      const [ka, kb] = sortBy.startsWith('last') ? [last(a.full_name), last(b.full_name)] : [first(a.full_name), first(b.full_name)]
+                      return sortBy.endsWith('desc') ? kb.localeCompare(ka) : ka.localeCompare(kb)
+                    })
+                  })().map(student => {
                     const existing = courseGrades.find(g => g.student_id === student.id)
                     const inp = inputs[student.id] ?? { midterm: '', final: '' }
 

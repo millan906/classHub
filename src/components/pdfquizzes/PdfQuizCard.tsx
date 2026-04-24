@@ -35,23 +35,23 @@ export function PdfQuizCard({
 
   return (
     <div style={{
-      padding: '0.875rem 1rem', background: '#fff',
-      border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
+      padding: '1rem 1.25rem', background: '#fff',
+      border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '14px', marginBottom: '10px',
     }}>
       {/* Top row: icon + info + badge */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
         <div style={{
-          width: '36px', height: '36px', borderRadius: '8px',
+          width: '40px', height: '40px', borderRadius: '10px',
           background: quiz.is_open ? '#FAEEDA' : '#E6F1FB',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '17px', flexShrink: 0,
+          fontSize: '18px', flexShrink: 0,
         }}>
           📄
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '13px', fontWeight: 500 }}>{quiz.title}</div>
-          <div style={{ fontSize: '12px', color: '#888', marginTop: '1px' }}>
+          <div style={{ fontSize: '14px', fontWeight: 600 }}>{quiz.title}</div>
+          <div style={{ fontSize: '12px', color: '#888', marginTop: '3px' }}>
             {quiz.num_questions} question{quiz.num_questions !== 1 ? 's' : ''}
             {' · '}{quiz.total_points} pts
             {isFaculty ? ` · ${submittedCount}/${totalStudents} submitted` : ''}
@@ -59,7 +59,7 @@ export function PdfQuizCard({
             {quiz.max_attempts > 1 ? ` · ${quiz.max_attempts} attempts` : ''}
           </div>
           {(isFaculty || mySubmission) && (
-            <div style={{ height: '4px', background: '#F1EFE8', borderRadius: '999px', marginTop: '6px' }}>
+            <div style={{ height: '4px', background: '#F1EFE8', borderRadius: '999px', marginTop: '8px' }}>
               <div style={{ height: '100%', width: progressPct + '%', background: '#1D9E75', borderRadius: '999px' }} />
             </div>
           )}
@@ -70,7 +70,7 @@ export function PdfQuizCard({
 
       {/* Bottom row: action buttons */}
       {isFaculty && (
-        <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button onClick={() => onEdit?.(quiz)}>Edit</Button>
           <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
             {quiz.is_open ? 'Close' : 'Open'}
@@ -116,7 +116,7 @@ export function PdfQuizCard({
       )}
 
       {!isFaculty && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', flexWrap: 'wrap', gap: '8px' }}>
           {quiz.is_open && (attemptsUsed ?? 0) < quiz.max_attempts && (
             <Button variant="primary" onClick={() => onTake?.(quiz)}>
               {(attemptsUsed ?? 0) === 0 ? 'Start' : 'Retake'}

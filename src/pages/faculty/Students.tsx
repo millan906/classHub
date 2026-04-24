@@ -27,6 +27,8 @@ export default function FacultyStudents() {
   const [saving, setSaving] = useState(false)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
   const [filterSection, setFilterSection] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'first_asc' | 'first_desc' | 'last_asc' | 'last_desc'>('last_asc')
   const [viewingStudent, setViewingStudent] = useState<Profile | null>(null)
 
   const pending = students.filter(s => s.status === 'pending')
@@ -289,35 +291,49 @@ export default function FacultyStudents() {
       )}
 
       {/* ── Enrolled ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
         <div style={{ fontSize: '13px', fontWeight: 500 }}>Enrolled ({enrolled.length})</div>
+        <input
+          type="text"
+          placeholder="Search by name…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', outline: 'none', fontFamily: 'Inter, sans-serif', minWidth: '160px' }}
+        />
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}>
+          <option value="last_asc">Last Name A–Z</option>
+          <option value="last_desc">Last Name Z–A</option>
+          <option value="first_asc">First Name A–Z</option>
+          <option value="first_desc">First Name Z–A</option>
+        </select>
         {allSections.length > 0 && (
-          <select
-            value={filterSection}
-            onChange={e => setFilterSection(e.target.value)}
-            style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}
-          >
+          <select value={filterSection} onChange={e => setFilterSection(e.target.value)}
+            style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}>
             <option value="all">All Sections</option>
-            {allSections.map(sec => (
-              <option key={sec} value={sec}>{sec}</option>
-            ))}
+            {allSections.map(sec => <option key={sec} value={sec}>{sec}</option>)}
           </select>
         )}
-        <select
-          value={filterCourseId}
-          onChange={e => setFilterCourseId(e.target.value)}
-          style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}
-        >
+        <select value={filterCourseId} onChange={e => setFilterCourseId(e.target.value)}
+          style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}>
           <option value="all">All Courses</option>
-          {courses.map(c => (
-            <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>
-          ))}
+          {courses.map(c => <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>)}
         </select>
       </div>
       {(() => {
         let visible = enrolled
+        if (searchQuery.trim()) {
+          const q = searchQuery.trim().toLowerCase()
+          visible = visible.filter(s => s.full_name.toLowerCase().includes(q))
+        }
         if (filterSection !== 'all') visible = visible.filter(s => s.section === filterSection)
         if (filterCourseId !== 'all') visible = visible.filter(s => enrollments.some(e => e.student_id === s.id && e.course_id === filterCourseId))
+        visible = [...visible].sort((a, b) => {
+          const last = (n: string) => n.trim().split(' ').slice(-1)[0] ?? n
+          const first = (n: string) => n.trim().split(' ')[0] ?? n
+          const [ka, kb] = sortBy.startsWith('last') ? [last(a.full_name), last(b.full_name)] : [first(a.full_name), first(b.full_name)]
+          return sortBy.endsWith('desc') ? kb.localeCompare(ka) : ka.localeCompare(kb)
+        })
         return visible.length === 0
           ? <div style={{ fontSize: '13px', color: '#888' }}>No students match the selected filters.</div>
           : visible.map(s => (

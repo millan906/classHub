@@ -378,6 +378,8 @@ export default function FacultyGradeBook() {
   const { enrollments } = useAllEnrollments()
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'last_asc' | 'last_desc' | 'first_asc' | 'first_desc'>('last_asc')
   const [showAddColumn, setShowAddColumn] = useState(false)
   const [showManageGroups, setShowManageGroups] = useState(false)
   const [confirmDeleteCol, setConfirmDeleteCol] = useState<GradeColumn | null>(null)
@@ -440,9 +442,22 @@ export default function FacultyGradeBook() {
   const courseStudentIds = selectedCourseId
     ? new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.student_id))
     : null
-  const enrolled = students.filter(s =>
+  const enrolledRaw = students.filter(s =>
     s.status === 'approved' && (!courseStudentIds || courseStudentIds.has(s.id))
   )
+  const enrolled = (() => {
+    let list = enrolledRaw
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      list = list.filter(s => s.full_name.toLowerCase().includes(q))
+    }
+    return [...list].sort((a, b) => {
+      const last = (n: string) => n.trim().split(' ').slice(-1)[0] ?? n
+      const first = (n: string) => n.trim().split(' ')[0] ?? n
+      const [ka, kb] = sortBy.startsWith('last') ? [last(a.full_name), last(b.full_name)] : [first(a.full_name), first(b.full_name)]
+      return sortBy.endsWith('desc') ? kb.localeCompare(ka) : ka.localeCompare(kb)
+    })
+  })()
 
   // Only show groups that have at least one column (after course filtering)
   const visibleGroups = groups.filter(g => columns.some(c => c.group_id === g.id))
@@ -519,9 +534,9 @@ export default function FacultyGradeBook() {
         </div>
       )}
 
-      {/* Course selector */}
-      {courses.length > 0 && (
-        <div style={{ marginBottom: '14px' }}>
+      {/* Course selector + search + sort */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px' }}>
+        {courses.length > 0 && (
           <select
             value={selectedCourseId ?? ''}
             onChange={e => setSelectedCourseId(e.target.value || null)}
@@ -532,8 +547,22 @@ export default function FacultyGradeBook() {
               <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>
             ))}
           </select>
-        </div>
-      )}
+        )}
+        <input
+          type="text"
+          placeholder="Search by name…"
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          style={{ fontSize: '12px', padding: '6px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', outline: 'none', fontFamily: 'Inter, sans-serif', minWidth: '160px' }}
+        />
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          style={{ fontSize: '12px', padding: '6px 10px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+          <option value="last_asc">Last Name A–Z</option>
+          <option value="last_desc">Last Name Z–A</option>
+          <option value="first_asc">First Name A–Z</option>
+          <option value="first_desc">First Name Z–A</option>
+        </select>
+      </div>
 
       {/* Controls */}
       <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>

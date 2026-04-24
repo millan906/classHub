@@ -40,6 +40,8 @@ export default function FacultyAttendance() {
   const { flags, upsertFlag, markActionTaken, markEscalated, resolveFlag } = useAttendanceFlags(selectedCourseId || null)
   const [view, setView] = useState<'sessions' | 'summary'>('sessions')
   const [expandedSessionId, setExpandedSessionId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<'last_asc' | 'last_desc' | 'first_asc' | 'first_desc'>('last_asc')
   const [showNewForm, setShowNewForm] = useState(false)
   const [newLabel, setNewLabel] = useState('')
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0])
@@ -168,6 +170,24 @@ export default function FacultyAttendance() {
                 </button>
               ))}
             </div>
+            {view === 'summary' && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Search by name…"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  style={{ ...inputStyle, fontSize: '12px', padding: '5px 10px', minWidth: '150px' }}
+                />
+                <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)}
+                  style={{ ...inputStyle, fontSize: '12px', padding: '5px 8px', cursor: 'pointer' }}>
+                  <option value="last_asc">Last Name A–Z</option>
+                  <option value="last_desc">Last Name Z–A</option>
+                  <option value="first_asc">First Name A–Z</option>
+                  <option value="first_desc">First Name Z–A</option>
+                </select>
+              </>
+            )}
             {view === 'sessions' && (
               <button
                 onClick={() => setShowNewForm(v => !v)}
@@ -403,7 +423,19 @@ export default function FacultyAttendance() {
                 </tr>
               </thead>
               <tbody>
-                {enrolledStudents.map((student, i) => {
+                {(() => {
+                  let list = enrolledStudents
+                  if (searchQuery.trim()) {
+                    const q = searchQuery.trim().toLowerCase()
+                    list = list.filter(s => s.full_name.toLowerCase().includes(q))
+                  }
+                  return [...list].sort((a, b) => {
+                    const last = (n: string) => n.trim().split(' ').slice(-1)[0] ?? n
+                    const first = (n: string) => n.trim().split(' ')[0] ?? n
+                    const [ka, kb] = sortBy.startsWith('last') ? [last(a.full_name), last(b.full_name)] : [first(a.full_name), first(b.full_name)]
+                    return sortBy.endsWith('desc') ? kb.localeCompare(ka) : ka.localeCompare(kb)
+                  })
+                })().map((student, i, arr) => {
                   const sessionIds = new Set(sessions.map(s => s.id))
                   const sr = records.filter(r => r.student_id === student.id && sessionIds.has(r.session_id))
                   const p = sr.filter(r => r.status === 'present').length
@@ -418,7 +450,7 @@ export default function FacultyAttendance() {
                   const isEscalated = studentFlags.some(f => f.status === 'escalated')
                   return (
                     <tr key={student.id} style={{
-                      borderBottom: i < enrolledStudents.length - 1 ? '0.5px solid rgba(0,0,0,0.06)' : 'none',
+                      borderBottom: i < arr.length - 1 ? '0.5px solid rgba(0,0,0,0.06)' : 'none',
                       background: isEscalated ? 'rgba(163,45,45,0.03)' : isFlagged ? 'rgba(252,235,235,0.4)' : 'transparent',
                     }}>
                       <td style={{ padding: '10px 14px' }}>
