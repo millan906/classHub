@@ -104,6 +104,7 @@ export function useQuizzes() {
       randomize_questions: data.randomizeQuestions,
       file_max_points: data.fileMaxPoints,
     }).eq('id', quizId)
+    await supabase.from('grade_columns').update({ title: data.title }).eq('linked_quiz_id', quizId)
     await supabase.from('quiz_questions').delete().eq('quiz_id', quizId)
     if (data.questions.length > 0) {
       await supabase.from('quiz_questions').insert(

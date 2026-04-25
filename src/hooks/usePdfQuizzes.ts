@@ -120,6 +120,7 @@ export function usePdfQuizzes() {
       total_points: totalPoints,
       instructions: formData.instructions,
     }).eq('id', id)
+    await supabase.from('grade_columns').update({ title: formData.title }).eq('linked_quiz_id', id)
 
     await supabase.from('pdf_quiz_answer_key').delete().eq('pdf_quiz_id', id)
     if (formData.answerKey.length > 0) {
