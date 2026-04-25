@@ -8,6 +8,7 @@ import { Spinner } from '../../components/ui/Spinner'
 import { Avatar, getInitials, getAvatarColors } from '../../components/ui/Avatar'
 import CoursesTab from './CoursesTab'
 import RosterTab from './RosterTab'
+import PendingTab from './PendingTab'
 
 interface Member {
   id: string
@@ -18,7 +19,7 @@ interface Member {
   avatar_seed?: string | null
 }
 
-type Tab = 'members' | 'courses' | 'roster'
+type Tab = 'members' | 'courses' | 'roster' | 'pending'
 
 export default function AdminDashboard() {
   const { profile } = useAuth()
@@ -218,6 +219,7 @@ export default function AdminDashboard() {
     { key: 'members', label: 'Members' },
     { key: 'courses', label: 'Courses' },
     { key: 'roster',  label: 'Roster' },
+    { key: 'pending', label: 'Pending' },
   ]
 
   return (
@@ -473,6 +475,11 @@ export default function AdminDashboard() {
       {/* ── Roster Tab ── */}
       {activeTab === 'roster' && (
         <RosterTab institutionId={institution?.id} />
+      )}
+
+      {/* ── Pending Tab ── */}
+      {activeTab === 'pending' && (
+        <PendingTab institutionId={institution?.id} />
       )}
     </div>
   )
