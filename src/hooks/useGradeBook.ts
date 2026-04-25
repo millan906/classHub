@@ -33,7 +33,7 @@ export function useGradeBook(courseId?: string | null) {
       }
       let colsQuery = supabase.from('grade_columns').select('*').order('created_at', { ascending: true })
       if (courseId) {
-        colsQuery = colsQuery.eq('course_id', courseId) as typeof colsQuery
+        colsQuery = colsQuery.or(`course_id.is.null,course_id.eq.${courseId}`) as typeof colsQuery
       }
       const [groupsRes, colsRes, entsRes] = await Promise.all([
         groupsQuery,

@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { inputStyle } from '../../styles/shared'
 import { computeWeightedGrade } from '../../utils/gradeCalculations'
+import { TYPE_CONFIG } from '../../components/quizzes/QuizBuilder'
 import type { GradeGroup, GradeColumn } from '../../hooks/useGradeBook'
 
 const thStyle: React.CSSProperties = {
@@ -115,6 +116,7 @@ function ManageGroupsPanel({
   const [newName, setNewName] = useState('')
   const [newWeight, setNewWeight] = useState('')
   const [saving, setSaving] = useState(false)
+  const [addError, setAddError] = useState('')
 
   const totalWeight = groups.reduce((s, g) => s + g.weight_percent, 0)
   const weightOk = Math.round(totalWeight) === 100
@@ -135,11 +137,17 @@ function ManageGroupsPanel({
   async function saveNew() {
     if (!newName.trim()) return
     setSaving(true)
-    await onAdd(newName.trim(), parseFloat(newWeight) || 0)
-    setSaving(false)
-    setAddingNew(false)
-    setNewName('')
-    setNewWeight('')
+    setAddError('')
+    try {
+      await onAdd(newName.trim(), parseFloat(newWeight) || 0)
+      setAddingNew(false)
+      setNewName('')
+      setNewWeight('')
+    } catch (err: unknown) {
+      setAddError(err instanceof Error ? err.message : 'Failed to add group')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -200,10 +208,11 @@ function ManageGroupsPanel({
             placeholder="Weight" style={{ ...inputStyle, width: '60px' }} type="number" min="0" max="100" />
           <span style={{ fontSize: '11px', color: '#888' }}>%</span>
           <Button variant="primary" onClick={saveNew} disabled={saving || !newName.trim()} style={{ fontSize: '11px' }}>
-            Add
+            {saving ? 'Adding…' : 'Add'}
           </Button>
-          <Button onClick={() => setAddingNew(false)} style={{ fontSize: '11px' }}>Cancel</Button>
+          <Button onClick={() => { setAddingNew(false); setAddError('') }} style={{ fontSize: '11px' }}>Cancel</Button>
         </div>
+        {addError && <div style={{ fontSize: '11px', color: '#A32D2D', marginTop: '4px' }}>{addError}</div>}
       ) : (
         <Button onClick={() => setAddingNew(true)} style={{ fontSize: '11px', marginTop: '10px' }}>
           + Add group
@@ -386,7 +395,7 @@ export default function FacultyGradeBook() {
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<GradeGroup | null>(null)
   const [pageError, setPageError] = useState('')
 
-  const { groups, columns, entries, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
+  const { groups, columns, entries, error: gradeBookError, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
 
   useEffect(() => {
     fetchAllSubmissions()
@@ -405,14 +414,23 @@ export default function FacultyGradeBook() {
 
     async function syncQuizScores() {
       for (const quiz of quizzes) {
-        if (!quiz.grade_group_id) continue
+        // Resolve grade group: use explicit assignment, or fall back to name-match by item type
+        let resolvedGroupId = quiz.grade_group_id ?? null
+        if (!resolvedGroupId) {
+          const targetName = TYPE_CONFIG[quiz.item_type as keyof typeof TYPE_CONFIG]?.groupName
+          const match = targetName
+            ? groups.find(g => g.name.toLowerCase() === targetName.toLowerCase())
+            : null
+          resolvedGroupId = match?.id ?? null
+        }
+        if (!resolvedGroupId) continue
         const quizTotal = (quiz.questions ?? []).reduce((s: number, q: { points?: number }) => s + (q.points ?? 1), 0)
         if (quizTotal === 0) continue
         const hasEssay = (quiz.questions ?? []).some((q: { type?: string }) => q.type === 'essay')
         const quizSubs = submissions.filter(s => s.quiz_id === quiz.id)
         if (quizSubs.length === 0) continue
         try {
-          const col = await findOrCreateLinkedColumn(quiz.id, quiz.title, quiz.grade_group_id!, quizTotal, profile!.id, quiz.course_id)
+          const col = await findOrCreateLinkedColumn(quiz.id, quiz.title, resolvedGroupId, quizTotal, profile!.id, quiz.course_id)
           if (col.max_score !== quizTotal) await updateColumnMaxScore(col.id, quizTotal)
           for (const sub of quizSubs) {
             if (hasEssay && !sub.essay_scores) continue
@@ -427,7 +445,7 @@ export default function FacultyGradeBook() {
       }
     }
     syncQuizScores()
-  }, [profile?.id, submissions.length])
+  }, [profile?.id, submissions.length, groups.length])
 
   // Must be before any early return — hooks must always be called in the same order
   const entryMap = useMemo(
@@ -528,9 +546,9 @@ export default function FacultyGradeBook() {
         </div>
       </div>
 
-      {pageError && (
+      {(pageError || gradeBookError) && (
         <div style={{ marginBottom: '10px', fontSize: '12px', color: '#A32D2D', background: '#FFF5F5', border: '0.5px solid rgba(163,45,45,0.25)', borderRadius: '8px', padding: '8px 10px' }}>
-          {pageError}
+          {pageError || gradeBookError}
         </div>
       )}
 
