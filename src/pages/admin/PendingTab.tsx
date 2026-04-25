@@ -75,21 +75,10 @@ export default function PendingTab({ institutionId }: PendingTabProps) {
     setActionLoading(student.id)
     setError(null)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`
-      const res = await fetch(fnUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ userId: student.id }),
+      const { error: rpcError } = await supabase.rpc('delete_pending_student', {
+        target_user_id: student.id,
       })
-      if (!res.ok) {
-        const body = await res.json()
-        throw new Error(body.error ?? 'Failed to dismiss student.')
-      }
+      if (rpcError) throw rpcError
       setStudents(prev => prev.filter(s => s.id !== student.id))
     } catch (err: any) {
       setError(err?.message ?? 'Failed to dismiss student.')
