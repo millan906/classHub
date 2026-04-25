@@ -201,18 +201,20 @@ function ManageGroupsPanel({
       ))}
 
       {addingNew ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
-          <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-            placeholder="Group name" style={{ ...inputStyle, flex: 2 }} />
-          <input value={newWeight} onChange={e => setNewWeight(e.target.value)}
-            placeholder="Weight" style={{ ...inputStyle, width: '60px' }} type="number" min="0" max="100" />
-          <span style={{ fontSize: '11px', color: '#888' }}>%</span>
-          <Button variant="primary" onClick={saveNew} disabled={saving || !newName.trim()} style={{ fontSize: '11px' }}>
-            {saving ? 'Adding…' : 'Add'}
-          </Button>
-          <Button onClick={() => { setAddingNew(false); setAddError('') }} style={{ fontSize: '11px' }}>Cancel</Button>
-        </div>
-        {addError && <div style={{ fontSize: '11px', color: '#A32D2D', marginTop: '4px' }}>{addError}</div>}
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+            <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+              placeholder="Group name" style={{ ...inputStyle, flex: 2 }} />
+            <input value={newWeight} onChange={e => setNewWeight(e.target.value)}
+              placeholder="Weight" style={{ ...inputStyle, width: '60px' }} type="number" min="0" max="100" />
+            <span style={{ fontSize: '11px', color: '#888' }}>%</span>
+            <Button variant="primary" onClick={saveNew} disabled={saving || !newName.trim()} style={{ fontSize: '11px' }}>
+              {saving ? 'Adding…' : 'Add'}
+            </Button>
+            <Button onClick={() => { setAddingNew(false); setAddError('') }} style={{ fontSize: '11px' }}>Cancel</Button>
+          </div>
+          {addError && <div style={{ fontSize: '11px', color: '#A32D2D', marginTop: '4px' }}>{addError}</div>}
+        </>
       ) : (
         <Button onClick={() => setAddingNew(true)} style={{ fontSize: '11px', marginTop: '10px' }}>
           + Add group
