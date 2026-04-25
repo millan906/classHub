@@ -18,7 +18,11 @@ export function useAnnouncements(institutionId?: string | null) {
     fetchAnnouncements()
     const channel = supabase
       .channel(`announcements-changes-${institutionId ?? 'all'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAnnouncements)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements' }, fetchAnnouncements)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'announcements' }, fetchAnnouncements)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'announcements' }, (payload) => {
+        setAnnouncements(prev => prev.filter(a => a.id !== (payload.old as { id: string }).id))
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [institutionId])

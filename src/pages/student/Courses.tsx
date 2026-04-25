@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useCourses } from '../../hooks/useCourses'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
-import { PageHeader } from '../../components/ui/Card'
+import { useGradeBook } from '../../hooks/useGradeBook'
+import { useMyAttendance } from '../../hooks/useAttendance'
+import { useQuizzes } from '../../hooks/useQuizzes'
+import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
+import { useAnnouncements } from '../../hooks/useAnnouncements'
 import { printSyllabus } from '../../utils/syllabuspPrint'
 import type { Course, CourseResource, SyllabusCell } from '../../types'
 
@@ -245,9 +249,117 @@ export default function StudentCourses() {
   const { profile } = useAuth()
   const { courses, getResourceUrl } = useCourses()
   const { enrolledCourseIds, loading } = useMyEnrollments(profile?.id ?? null)
+  const { groups, columns, entries } = useGradeBook()
+  const { sessions, records } = useMyAttendance(profile?.id ?? null)
+  const { quizzes, submissions, fetchMySubmissions } = useQuizzes()
+  const { pdfQuizzes, submissions: pdfSubmissions, fetchMySubmissions: fetchMyPdfSubmissions } = usePdfQuizzes()
+  const { announcements } = useAnnouncements()
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
 
+  useEffect(() => {
+    if (profile) {
+      fetchMySubmissions(profile.id)
+      fetchMyPdfSubmissions(profile.id)
+    }
+  }, [profile])
+
   const enrolledCourses = courses.filter(c => enrolledCourseIds.includes(c.id))
+  const myEntries = entries.filter(e => e.student_id === profile?.id)
+  const submittedQuizIds = new Set(submissions.map(s => s.quiz_id))
+  const submittedPdfQuizIds = new Set(pdfSubmissions.map(s => s.pdf_quiz_id))
+  const now = new Date()
+
+  // ─── Per-course helpers ────────────────────────────────────────────────────
+  function getCourseGrade(courseId: string): number | null {
+    const courseGroups = groups.filter(g => !g.course_id || g.course_id === courseId)
+    const courseColumns = columns.filter(c => !c.course_id || c.course_id === courseId)
+    const rows = courseGroups.map(g => {
+      const cols = courseColumns.filter(c => c.group_id === g.id)
+      const graded = cols.filter(c => myEntries.some(e => e.column_id === c.id && e.score !== null))
+      const totalEarned = graded.reduce((sum, c) => {
+        const entry = myEntries.find(e => e.column_id === c.id)
+        return sum + (entry?.score ?? 0)
+      }, 0)
+      const totalMax = graded.reduce((sum, c) => sum + c.max_score, 0)
+      const rawPct = totalMax > 0 ? (totalEarned / totalMax) * 100 : null
+      return rawPct !== null ? (rawPct * g.weight_percent) / 100 : null
+    })
+    if (!rows.some(r => r !== null)) return null
+    return rows.reduce((sum, r) => sum + (r ?? 0), 0)
+  }
+
+  function getCourseAttendance(courseId: string): number | null {
+    const courseSessions = sessions.filter(s => s.course_id === courseId)
+    if (courseSessions.length === 0) return null
+    const sessionIds = new Set(courseSessions.map(s => s.id))
+    const studentRecords = records.filter(r => sessionIds.has(r.session_id))
+    if (studentRecords.length === 0) return null
+    const present = studentRecords.filter(r => r.status === 'present' || r.status === 'late' || r.status === 'excused').length
+    return Math.round((present / studentRecords.length) * 100)
+  }
+
+  function getCourseUnread(courseId: string): number {
+    const lastSeen = localStorage.getItem(`announcements_seen_${profile?.id}`)
+    return announcements
+      .filter(a => a.course_id === courseId)
+      .filter(a => !lastSeen || new Date(a.created_at) > new Date(lastSeen))
+      .length
+  }
+
+  type DueItem = { id: string; title: string; due_date?: string | null; close_at?: string | null; is_open: boolean; item_type?: string }
+
+  function getCourseNextDue(courseId: string): DueItem | null {
+    const items: DueItem[] = [
+      ...quizzes.filter(q => q.course_id === courseId && q.is_open && !submittedQuizIds.has(q.id)),
+      ...pdfQuizzes.filter(q => q.course_id === courseId && q.is_open && !submittedPdfQuizIds.has(q.id)).map(q => ({ ...q, item_type: 'paper' })),
+    ].sort((a, b) => {
+      const aD = a.close_at || a.due_date
+      const bD = b.close_at || b.due_date
+      if (!aD && !bD) return 0
+      if (!aD) return 1
+      if (!bD) return -1
+      return new Date(aD).getTime() - new Date(bD).getTime()
+    })
+    return items[0] ?? null
+  }
+
+  function getCourseMissed(courseId: string): DueItem | null {
+    return [
+      ...quizzes.filter(q => q.course_id === courseId && !q.is_open && !submittedQuizIds.has(q.id)),
+      ...pdfQuizzes.filter(q => q.course_id === courseId && !q.is_open && !submittedPdfQuizIds.has(q.id)).map(q => ({ ...q, item_type: 'paper' })),
+    ][0] ?? null
+  }
+
+  function getBorderColor(courseId: string): string {
+    const missed = getCourseMissed(courseId)
+    if (missed) return '#ef4444'
+    const grade = getCourseGrade(courseId)
+    if (grade === null || grade >= 75) return '#1ecf96'
+    if (grade >= 60) return '#3b82f6'
+    return '#ef4444'
+  }
+
+  function itemTypeLabel(type?: string): string {
+    if (!type || type === 'paper') return type === 'paper' ? 'Paper' : 'Quiz'
+    return type.charAt(0).toUpperCase() + type.slice(1)
+  }
+
+  function itemTypeStyle(type?: string): { bg: string; color: string } {
+    switch (type?.toLowerCase()) {
+      case 'lab':        return { bg: '#f0fdf4', color: '#16a34a' }
+      case 'exam':       return { bg: '#fef2f2', color: '#dc2626' }
+      case 'assignment': return { bg: '#faf5ff', color: '#7c3aed' }
+      case 'project':    return { bg: '#fff7ed', color: '#c2410c' }
+      case 'activity':   return { bg: '#fefce8', color: '#a16207' }
+      default:           return { bg: '#eff6ff', color: '#2563eb' }
+    }
+  }
+
+  function deadlineStr(item: DueItem): string | null {
+    const d = item.close_at || item.due_date
+    if (!d) return null
+    return new Date(d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+  }
 
   if (loading) return null
 
@@ -261,41 +373,145 @@ export default function StudentCourses() {
     )
   }
 
+  const todayStr = now.toLocaleDateString([], { weekday: 'short', month: 'long', day: 'numeric' })
+
   return (
     <div>
-      <PageHeader title="My Courses" subtitle="Courses you've been enrolled in." />
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px' }}>
+        <div>
+          <div style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.09em', color: '#c5c2bb', marginBottom: '4px' }}>My Courses</div>
+          <div style={{ fontSize: '13px', color: '#aaa' }}>
+            {enrolledCourses.length} course{enrolledCourses.length !== 1 ? 's' : ''} enrolled · {todayStr}
+          </div>
+        </div>
+      </div>
 
       {enrolledCourses.length === 0 ? (
-        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '2rem', textAlign: 'center' }}>
+        <div style={{ background: '#fff', border: '0.5px solid #e9e7e1', borderRadius: '16px', padding: '2rem', textAlign: 'center' }}>
           <div style={{ fontSize: '24px', marginBottom: '8px' }}>📭</div>
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>No courses yet</div>
           <div style={{ fontSize: '12px', color: '#888' }}>Your professor will enroll you in a course.</div>
         </div>
       ) : (
-        enrolledCourses.map(course => {
-          const hasInfo = (course.topics?.length ?? 0) > 0 || (course.schedule?.length ?? 0) > 0
-            || (course.resources?.length ?? 0) > 0 || (course.grading_system?.length ?? 0) > 0
-            || (course.syllabus?.length ?? 0) > 0
-          return (
-            <div
-              key={course.id}
-              onClick={() => setSelectedCourse(course)}
-              style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', padding: '14px 16px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
-            >
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
-                🏫
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {enrolledCourses.map(course => {
+            const borderColor = getBorderColor(course.id)
+            const grade = getCourseGrade(course.id)
+            const attendance = getCourseAttendance(course.id)
+            const unread = getCourseUnread(course.id)
+            const nextDue = getCourseNextDue(course.id)
+            const missed = getCourseMissed(course.id)
+            const hasInfo = (course.topics?.length ?? 0) > 0 || (course.schedule?.length ?? 0) > 0
+              || (course.resources?.length ?? 0) > 0 || (course.grading_system?.length ?? 0) > 0
+              || (course.syllabus?.length ?? 0) > 0
+
+            return (
+              <div
+                key={course.id}
+                style={{
+                  background: '#fff',
+                  border: '0.5px solid #e9e7e1',
+                  borderLeft: `3px solid ${borderColor}`,
+                  borderRadius: '14px',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Header row */}
+                <div style={{ padding: '16px 18px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '16px', fontWeight: 700, color: '#1a1a1a' }}>{course.name}</span>
+                      {course.section && (
+                        <span style={{ fontSize: '11px', fontWeight: 500, color: '#888', background: '#f5f4f0', padding: '2px 8px', borderRadius: '999px' }}>
+                          {course.section}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedCourse(course)}
+                    style={{
+                      flexShrink: 0, fontSize: '13px', fontWeight: 500, color: '#1a1a1a',
+                      background: '#fff', border: '0.5px solid #e9e7e1', borderRadius: '8px',
+                      padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Open →
+                  </button>
+                </div>
+
+                {/* Stats row */}
+                <div style={{ margin: '0 18px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', borderRadius: '10px', overflow: 'hidden', border: '0.5px solid #f0eeea' }}>
+                  {[
+                    { label: 'Grade', value: grade !== null ? `${grade.toFixed(0)}%` : '—', color: grade !== null && grade < 60 ? '#ef4444' : '#1a1a1a' },
+                    { label: 'Attendance', value: attendance !== null ? `${attendance}%` : '—', color: '#1a1a1a' },
+                    { label: 'Unread', value: unread > 0 ? String(unread) : '0', color: unread > 0 ? '#1ecf96' : '#1a1a1a' },
+                  ].map((stat, i) => (
+                    <div
+                      key={stat.label}
+                      style={{
+                        padding: '10px 14px',
+                        background: '#f9f8f5',
+                        borderLeft: i > 0 ? '0.5px solid #f0eeea' : 'none',
+                      }}
+                    >
+                      <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '3px' }}>{stat.label}</div>
+                      <div style={{ fontSize: '17px', fontWeight: 700, color: stat.color, lineHeight: 1 }}>{stat.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer row */}
+                <div style={{ padding: '10px 18px', borderTop: '0.5px solid #f5f3ef', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', minWidth: 0, flex: 1 }}>
+                    {missed ? (
+                      <>
+                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                        <span style={{ fontSize: '13px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {missed.title} was due{' '}
+                          <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                            {missed.due_date ? new Date(missed.due_date).toLocaleDateString([], { month: 'short', day: 'numeric' }) : ''}
+                          </span>
+                          {' '}— missed
+                        </span>
+                        {missed.item_type && (
+                          <span style={{ fontSize: '10px', fontWeight: 500, padding: '2px 8px', borderRadius: '20px', flexShrink: 0, background: itemTypeStyle(missed.item_type).bg, color: itemTypeStyle(missed.item_type).color }}>
+                            {itemTypeLabel(missed.item_type)}
+                          </span>
+                        )}
+                      </>
+                    ) : nextDue ? (
+                      <>
+                        <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#f59e0b', flexShrink: 0 }} />
+                        <span style={{ fontSize: '13px', color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {nextDue.title} due{' '}
+                          <span style={{ fontWeight: 600 }}>{deadlineStr(nextDue)}</span>
+                        </span>
+                        {nextDue.item_type && (
+                          <span style={{ fontSize: '10px', fontWeight: 500, padding: '2px 8px', borderRadius: '20px', flexShrink: 0, background: itemTypeStyle(nextDue.item_type).bg, color: itemTypeStyle(nextDue.item_type).color }}>
+                            {itemTypeLabel(nextDue.item_type)}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#ccc' }}>No upcoming items</span>
+                    )}
+                  </div>
+                  {hasInfo && (
+                    <button
+                      onClick={() => setSelectedCourse(course)}
+                      style={{ fontSize: '12px', color: '#1ecf96', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, padding: 0 }}
+                    >
+                      Syllabus →
+                    </button>
+                  )}
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '14px', fontWeight: 500 }}>{course.name}</div>
-                {course.section && <div style={{ fontSize: '12px', color: '#888' }}>Section {course.section}</div>}
-                {hasInfo && <div style={{ fontSize: '11px', color: '#1D9E75', marginTop: '2px' }}>Syllabus available →</div>}
-              </div>
-              <span style={{ fontSize: '11px', fontWeight: 500, padding: '3px 10px', borderRadius: '999px', flexShrink: 0, background: course.status === 'open' ? '#E1F5EE' : '#F1EFE8', color: course.status === 'open' ? '#0F6E56' : '#888' }}>
-                {course.status === 'open' ? 'Open' : 'Closed'}
-              </span>
-            </div>
-          )
-        })
+            )
+          })}
+        </div>
       )}
     </div>
   )
