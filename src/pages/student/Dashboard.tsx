@@ -349,8 +349,8 @@ export default function StudentDashboard() {
                   onClick={() => navigate('/student/quizzes')}
                   style={{
                     width: '100%', background: '#1ecf96',
-                    color: '#065f46', fontSize: '15px', fontWeight: 600,
-                    padding: '14px', borderRadius: '12px', border: 'none',
+                    color: '#065f46', fontSize: '13px', fontWeight: 600,
+                    padding: '10px 16px', borderRadius: '10px', border: 'none',
                     cursor: 'pointer', fontFamily: 'inherit',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                   }}
