@@ -8,23 +8,24 @@ export function useStudents(institutionId?: string | null) {
 
   async function fetchStudents() {
     if (institutionId) {
-      // Get all student members of this institution
-      const { data: members } = await supabase
-        .from('institution_members')
-        .select('user_id')
-        .eq('institution_id', institutionId)
-        .eq('role', 'student')
+      // Run both lookups in parallel to avoid sequential round trips
+      const [{ data: members }, { data: byInst }] = await Promise.all([
+        supabase
+          .from('institution_members')
+          .select('user_id')
+          .eq('institution_id', institutionId)
+          .eq('role', 'student'),
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('role', 'student')
+          .eq('institution_id', institutionId),
+      ])
+
       const memberIds = (members || []).map((m: { user_id: string }) => m.user_id)
-
-      // Also get profiles with institution_id set (pending students who joined)
-      const { data: byInst } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'student')
-        .eq('institution_id', institutionId)
       const byInstIds = (byInst || []).map((p: Profile) => p.id)
-
       const allIds = [...new Set([...memberIds, ...byInstIds])]
+
       if (allIds.length === 0) { setStudents([]); setLoading(false); return }
 
       const { data } = await supabase
@@ -35,7 +36,11 @@ export function useStudents(institutionId?: string | null) {
         .order('created_at', { ascending: false })
       setStudents(data || [])
     } else {
-      const { data } = await supabase.from('profiles').select('*').eq('role', 'student').order('created_at', { ascending: false })
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'student')
+        .order('created_at', { ascending: false })
       setStudents(data || [])
     }
     setLoading(false)
@@ -58,19 +63,18 @@ export function useStudents(institutionId?: string | null) {
         { onConflict: 'student_id,course_id', ignoreDuplicates: true }
       )
     }
-    // Also ensure they're in institution_members as student
     if (institutionId) {
       await supabase.from('institution_members').upsert(
         { institution_id: institutionId, user_id: studentId, role: 'student' },
         { onConflict: 'institution_id,user_id' }
       )
     }
-    await fetchStudents()
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, status: 'approved' } : s))
   }
 
   async function rejectStudent(id: string) {
     await supabase.from('profiles').update({ status: 'rejected' }).eq('id', id)
-    await fetchStudents()
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, status: 'rejected' } : s))
   }
 
   return { students, loading, approveWithCourses, rejectStudent }

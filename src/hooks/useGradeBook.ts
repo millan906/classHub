@@ -54,11 +54,11 @@ export function useGradeBook(courseId?: string | null) {
   }
 
   async function addGroup(name: string, weightPercent: number, userId: string) {
-    const { error } = await supabase.from('grade_groups').insert({
+    const { data, error } = await supabase.from('grade_groups').insert({
       name, weight_percent: weightPercent, created_by: userId, course_id: courseId ?? null,
-    })
+    }).select('*').single()
     if (error) throw error
-    await fetchAll()
+    setGroups(prev => [...prev, data])
   }
 
   async function updateGroup(id: string, name: string, weightPercent: number) {
@@ -66,13 +66,17 @@ export function useGradeBook(courseId?: string | null) {
       name, weight_percent: weightPercent,
     }).eq('id', id)
     if (error) throw error
-    await fetchAll()
+    setGroups(prev => prev.map(g => g.id === id ? { ...g, name, weight_percent: weightPercent } : g))
   }
 
   async function deleteGroup(id: string) {
     const { error } = await supabase.from('grade_groups').delete().eq('id', id)
     if (error) throw error
-    await fetchAll()
+    // Cascade cleanup in local state (DB cascades via FK)
+    const colIds = columns.filter(c => c.group_id === id).map(c => c.id)
+    setGroups(prev => prev.filter(g => g.id !== id))
+    setColumns(prev => prev.filter(c => c.group_id !== id))
+    setEntries(prev => prev.filter(e => !colIds.includes(e.column_id)))
   }
 
   async function addColumn(
@@ -94,9 +98,9 @@ export function useGradeBook(courseId?: string | null) {
       linked_quiz_id: linkedQuizId,
       description: description ?? null,
       course_id: courseId ?? null,
-    }).select('id').single()
+    }).select('*').single()
     if (error) throw error
-    await fetchAll()
+    setColumns(prev => [...prev, data])
     return data.id
   }
 
@@ -114,10 +118,11 @@ export function useGradeBook(courseId?: string | null) {
       .eq('linked_quiz_id', quizId)
       .maybeSingle()
     if (existing) {
-      // Backfill course_id if it was created before course tracking was added
       if (!existing.course_id && quizCourseId) {
         await supabase.from('grade_columns').update({ course_id: quizCourseId }).eq('id', existing.id)
-        return { ...existing, course_id: quizCourseId } as GradeColumn
+        const updated = { ...existing, course_id: quizCourseId } as GradeColumn
+        setColumns(prev => prev.map(c => c.id === existing.id ? updated : c))
+        return updated
       }
       return existing as GradeColumn
     }
@@ -137,20 +142,21 @@ export function useGradeBook(courseId?: string | null) {
       .select('*')
       .single()
     if (error) throw error
-    await fetchAll()
+    setColumns(prev => [...prev, created])
     return created as GradeColumn
   }
 
   async function updateColumnMaxScore(id: string, maxScore: number) {
     const { error } = await supabase.from('grade_columns').update({ max_score: maxScore }).eq('id', id)
     if (error) throw error
-    await fetchAll()
+    setColumns(prev => prev.map(c => c.id === id ? { ...c, max_score: maxScore } : c))
   }
 
   async function deleteColumn(id: string) {
     const { error } = await supabase.from('grade_columns').delete().eq('id', id)
     if (error) throw error
-    await fetchAll()
+    setColumns(prev => prev.filter(c => c.id !== id))
+    setEntries(prev => prev.filter(e => e.column_id !== id))
   }
 
   async function upsertEntry(columnId: string, studentId: string, score: number | null) {

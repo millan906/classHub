@@ -118,7 +118,7 @@ export function useQuizzes() {
     await supabase.from('quiz_questions').delete().eq('quiz_id', id)
     await supabase.from('grade_columns').delete().eq('linked_quiz_id', id)
     await supabase.from('quizzes').delete().eq('id', id)
-    await fetchQuizzes()
+    setQuizzes(prev => prev.filter(q => q.id !== id))
   }
 
   async function toggleQuiz(id: string, isOpen: boolean) {
@@ -130,7 +130,7 @@ export function useQuizzes() {
       updates.close_at = null
     }
     await supabase.from('quizzes').update(updates).eq('id', id)
-    await fetchQuizzes()
+    setQuizzes(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q))
 
     if (!isOpen) return // only notify students when opening
 
@@ -198,11 +198,64 @@ export function useQuizzes() {
   }
 
   async function uploadFile(quizId: string, studentId: string, file: File) {
-    const ext = file.name.split('.').pop()
-    const path = `${quizId}/${studentId}.${ext}`
+    // ── Validation ────────────────────────────────────────────────────────────
+    const MAX_SIZE_BYTES = 25 * 1024 * 1024 // 25 MB
+    const ALLOWED_MIME = new Set([
+      'application/pdf',
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif',
+    ])
+    const ALLOWED_EXT = new Set(['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'])
+
+    if (file.size > MAX_SIZE_BYTES)
+      throw new Error('File is too large. Maximum allowed size is 25 MB.')
+
+    if (!ALLOWED_MIME.has(file.type))
+      throw new Error('Invalid file type. Only PDF and image files are allowed.')
+
+    const fileExt = file.name.split('.').pop()?.toLowerCase() ?? ''
+    if (!ALLOWED_EXT.has(fileExt))
+      throw new Error('Invalid file extension. Only PDF and image files are allowed.')
+
+    // ── Magic bytes: verify the file header matches its claimed type ──────────
+    // Reads only the first 12 bytes — no need to load the whole file.
+    const header = await file.slice(0, 12).arrayBuffer()
+    const bytes = new Uint8Array(header)
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+
+    const isPdf  = hex.startsWith('25504446')                    // %PDF
+    const isJpeg = hex.startsWith('ffd8ff')                      // JPEG SOI
+    const isPng  = hex.startsWith('89504e470d0a1a0a')            // PNG
+    const isGif  = hex.startsWith('47494638')                    // GIF8
+    const isWebp = hex.startsWith('52494646') && hex.slice(16, 24) === '57454250' // RIFF....WEBP
+
+    const magicOk = isPdf || isJpeg || isPng || isGif || isWebp
+    // HEIC/HEIF don't have simple magic bytes — skip magic check for them
+    const isHeic = fileExt === 'heic' || fileExt === 'heif'
+    if (!magicOk && !isHeic)
+      throw new Error('File content does not match its declared type. Upload rejected.')
+
+    // ── PDF embedded script check ─────────────────────────────────────────────
+    // Scans the first 64 KB of a PDF for embedded JavaScript markers.
+    // Full JS execution in a PDF requires /JS or /JavaScript in the object tree.
+    if (isPdf) {
+      const chunk = await file.slice(0, 64 * 1024).text()
+      const dangerous = ['/JS ', '/JS\n', '/JS(', '/JavaScript', '/OpenAction', '/AA ']
+      if (dangerous.some(marker => chunk.includes(marker)))
+        throw new Error('This PDF contains embedded scripts and cannot be submitted.')
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const ext = fileExt
+    const path = `${quizId}/${crypto.randomUUID()}.${ext}`
+    // Delete previous submission file if one exists
+    const existing = await fetchMyFileSubmission(quizId, studentId)
+    if (existing?.file_url) {
+      const oldPath = existing.file_url.split('/storage/v1/object/public/submissions/')[1]
+      if (oldPath) await supabase.storage.from('submissions').remove([oldPath])
+    }
     const { error: upErr } = await supabase.storage
       .from('submissions')
-      .upload(path, file, { upsert: true })
+      .upload(path, file, { upsert: false })
     if (upErr) throw upErr
     const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(path)
     const { error } = await supabase.from('file_submissions').upsert(
@@ -214,7 +267,7 @@ export function useQuizzes() {
 
   async function uploadAttachment(file: File): Promise<{ url: string; name: string }> {
     const ext = file.name.split('.').pop()
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const path = `${crypto.randomUUID()}.${ext}`
     const { error: upErr } = await supabase.storage
       .from('attachments')
       .upload(path, file, { upsert: false })

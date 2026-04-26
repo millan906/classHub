@@ -55,7 +55,7 @@ export function useCourses(institutionId?: string | null, facultyId?: string | n
     syllabus: SyllabusRow[] = [],
     institution_id?: string | null,
   ) {
-    const { error } = await supabase.from('courses').insert({
+    const { data, error } = await supabase.from('courses').insert({
       id,
       name: name.trim(),
       section: section.trim() || null,
@@ -66,14 +66,14 @@ export function useCourses(institutionId?: string | null, facultyId?: string | n
       resources,
       syllabus,
       ...(institution_id ? { institution_id } : {}),
-    })
+    }).select('*').single()
     if (error) throw error
     // Auto-assign creator as the teaching faculty for this course
     await supabase.from('course_faculty').upsert(
       { course_id: id, faculty_id: userId },
       { onConflict: 'course_id,faculty_id', ignoreDuplicates: true }
     )
-    await fetchCourses()
+    if (data) setCourses(prev => [data, ...prev])
   }
 
   async function updateCourse(
@@ -86,17 +86,18 @@ export function useCourses(institutionId?: string | null, facultyId?: string | n
     resources: CourseResource[] = [],
     syllabus: SyllabusRow[] = [],
   ) {
-    const { error } = await supabase.from('courses').update({
+    const updates = {
       name: name.trim(),
-      section: section.trim() || null,
+      section: section.trim() || undefined,
       topics,
       grading_system: gradingSystem,
       schedule,
       resources,
       syllabus,
-    }).eq('id', id)
+    }
+    const { error } = await supabase.from('courses').update(updates).eq('id', id)
     if (error) throw error
-    await fetchCourses()
+    setCourses(prev => prev.map(c => c.id === id ? { ...c, ...updates } as Course : c))
   }
 
   async function deleteCourse(id: string) {
@@ -107,39 +108,40 @@ export function useCourses(institutionId?: string | null, facultyId?: string | n
     }
     const { error } = await supabase.from('courses').delete().eq('id', id)
     if (error) throw error
-    await fetchCourses()
+    setCourses(prev => prev.filter(c => c.id !== id))
   }
 
   async function toggleCourseStatus(id: string, status: 'open' | 'closed') {
     const { error } = await supabase.from('courses').update({ status }).eq('id', id)
     if (error) throw error
-    await fetchCourses()
+    setCourses(prev => prev.map(c => c.id === id ? { ...c, status } : c))
   }
 
   async function copyCourseInfo(sourceId: string, targetId: string) {
     const source = courses.find(c => c.id === sourceId)
     if (!source) throw new Error('Source course not found')
-    const { error } = await supabase.from('courses').update({
+    const patch = {
       topics: source.topics ?? [],
       grading_system: source.grading_system ?? [],
       schedule: source.schedule ?? [],
       resources: source.resources ?? [],
       syllabus: source.syllabus ?? [],
-    }).eq('id', targetId)
+    }
+    const { error } = await supabase.from('courses').update(patch).eq('id', targetId)
     if (error) throw error
-    await fetchCourses()
+    setCourses(prev => prev.map(c => c.id === targetId ? { ...c, ...patch } : c))
   }
 
   async function toggleGradesVisible(id: string, visible: boolean) {
     const { error } = await supabase.from('courses').update({ grades_visible: visible }).eq('id', id)
     if (error) throw error
-    await fetchCourses()
+    setCourses(prev => prev.map(c => c.id === id ? { ...c, grades_visible: visible } : c))
   }
 
   async function uploadResource(courseId: string, file: File): Promise<{ file_path: string; file_name: string }> {
     if (file.size > 50 * 1024 * 1024) throw new Error('File too large. Maximum size is 50 MB.')
-    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `${courseId}/${Date.now()}_${safe}`
+    const ext = file.name.split('.').pop()
+    const path = `${courseId}/${crypto.randomUUID()}.${ext}`
     const { error } = await supabase.storage.from(BUCKET).upload(path, file)
     if (error) throw error
     return { file_path: path, file_name: file.name }

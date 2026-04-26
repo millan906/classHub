@@ -50,8 +50,8 @@ export function usePdfQuizzes() {
     let pdfPath: string | null = null
 
     if (file) {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      pdfPath = `${userId}/${Date.now()}_${safeName}`
+      const ext = file.name.split('.').pop()
+      pdfPath = `${userId}/${crypto.randomUUID()}.${ext}`
       const { error: uploadErr } = await supabase.storage
         .from('pdf-quizzes').upload(pdfPath, file, { upsert: false })
       if (uploadErr) throw uploadErr
@@ -94,8 +94,8 @@ export function usePdfQuizzes() {
     let pdfPath = existing?.pdf_path ?? ''
 
     if (newFile && userId) {
-      const safeName = newFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const path = `${userId}/${Date.now()}_${safeName}`
+      const ext = newFile.name.split('.').pop()
+      const path = `${userId}/${crypto.randomUUID()}.${ext}`
       const { error: uploadErr } = await supabase.storage
         .from('pdf-quizzes').upload(path, newFile, { upsert: false })
       if (uploadErr) throw uploadErr

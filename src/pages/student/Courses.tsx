@@ -250,7 +250,7 @@ export default function StudentCourses() {
   const { courses, getResourceUrl } = useCourses()
   const { enrolledCourseIds, loading } = useMyEnrollments(profile?.id ?? null)
   const { groups, columns, entries } = useGradeBook()
-  const { sessions, records } = useMyAttendance(profile?.id ?? null)
+  const { sessions, records, loading: attendanceLoading } = useMyAttendance(profile?.id ?? null)
   const { quizzes, submissions, fetchMySubmissions } = useQuizzes()
   const { pdfQuizzes, submissions: pdfSubmissions, fetchMySubmissions: fetchMyPdfSubmissions } = usePdfQuizzes()
   const { announcements } = useAnnouncements()
@@ -361,7 +361,7 @@ export default function StudentCourses() {
     return new Date(d).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
-  if (loading) return null
+  if (loading || attendanceLoading) return null
 
   if (selectedCourse) {
     return (

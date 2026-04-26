@@ -32,7 +32,8 @@ export function useSlides(institutionId?: string | null) {
   }
 
   async function uploadSlide(file: File, title: string, userId: string, courseId: string | null = null) {
-    const filePath = `${userId}/${Date.now()}_${file.name}`
+    const ext = file.name.split('.').pop()
+    const filePath = `${userId}/${crypto.randomUUID()}.${ext}`
     const { error: uploadError } = await supabase.storage.from('slides').upload(filePath, file)
     if (uploadError) throw uploadError
 
