@@ -74,7 +74,8 @@ export function useAnnouncements(institutionId?: string | null) {
   }
 
   async function deleteAnnouncement(id: string) {
-    await supabase.from('announcements').delete().eq('id', id)
+    const { error } = await supabase.from('announcements').delete().eq('id', id)
+    if (error) throw error
     setAnnouncements(prev => prev.filter(a => a.id !== id))
   }
 
