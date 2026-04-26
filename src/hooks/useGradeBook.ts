@@ -47,7 +47,7 @@ export function useGradeBook(courseId?: string | null) {
       setColumns(colsRes.data || [])
       setEntries(entsRes.data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load grade book')
+      setError((err as { message?: string })?.message ?? 'Failed to load grade book')
     } finally {
       setLoading(false)
     }

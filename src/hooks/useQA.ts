@@ -19,7 +19,7 @@ export function useQA(institutionId?: string | null) {
       if (err) throw err
       setQuestions(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load questions')
+      setError((err as { message?: string })?.message ?? 'Failed to load questions')
     } finally {
       setLoading(false)
     }

@@ -33,7 +33,7 @@ export function useFinalGrades() {
       if (err) throw err
       if (data) setFinalGrades(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load final grades')
+      setError((err as { message?: string })?.message ?? 'Failed to load final grades')
     } finally {
       setLoading(false)
     }

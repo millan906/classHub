@@ -29,7 +29,7 @@ export function useQuizzes() {
       if (err) throw err
       setQuizzes(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load assessments')
+      setError((err as { message?: string })?.message ?? 'Failed to load assessments')
     } finally {
       setLoading(false)
     }
