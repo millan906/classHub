@@ -10,12 +10,10 @@ export function useQA(institutionId?: string | null) {
   async function fetchQuestions() {
     try {
       setError(null)
-      let query = supabase
+      const { data, error: err } = await supabase
         .from('questions')
         .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
         .order('created_at', { ascending: false })
-      if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
-      const { data, error: err } = await query
       if (err) throw err
       setQuestions(data || [])
     } catch (err) {
@@ -47,7 +45,7 @@ export function useQA(institutionId?: string | null) {
   async function postQuestion(title: string, body: string, tag: string, userId: string) {
     const { data } = await supabase
       .from('questions')
-      .insert({ title, body, tag: tag || null, posted_by: userId, institution_id: institutionId ?? null })
+      .insert({ title, body, tag: tag || null, posted_by: userId })
       .select('id')
       .single()
     if (data) {
