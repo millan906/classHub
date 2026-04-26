@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useSlides } from '../../hooks/useSlides'
@@ -64,10 +64,16 @@ export default function StudentDashboard() {
   }
 
   // ─── Filters ───────────────────────────────────────────────────────────────
-  const visibleQuizzes = quizzes.filter(q => q.course_id == null || enrolledCourseIds.includes(q.course_id))
-  const visiblePdfQuizzes = pdfQuizzes.filter(q => q.course_id == null || enrolledCourseIds.includes(q.course_id))
-  const submittedQuizIds = new Set(submissions.map(s => s.quiz_id))
-  const submittedPdfQuizIds = new Set(pdfSubmissions.map(s => s.pdf_quiz_id))
+  const visibleQuizzes = useMemo(
+    () => quizzes.filter(q => q.course_id == null || enrolledCourseIds.includes(q.course_id)),
+    [quizzes, enrolledCourseIds],
+  )
+  const visiblePdfQuizzes = useMemo(
+    () => pdfQuizzes.filter(q => q.course_id == null || enrolledCourseIds.includes(q.course_id)),
+    [pdfQuizzes, enrolledCourseIds],
+  )
+  const submittedQuizIds = useMemo(() => new Set(submissions.map(s => s.quiz_id)), [submissions])
+  const submittedPdfQuizIds = useMemo(() => new Set(pdfSubmissions.map(s => s.pdf_quiz_id)), [pdfSubmissions])
 
   const now = new Date()
 
@@ -82,7 +88,7 @@ export default function StudentDashboard() {
     course_id?: string | null
   }
 
-  const allDueItems: DueItem[] = [
+  const allDueItems: DueItem[] = useMemo(() => [
     ...visibleQuizzes.filter(q => q.is_open && !submittedQuizIds.has(q.id)),
     ...visiblePdfQuizzes.filter(q => q.is_open && !submittedPdfQuizIds.has(q.id)).map(q => ({ ...q, item_type: 'paper' })),
   ].sort((a, b) => {
@@ -92,12 +98,12 @@ export default function StudentDashboard() {
     if (!aDate) return 1
     if (!bDate) return -1
     return new Date(aDate).getTime() - new Date(bDate).getTime()
-  })
+  }), [visibleQuizzes, visiblePdfQuizzes, submittedQuizIds, submittedPdfQuizIds])
 
-  const allMissedItems: DueItem[] = [
+  const allMissedItems: DueItem[] = useMemo(() => [
     ...visibleQuizzes.filter(q => !q.is_open && !submittedQuizIds.has(q.id)),
     ...visiblePdfQuizzes.filter(q => !q.is_open && !submittedPdfQuizIds.has(q.id)).map(q => ({ ...q, item_type: 'paper' })),
-  ]
+  ], [visibleQuizzes, visiblePdfQuizzes, submittedQuizIds, submittedPdfQuizIds])
 
   const heroItem = allDueItems[0] ?? null
   const upNextItems = allDueItems.slice(1)
@@ -160,15 +166,17 @@ export default function StudentDashboard() {
   }
 
   // ─── Grade summary ─────────────────────────────────────────────────────────
-  const enrolledGroups = enrolledCourseIds.length > 0
+  const enrolledGroups = useMemo(() => enrolledCourseIds.length > 0
     ? groups.filter(g => !g.course_id || enrolledCourseIds.includes(g.course_id))
-    : groups
-  const enrolledColumns = enrolledCourseIds.length > 0
+    : groups,
+  [enrolledCourseIds, groups])
+  const enrolledColumns = useMemo(() => enrolledCourseIds.length > 0
     ? columns.filter(c => !c.course_id || enrolledCourseIds.includes(c.course_id))
-    : columns
+    : columns,
+  [enrolledCourseIds, columns])
 
-  const myEntries = entries.filter(e => e.student_id === profile?.id)
-  const weightedRows = enrolledGroups.map(g => {
+  const myEntries = useMemo(() => entries.filter(e => e.student_id === profile?.id), [entries, profile?.id])
+  const weightedRows = useMemo(() => enrolledGroups.map(g => {
     const cols = enrolledColumns.filter(c => c.group_id === g.id)
     const graded = cols.filter(c => myEntries.some(e => e.column_id === c.id && e.score !== null))
     const totalEarned = graded.reduce((sum, c) => {
@@ -179,7 +187,7 @@ export default function StudentDashboard() {
     const rawPct = totalMax > 0 ? (totalEarned / totalMax) * 100 : null
     const weighted = rawPct !== null ? (rawPct * g.weight_percent) / 100 : null
     return { group: g, rawPct, weighted }
-  })
+  }), [enrolledGroups, enrolledColumns, myEntries])
   const hasAnyGrade = weightedRows.some(r => r.weighted !== null)
   const finalGrade = weightedRows.reduce((sum, r) => sum + (r.weighted ?? 0), 0)
   const totalWeight = weightedRows.filter(r => r.weighted !== null).reduce((sum, r) => sum + r.group.weight_percent, 0)
@@ -195,13 +203,13 @@ export default function StudentDashboard() {
     submittedAt: string
   }
 
-  const recentSubmissions: RecentSub[] = [
+  const recentSubmissions: RecentSub[] = useMemo(() => [
     ...submissions.map(s => {
       const quiz = quizzes.find(q => q.id === s.quiz_id)
       return {
         id: s.id,
         title: quiz?.title ?? '',
-        courseName: getCourseName(quiz?.course_id),
+        courseName: courses.find(c => c.id === quiz?.course_id)?.name ?? null,
         earnedPoints: s.earned_points ?? null,
         totalPoints: s.total_points ?? null,
         submittedAt: s.submitted_at,
@@ -212,7 +220,7 @@ export default function StudentDashboard() {
       return {
         id: s.id,
         title: quiz?.title ?? '',
-        courseName: getCourseName(quiz?.course_id),
+        courseName: courses.find(c => c.id === quiz?.course_id)?.name ?? null,
         earnedPoints: s.earned_points ?? null,
         totalPoints: quiz?.total_points ?? null,
         submittedAt: s.submitted_at,
@@ -221,12 +229,14 @@ export default function StudentDashboard() {
   ]
     .filter(s => s.title)
     .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
-    .slice(0, 3)
+    .slice(0, 3),
+  [submissions, pdfSubmissions, quizzes, pdfQuizzes, courses])
 
   // ─── Announcements ─────────────────────────────────────────────────────────
-  const recentAnnouncements = announcements
+  const recentAnnouncements = useMemo(() => announcements
     .filter(a => !a.course_id || enrolledCourseIds.includes(a.course_id))
-    .slice(0, 2)
+    .slice(0, 2),
+  [announcements, enrolledCourseIds])
 
   // ─── Header counts ─────────────────────────────────────────────────────────
   const dueCount = allDueItems.length

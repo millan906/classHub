@@ -459,14 +459,13 @@ export default function FacultyGradeBook() {
 
   const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
 
-  const courseStudentIds = selectedCourseId
-    ? new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.student_id))
-    : null
-  const enrolledRaw = students.filter(s =>
-    s.status === 'approved' && (!courseStudentIds || courseStudentIds.has(s.id))
-  )
-  const enrolled = (() => {
-    let list = enrolledRaw
+  const enrolled = useMemo(() => {
+    const courseStudentIds = selectedCourseId
+      ? new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.student_id))
+      : null
+    let list = students.filter(s =>
+      s.status === 'approved' && (!courseStudentIds || courseStudentIds.has(s.id))
+    )
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
       list = list.filter(s => s.full_name.toLowerCase().includes(q))
@@ -477,10 +476,13 @@ export default function FacultyGradeBook() {
       const [ka, kb] = sortBy.startsWith('last') ? [last(a.full_name), last(b.full_name)] : [first(a.full_name), first(b.full_name)]
       return sortBy.endsWith('desc') ? kb.localeCompare(ka) : ka.localeCompare(kb)
     })
-  })()
+  }, [students, enrollments, selectedCourseId, searchQuery, sortBy])
 
   // Only show groups that have at least one column (after course filtering)
-  const visibleGroups = groups.filter(g => columns.some(c => c.group_id === g.id))
+  const visibleGroups = useMemo(
+    () => groups.filter(g => columns.some(c => c.group_id === g.id)),
+    [groups, columns]
+  )
 
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
     const entry = entryMap.get(`${studentId}:${col.id}`)
