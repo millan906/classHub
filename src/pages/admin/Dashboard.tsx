@@ -77,9 +77,21 @@ export default function AdminDashboard() {
     setImportLoading(true)
     setImportResult('')
     try {
+      // Only fetch enrollments for courses belonging to this institution
+      const { data: institutionCourses } = await supabase
+        .from('courses')
+        .select('id')
+        .eq('institution_id', institution.id)
+      const courseIds = (institutionCourses || []).map((c: any) => c.id)
+      if (courseIds.length === 0) {
+        setImportResult('No courses found for this institution.')
+        return
+      }
+
       const { data: enrollments } = await supabase
         .from('course_enrollments')
         .select('student_id')
+        .in('course_id', courseIds)
       if (!enrollments || enrollments.length === 0) {
         setImportResult('No enrolled students found.')
         return
@@ -104,14 +116,14 @@ export default function AdminDashboard() {
         return
       }
 
-      const inserts = profiles.map((p: any) => ({
+      const rows = profiles.map((p: any) => ({
         institution_id: institution.id,
         user_id: p.id,
         role: p.role ?? 'student',
       }))
       const { data: inserted, error } = await supabase
         .from('institution_members')
-        .insert(inserts)
+        .upsert(rows, { onConflict: 'institution_id,user_id', ignoreDuplicates: true })
         .select('id, user_id, role')
 
       if (error) throw error
@@ -128,7 +140,7 @@ export default function AdminDashboard() {
       setMembers(prev => [...prev, ...newMembers])
       setImportResult(`✓ Imported ${newMembers.length} student${newMembers.length !== 1 ? 's' : ''} successfully.`)
     } catch (err: unknown) {
-      setImportResult(`Error: ${err instanceof Error ? err.message : 'Import failed.'}`)
+      setImportResult(`Error: ${(err as { message?: string })?.message ?? 'Import failed.'}`)
     } finally {
       setImportLoading(false)
     }
@@ -156,7 +168,7 @@ export default function AdminDashboard() {
       if (updateError) throw updateError
       setImportCoursesResult(`✓ Imported ${ids.length} course${ids.length !== 1 ? 's' : ''}.`)
     } catch (err: unknown) {
-      setImportCoursesResult(`Error: ${err instanceof Error ? err.message : 'Import failed.'}`)
+      setImportCoursesResult(`Error: ${(err as { message?: string })?.message ?? 'Import failed.'}`)
     } finally {
       setImportCoursesLoading(false)
     }

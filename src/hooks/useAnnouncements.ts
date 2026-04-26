@@ -27,8 +27,8 @@ export function useAnnouncements(institutionId?: string | null) {
         const a = payload.new as Announcement
         setAnnouncements(prev => prev.map(x => x.id === a.id ? a : x))
       })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'announcements' }, (payload) => {
-        setAnnouncements(prev => prev.filter(a => a.id !== (payload.old as { id: string }).id))
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'announcements' }, () => {
+        fetchAnnouncements()
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
