@@ -449,15 +449,11 @@ export default function FacultyGradeBook() {
     syncQuizScores()
   }, [profile?.id, submissions.length, groups.length])
 
-  // Must be before any early return — hooks must always be called in the same order
+  // All hooks must be before any early return
   const entryMap = useMemo(
     () => new Map(entries.map(e => [`${e.student_id}:${e.column_id}`, e])),
     [entries]
   )
-
-  if (!profile) return null
-
-  const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
 
   const enrolled = useMemo(() => {
     const courseStudentIds = selectedCourseId
@@ -483,6 +479,10 @@ export default function FacultyGradeBook() {
     () => groups.filter(g => columns.some(c => c.group_id === g.id)),
     [groups, columns]
   )
+
+  if (!profile) return null
+
+  const selectedCourse = courses.find(c => c.id === selectedCourseId) ?? null
 
   function getColumnScore(studentId: string, col: GradeColumn): number | null {
     const entry = entryMap.get(`${studentId}:${col.id}`)
