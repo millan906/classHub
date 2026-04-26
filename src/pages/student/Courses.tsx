@@ -285,7 +285,7 @@ export default function StudentCourses() {
       return rawPct !== null ? (rawPct * g.weight_percent) / 100 : null
     })
     if (!rows.some(r => r !== null)) return null
-    return rows.reduce((sum, r) => sum + (r ?? 0), 0)
+    return rows.reduce<number>((sum, r) => sum + (r ?? 0), 0)
   }
 
   function getCourseAttendance(courseId: string): number | null {

@@ -8,17 +8,14 @@ import { useGradeBook } from '../../hooks/useGradeBook'
 import { useCourses } from '../../hooks/useCourses'
 import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { TYPE_ORDER } from '../../constants/itemTypes'
 import { scoreBarColor } from '../../utils/scoreColors'
-import { PageHeader } from '../../components/ui/Card'
 import { Spinner, PageError } from '../../components/ui/Spinner'
-import { QuizCard } from '../../components/quizzes/QuizCard'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
-import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
 import { PdfQuizTaker } from '../../components/pdfquizzes/PdfQuizTaker'
 import type { Quiz, PdfQuiz, QuizSubmission, PdfQuizSubmission } from '../../types'
 
 export default function StudentQuizzes() {
+  const navigate = useNavigate()
   const { profile } = useAuth()
   const { quizzes, submissions, loading, error, fetchMySubmissions, submitQuiz, uploadFile, fetchMyFileSubmission } = useQuizzes()
   const { pdfQuizzes, submissions: pdfSubmissions, fetchMySubmissions: fetchMyPdfSubmissions, submitPdfQuiz, getPdfUrl } = usePdfQuizzes()
@@ -31,8 +28,6 @@ export default function StudentQuizzes() {
   const [existingFile, setExistingFile] = useState<{ file_name: string; file_url: string } | null>(null)
   const [takingPdfQuiz, setTakingPdfQuiz] = useState<PdfQuiz | null>(null)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
-  const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
-  const [closedCollapsed, setClosedCollapsed] = useState(true)
   const [activeFilter, setActiveFilter] = useState<'all' | 'open' | 'submitted' | 'graded' | 'missed'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -91,7 +86,6 @@ export default function StudentQuizzes() {
 
   const manualColumns = columns.filter(c => c.entry_type === 'manual' && (!c.course_id || enrolledCourseIds.includes(c.course_id)))
 
-  const navigate = useNavigate()
 
   const enrolledCourses = courses.filter(c => enrolledCourseIds.includes(c.id))
 
@@ -165,7 +159,6 @@ export default function StudentQuizzes() {
     }),
     ...visiblePdfQuizzes.map(q => {
       const subs = pdfSubmissions.filter(s => s.pdf_quiz_id === q.id)
-      const best = subs.length > 0 ? subs.reduce((b, s) => s.earned_points > b.earned_points ? s : b) : undefined
       return {
         id: q.id,
         title: q.title,
@@ -176,7 +169,7 @@ export default function StudentQuizzes() {
         dueDate: q.due_date ?? null,
         closeAt: q.close_at ?? null,
         isOpen: q.is_open,
-        maxAttempts: q.max_attempts,
+        maxAttempts: q.max_attempts ?? 1,
         isFileSub: false,
         isPdf: true,
         pdfRef: q,
@@ -185,7 +178,7 @@ export default function StudentQuizzes() {
         bestSub: undefined,
         resultsVisible: q.results_visible ?? false,
         pdfSubs: subs,
-        totalPoints: q.total_points,
+        totalPoints: q.total_points ?? null,
       }
     }),
   ]
@@ -483,7 +476,7 @@ export default function StudentQuizzes() {
   }
 
   // Section rendering
-  function renderSection(label: string, items: AssessmentItem[], color: string) {
+  function renderSection(label: string, items: AssessmentItem[]) {
     if (items.length === 0) return null
     return (
       <div style={{ marginBottom: '20px' }}>
@@ -549,10 +542,10 @@ export default function StudentQuizzes() {
         <div style={{ fontSize: '13px', color: '#aaa', padding: '20px 0' }}>No assessments found.</div>
       ) : activeFilter === 'all' ? (
         <>
-          {renderSection('Open', openItems, '#1ecf96')}
-          {renderSection('Submitted', submittedItems, '#888')}
-          {renderSection('Graded', gradedItems, '#2563eb')}
-          {renderSection('Missed', missedItems, '#ef4444')}
+          {renderSection('Open', openItems)}
+          {renderSection('Submitted', submittedItems)}
+          {renderSection('Graded', gradedItems)}
+          {renderSection('Missed', missedItems)}
         </>
       ) : (
         sortedDisplay.map(renderCard)
