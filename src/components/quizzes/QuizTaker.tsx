@@ -323,8 +323,11 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
           <QuizTimer totalSeconds={quiz.time_limit_minutes * 60} onExpire={() => handleSubmit(true)} />
         )}
       </div>
-      {quiz.item_type !== 'activity' && (
+      {quiz.item_type !== 'activity' && !quiz.allow_file_upload && (
         <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.1rem' }}>{questions.length} questions</div>
+      )}
+      {quiz.allow_file_upload && questions.length === 0 && (
+        <div style={{ fontSize: '13px', color: '#888', marginBottom: '1.1rem' }}>Upload your file below to submit</div>
       )}
 
       {quiz.description && (

@@ -199,7 +199,7 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
 export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBack, onSaveEssayScores, onSaveFileScore }: QuizResultsProps) {
   const PAGE_SIZE = 20
   const isActivity = quiz.item_type === 'activity'
-  const showFilesTab = !!(quiz.item_type && quiz.item_type !== 'quiz' && !isActivity && quiz.allow_file_upload)
+  const showFilesTab = !!(!isActivity && quiz.allow_file_upload)
   const [resultsTab, setResultsTab] = useState<'scores' | 'integrity' | 'files'>('scores')
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
   const [page, setPage] = useState(0)

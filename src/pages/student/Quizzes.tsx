@@ -12,7 +12,7 @@ import { scoreBarColor } from '../../utils/scoreColors'
 import { Spinner, PageError } from '../../components/ui/Spinner'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
 import { PdfQuizTaker } from '../../components/pdfquizzes/PdfQuizTaker'
-import type { Quiz, PdfQuiz, QuizSubmission, PdfQuizSubmission } from '../../types'
+import type { Quiz, PdfQuiz, QuizSubmission, PdfQuizSubmission, FileSubmission } from '../../types'
 
 export default function StudentQuizzes() {
   const navigate = useNavigate()
@@ -30,6 +30,7 @@ export default function StudentQuizzes() {
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
   const [activeFilter, setActiveFilter] = useState<'all' | 'open' | 'submitted' | 'graded' | 'missed'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [fileSubMap, setFileSubMap] = useState<Record<string, FileSubmission | null>>({})
 
   useEffect(() => {
     if (profile) {
@@ -410,7 +411,13 @@ export default function StudentQuizzes() {
               )}
               {status === 'submitted' && (
                 <button
-                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  onClick={() => {
+                    const next = isExpanded ? null : item.id
+                    setExpandedId(next)
+                    if (next && !item.isPdf && item.quizRef?.allow_file_upload && !(item.id in fileSubMap) && profile) {
+                      fetchMyFileSubmission(item.id, profile.id).then(f => setFileSubMap(prev => ({ ...prev, [item.id]: f })))
+                    }
+                  }}
                   style={{ fontSize: '12px', fontWeight: 500, color: '#1ecf96', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
                 >
                   {isExpanded ? 'Hide ↑' : 'View submission →'}
@@ -418,7 +425,13 @@ export default function StudentQuizzes() {
               )}
               {status === 'graded' && (
                 <button
-                  onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                  onClick={() => {
+                    const next = isExpanded ? null : item.id
+                    setExpandedId(next)
+                    if (next && !item.isPdf && item.quizRef?.allow_file_upload && !(item.id in fileSubMap) && profile) {
+                      fetchMyFileSubmission(item.id, profile.id).then(f => setFileSubMap(prev => ({ ...prev, [item.id]: f })))
+                    }
+                  }}
                   style={{ fontSize: '12px', fontWeight: 500, color: '#1ecf96', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
                 >
                   {isExpanded ? 'Hide ↑' : 'View feedback →'}
@@ -439,21 +452,54 @@ export default function StudentQuizzes() {
         {/* Expanded: attempt history */}
         {isExpanded && !item.isPdf && item.quizSubs.length > 0 && (
           <div style={{ borderTop: '0.5px solid #f2f0ec', padding: '10px 16px', background: '#fafaf8' }}>
-            {[...item.quizSubs]
-              .sort((a, b) => (a.attempt_number ?? 0) - (b.attempt_number ?? 0))
-              .map(sub => (
-                <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '0.5px solid #f2f0ec', fontSize: '12px' }}>
-                  <span style={{ color: '#555' }}>
-                    Attempt {sub.attempt_number ?? '—'} ·{' '}
-                    <span style={{ color: '#aaa' }}>{new Date(sub.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
-                  </span>
-                  <span style={{ fontWeight: 600, color: '#1a1a1a' }}>
-                    {item.resultsVisible && sub.earned_points != null && sub.total_points != null
-                      ? `${sub.earned_points} / ${sub.total_points}`
-                      : <span style={{ color: '#aaa', fontWeight: 400 }}>Pending</span>}
-                  </span>
-                </div>
-              ))}
+            {item.isFileSub ? (
+              // File submission — show file link + score
+              (() => {
+                const fs = fileSubMap[item.id]
+                const sub = item.quizSubs[0]
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: '12px' }}>
+                    <div>
+                      {fs ? (
+                        <a href={fs.file_url} target="_blank" rel="noreferrer"
+                          style={{ color: '#185FA5', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          📎 {fs.file_name}
+                        </a>
+                      ) : (
+                        <span style={{ color: '#aaa' }}>
+                          {item.id in fileSubMap ? 'No file found' : 'Loading…'}
+                        </span>
+                      )}
+                      {fs && <div style={{ fontSize: '11px', color: '#aaa', marginTop: '2px' }}>
+                        Submitted {new Date(fs.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                      </div>}
+                    </div>
+                    <span style={{ fontWeight: 600 }}>
+                      {item.resultsVisible && sub?.earned_points != null && sub?.total_points != null
+                        ? `${sub.earned_points} / ${sub.total_points}`
+                        : <span style={{ color: '#aaa', fontWeight: 400 }}>Pending</span>}
+                    </span>
+                  </div>
+                )
+              })()
+            ) : (
+              // Regular quiz — show attempt history
+              [...item.quizSubs]
+                .sort((a, b) => (a.attempt_number ?? 0) - (b.attempt_number ?? 0))
+                .map(sub => (
+                  <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: '0.5px solid #f2f0ec', fontSize: '12px' }}>
+                    <span style={{ color: '#555' }}>
+                      Attempt {sub.attempt_number ?? '—'} ·{' '}
+                      <span style={{ color: '#aaa' }}>{new Date(sub.submitted_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                    </span>
+                    <span style={{ fontWeight: 600, color: '#1a1a1a' }}>
+                      {item.resultsVisible && sub.earned_points != null && sub.total_points != null
+                        ? `${sub.earned_points} / ${sub.total_points}`
+                        : <span style={{ color: '#aaa', fontWeight: 400 }}>Pending</span>}
+                    </span>
+                  </div>
+                ))
+            )}
           </div>
         )}
         {isExpanded && item.isPdf && item.pdfSubs.length > 0 && (
