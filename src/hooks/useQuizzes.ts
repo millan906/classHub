@@ -36,14 +36,14 @@ export function useQuizzes() {
   }
 
   async function fetchMySubmissions(studentId: string) {
-    const { data, error } = await supabase.from('quiz_submissions').select('*').eq('student_id', studentId)
-    if (error) { console.error('fetchMySubmissions failed:', error.message); return }
+    const { data, error: err } = await supabase.from('quiz_submissions').select('*').eq('student_id', studentId)
+    if (err) { setError(err.message); return }
     setSubmissions(data || [])
   }
 
   async function fetchAllSubmissions() {
-    const { data, error } = await supabase.from('quiz_submissions').select('*')
-    if (error) { console.error('fetchAllSubmissions failed:', error.message); return }
+    const { data, error: err } = await supabase.from('quiz_submissions').select('*')
+    if (err) { setError(err.message); return }
     setSubmissions(data || [])
   }
 

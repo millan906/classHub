@@ -397,7 +397,7 @@ export default function FacultyGradeBook() {
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<GradeGroup | null>(null)
   const [pageError, setPageError] = useState('')
 
-  const { groups, columns, entries, error: gradeBookError, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
+  const { groups, columns, entries, error: gradeBookError, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, batchUpsertEntries, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
 
   useEffect(() => {
     fetchAllSubmissions()
@@ -415,6 +415,7 @@ export default function FacultyGradeBook() {
     const entryMap = new Map(entries.map(e => [`${e.student_id}:${e.column_id}`, e]))
 
     async function syncQuizScores() {
+      const toUpsert: { column_id: string; student_id: string; score: number | null }[] = []
       for (const quiz of quizzes) {
         // Resolve grade group: use explicit assignment, or fall back to name-match by item type
         let resolvedGroupId = quiz.grade_group_id ?? null
@@ -439,10 +440,17 @@ export default function FacultyGradeBook() {
             const earned = sub.earned_points ?? Math.round((sub.score / 100) * quizTotal)
             const existing = entryMap.get(`${sub.student_id}:${col.id}`)
             if (existing !== undefined && existing.score === earned) continue
-            await upsertEntry(col.id, sub.student_id, earned)
+            toUpsert.push({ column_id: col.id, student_id: sub.student_id, score: earned })
           }
         } catch (err) {
           console.error('[GradeBook] quiz sync failed:', err)
+        }
+      }
+      if (toUpsert.length > 0) {
+        try {
+          await batchUpsertEntries(toUpsert)
+        } catch (err) {
+          console.error('[GradeBook] batch upsert failed:', err)
         }
       }
     }

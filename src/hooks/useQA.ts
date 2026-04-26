@@ -5,16 +5,24 @@ import type { Question } from '../types'
 export function useQA(institutionId?: string | null) {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function fetchQuestions() {
-    let query = supabase
-      .from('questions')
-      .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
-      .order('created_at', { ascending: false })
-    if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
-    const { data } = await query
-    setQuestions(data || [])
-    setLoading(false)
+    try {
+      setError(null)
+      let query = supabase
+        .from('questions')
+        .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
+        .order('created_at', { ascending: false })
+      if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
+      const { data, error: err } = await query
+      if (err) throw err
+      setQuestions(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load questions')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function fetchSingleQuestion(id: string): Promise<Question | null> {
@@ -56,7 +64,7 @@ export function useQA(institutionId?: string | null) {
   async function deleteQuestion(id: string) {
     await supabase.from('answers').delete().eq('question_id', id)
     const { error } = await supabase.from('questions').delete().eq('id', id)
-    if (error) console.error('Delete question error:', error)
+    if (error) throw error
     setQuestions(prev => prev.filter(q => q.id !== id))
   }
 
@@ -83,5 +91,5 @@ export function useQA(institutionId?: string | null) {
     }) as Question))
   }
 
-  return { questions, loading, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
+  return { questions, loading, error, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
 }

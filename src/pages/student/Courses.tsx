@@ -429,17 +429,14 @@ export default function StudentCourses() {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedCourse(course)}
-                    style={{
-                      flexShrink: 0, fontSize: '13px', fontWeight: 500, color: '#1a1a1a',
-                      background: '#fff', border: '0.5px solid #e9e7e1', borderRadius: '8px',
-                      padding: '6px 14px', cursor: 'pointer', fontFamily: 'inherit',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Open →
-                  </button>
+                  <span style={{
+                    flexShrink: 0, fontSize: '11px', fontWeight: 500,
+                    padding: '3px 12px', borderRadius: '999px',
+                    background: course.status === 'open' ? '#E1F5EE' : '#F1EFE8',
+                    color: course.status === 'open' ? '#0F6E56' : '#aaa',
+                  }}>
+                    {course.status === 'open' ? 'Open' : 'Closed'}
+                  </span>
                 </div>
 
                 {/* Stats row */}

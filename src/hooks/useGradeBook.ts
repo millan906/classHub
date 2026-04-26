@@ -176,11 +176,29 @@ export function useGradeBook(courseId?: string | null) {
     })
   }
 
+  async function batchUpsertEntries(rows: { column_id: string; student_id: string; score: number | null }[]) {
+    if (rows.length === 0) return
+    const { data, error } = await supabase
+      .from('grade_entries')
+      .upsert(rows, { onConflict: 'column_id,student_id' })
+      .select()
+    if (error) throw error
+    setEntries(prev => {
+      const next = [...prev]
+      for (const row of (data ?? [])) {
+        const idx = next.findIndex(e => e.column_id === row.column_id && e.student_id === row.student_id)
+        if (idx >= 0) next[idx] = row
+        else next.push(row)
+      }
+      return next
+    })
+  }
+
   return {
     groups, columns, entries, loading, error,
     addGroup, updateGroup, deleteGroup,
     addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn,
-    upsertEntry,
+    upsertEntry, batchUpsertEntries,
     refetch: fetchAll,
   }
 }

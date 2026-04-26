@@ -24,11 +24,19 @@ export interface MyFinalGrade extends FinalGrade {
 export function useFinalGrades() {
   const [finalGrades, setFinalGrades] = useState<FinalGrade[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   async function fetchAll() {
-    const { data } = await supabase.from('final_grades').select('*')
-    if (data) setFinalGrades(data)
-    setLoading(false)
+    try {
+      setError(null)
+      const { data, error: err } = await supabase.from('final_grades').select('*')
+      if (err) throw err
+      if (data) setFinalGrades(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load final grades')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -45,7 +53,7 @@ export function useFinalGrades() {
       { student_id: studentId, course_id: courseId, midterm_grade: midtermGrade, grade: finalGrade, updated_at: new Date().toISOString() },
       { onConflict: 'student_id,course_id' }
     )
-    if (error) console.error('Upsert grade error:', error)
+    if (error) throw error
     await fetchAll()
   }
 
@@ -54,7 +62,7 @@ export function useFinalGrades() {
       .update({ published: true, updated_at: new Date().toISOString() })
       .eq('student_id', studentId)
       .eq('course_id', courseId)
-    if (error) { console.error('Publish grade error:', error); return }
+    if (error) throw error
     await fetchAll()
     // Send email notification to student — use course grade (avg of midterm + final)
     const rec = finalGrades.find(g => g.student_id === studentId && g.course_id === courseId)
@@ -84,7 +92,7 @@ export function useFinalGrades() {
       .update({ published: false, updated_at: new Date().toISOString() })
       .eq('student_id', studentId)
       .eq('course_id', courseId)
-    if (error) console.error('Unpublish grade error:', error)
+    if (error) throw error
     await fetchAll()
   }
 
@@ -93,11 +101,11 @@ export function useFinalGrades() {
       .update({ published: true, updated_at: new Date().toISOString() })
       .eq('course_id', courseId)
       .or('midterm_grade.not.is.null,grade.not.is.null')
-    if (error) console.error('Publish all error:', error)
+    if (error) throw error
     await fetchAll()
   }
 
-  return { finalGrades, loading, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse }
+  return { finalGrades, loading, error, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse }
 }
 
 // For students: view their own published final grades with course names

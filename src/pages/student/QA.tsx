@@ -8,7 +8,7 @@ import { QACard } from '../../components/qa/QACard'
 export default function StudentQA() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { questions, postQuestion, updateQuestion, postAnswer } = useQA(institution?.id)
+  const { questions, error: qaError, postQuestion, updateQuestion, postAnswer } = useQA(institution?.id)
 
   async function handlePost(title: string, body: string, tag: string) {
     if (!profile) return
@@ -25,6 +25,11 @@ export default function StudentQA() {
   return (
     <div>
       <PageHeader title="Q&A" subtitle="Ask questions and help your classmates." />
+      {qaError && (
+        <div style={{ margin: '0 0 12px', padding: '10px 14px', background: '#FEE2E2', border: '0.5px solid #FCA5A5', borderRadius: '8px', fontSize: '13px', color: '#991B1B' }}>
+          {qaError}
+        </div>
+      )}
       <PostQuestion onPost={handlePost} />
       {questions.length === 0
         ? <div style={{ fontSize: '13px', color: '#888' }}>No questions yet. Be the first to ask!</div>

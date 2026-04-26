@@ -10,7 +10,7 @@ import { percentageToGWA, gwaColor } from '../../utils/gwaConversion'
 export default function FacultyFinalGrades() {
   const { profile } = useAuth()
   const { courses } = useCourses(null, profile?.id)
-  const { finalGrades, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse } = useFinalGrades()
+  const { finalGrades, error: gradesError, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse } = useFinalGrades()
   const { students: allStudents } = useStudents()
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const { enrollments } = useCourseEnrollments(selectedCourseId)
@@ -20,6 +20,7 @@ export default function FacultyFinalGrades() {
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [publishing, setPublishing] = useState<Record<string, boolean>>({})
   const [publishingAll, setPublishingAll] = useState(false)
+  const [pageError, setPageError] = useState('')
 
   useEffect(() => {
     if (courses.length > 0 && !selectedCourseId) setSelectedCourseId(courses[0].id)
@@ -58,26 +59,50 @@ export default function FacultyFinalGrades() {
     if (midterm !== null && (isNaN(midterm) || midterm < 0 || midterm > 100)) return
     if (final !== null && (isNaN(final) || final < 0 || final > 100)) return
     setSaving(prev => ({ ...prev, [studentId]: true }))
-    await upsertGrade(studentId, selectedCourseId!, midterm, final)
-    setSaving(prev => ({ ...prev, [studentId]: false }))
+    setPageError('')
+    try {
+      await upsertGrade(studentId, selectedCourseId!, midterm, final)
+    } catch (err) {
+      setPageError(err instanceof Error ? err.message : 'Failed to save grade')
+    } finally {
+      setSaving(prev => ({ ...prev, [studentId]: false }))
+    }
   }
 
   async function handlePublish(studentId: string) {
     setPublishing(prev => ({ ...prev, [studentId]: true }))
-    await publishGrade(studentId, selectedCourseId!)
-    setPublishing(prev => ({ ...prev, [studentId]: false }))
+    setPageError('')
+    try {
+      await publishGrade(studentId, selectedCourseId!)
+    } catch (err) {
+      setPageError(err instanceof Error ? err.message : 'Failed to publish grade')
+    } finally {
+      setPublishing(prev => ({ ...prev, [studentId]: false }))
+    }
   }
 
   async function handleUnpublish(studentId: string) {
     setPublishing(prev => ({ ...prev, [studentId]: true }))
-    await unpublishGrade(studentId, selectedCourseId!)
-    setPublishing(prev => ({ ...prev, [studentId]: false }))
+    setPageError('')
+    try {
+      await unpublishGrade(studentId, selectedCourseId!)
+    } catch (err) {
+      setPageError(err instanceof Error ? err.message : 'Failed to unpublish grade')
+    } finally {
+      setPublishing(prev => ({ ...prev, [studentId]: false }))
+    }
   }
 
   async function handlePublishAll() {
     setPublishingAll(true)
-    await publishAllForCourse(selectedCourseId!)
-    setPublishingAll(false)
+    setPageError('')
+    try {
+      await publishAllForCourse(selectedCourseId!)
+    } catch (err) {
+      setPageError(err instanceof Error ? err.message : 'Failed to publish grades')
+    } finally {
+      setPublishingAll(false)
+    }
   }
 
   const courseGrades = finalGrades.filter(g => g.course_id === selectedCourseId)
@@ -90,6 +115,12 @@ export default function FacultyFinalGrades() {
   return (
     <div>
       <PageHeader title="Final Grades" subtitle="Enter and publish final grades per student per course." />
+
+      {(gradesError || pageError) && (
+        <div style={{ margin: '0 0 12px', padding: '10px 14px', background: '#FEE2E2', border: '0.5px solid #FCA5A5', borderRadius: '8px', fontSize: '13px', color: '#991B1B' }}>
+          {gradesError || pageError}
+        </div>
+      )}
 
       {/* Course selector */}
       {courses.length === 0 ? (
