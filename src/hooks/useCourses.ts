@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { withTimeout } from '../utils/withTimeout'
 import type { Course, GradingPeriod, CourseScheduleItem, CourseResource, SyllabusRow } from '../types'
 
 const BUCKET = 'course-resources'
@@ -142,7 +143,7 @@ export function useCourses(institutionId?: string | null, facultyId?: string | n
     if (file.size > 50 * 1024 * 1024) throw new Error('File too large. Maximum size is 50 MB.')
     const ext = file.name.split('.').pop()
     const path = `${courseId}/${crypto.randomUUID()}.${ext}`
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file)
+    const { error } = await withTimeout(60_000, supabase.storage.from(BUCKET).upload(path, file))
     if (error) throw error
     return { file_path: path, file_name: file.name }
   }

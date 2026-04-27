@@ -10,7 +10,7 @@ import { PageHeader } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { inputStyle } from '../../styles/shared'
-import { computeWeightedGrade } from '../../utils/gradeCalculations'
+import { computeWeightedGrade, extractEarned } from '../../utils/gradeCalculations'
 import { TYPE_CONFIG } from '../../components/quizzes/QuizBuilder'
 import type { GradeGroup, GradeColumn } from '../../hooks/useGradeBook'
 
@@ -437,7 +437,7 @@ export default function FacultyGradeBook() {
           if (col.max_score !== quizTotal) await updateColumnMaxScore(col.id, quizTotal)
           for (const sub of quizSubs) {
             if (hasEssay && !sub.essay_scores) continue
-            const earned = sub.earned_points ?? Math.round((sub.score / 100) * quizTotal)
+            const earned = extractEarned(sub.earned_points, sub.score, quizTotal)
             const existing = entryMap.get(`${sub.student_id}:${col.id}`)
             if (existing !== undefined && existing.score === earned) continue
             toUpsert.push({ column_id: col.id, student_id: sub.student_id, score: earned })

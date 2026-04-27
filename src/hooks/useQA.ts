@@ -42,10 +42,10 @@ export function useQA(institutionId?: string | null) {
     return () => { supabase.removeChannel(channel) }
   }, [institutionId])
 
-  async function postQuestion(title: string, body: string, tag: string, userId: string) {
+  async function postQuestion(title: string, body: string, tag: string, userId: string, isPrivate = false) {
     const { data } = await supabase
       .from('questions')
-      .insert({ title, body, tag: tag || null, posted_by: userId })
+      .insert({ title, body, tag: tag || null, posted_by: userId, is_private: isPrivate })
       .select('id')
       .single()
     if (data) {
@@ -54,9 +54,11 @@ export function useQA(institutionId?: string | null) {
     }
   }
 
-  async function updateQuestion(id: string, title: string, body: string, tag: string) {
-    await supabase.from('questions').update({ title, body, tag: tag || null, updated_at: new Date().toISOString() }).eq('id', id)
-    setQuestions(prev => prev.map(q => q.id === id ? { ...q, title, body, tag: tag || undefined } as Question : q))
+  async function updateQuestion(id: string, title: string, body: string, tag: string, isPrivate?: boolean) {
+    const updates: Record<string, unknown> = { title, body, tag: tag || null, updated_at: new Date().toISOString() }
+    if (isPrivate !== undefined) updates.is_private = isPrivate
+    await supabase.from('questions').update(updates).eq('id', id)
+    setQuestions(prev => prev.map(q => q.id === id ? { ...q, title, body, tag: tag || undefined, ...(isPrivate !== undefined ? { is_private: isPrivate } : {}) } as Question : q))
   }
 
   async function deleteQuestion(id: string) {

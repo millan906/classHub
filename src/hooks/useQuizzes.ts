@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
+import { withTimeout } from '../utils/withTimeout'
 import { fireQuizOpenEmail } from './useNotifications'
 import type { Quiz, QuizSubmission, FileSubmission, QuizFormData } from '../types'
 
@@ -253,9 +254,9 @@ export function useQuizzes() {
       const oldPath = existing.file_url.split('/storage/v1/object/public/submissions/')[1]
       if (oldPath) await supabase.storage.from('submissions').remove([oldPath])
     }
-    const { error: upErr } = await supabase.storage
+    const { error: upErr } = await withTimeout(60_000, supabase.storage
       .from('submissions')
-      .upload(path, file, { upsert: false })
+      .upload(path, file, { upsert: false }))
     if (upErr) throw upErr
     const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(path)
     const { error } = await supabase.from('file_submissions').upsert(
@@ -268,9 +269,9 @@ export function useQuizzes() {
   async function uploadAttachment(file: File): Promise<{ url: string; name: string }> {
     const ext = file.name.split('.').pop()
     const path = `${crypto.randomUUID()}.${ext}`
-    const { error: upErr } = await supabase.storage
+    const { error: upErr } = await withTimeout(60_000, supabase.storage
       .from('attachments')
-      .upload(path, file, { upsert: false })
+      .upload(path, file, { upsert: false }))
     if (upErr) throw upErr
     const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(path)
     return { url: publicUrl, name: file.name }

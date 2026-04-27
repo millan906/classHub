@@ -5,6 +5,20 @@ export function calcScore(earned: number, total: number): number {
   return total > 0 ? Math.round((earned / total) * 100) : 0
 }
 
+/**
+ * Recovers earned points from a quiz submission record.
+ * Prefers the stored `earned_points` field; falls back to deriving from the
+ * percentage score when `earned_points` is absent (e.g. older submissions
+ * that pre-date the column).
+ */
+export function extractEarned(
+  earnedPoints: number | null | undefined,
+  score: number,
+  quizTotal: number,
+): number {
+  return earnedPoints ?? Math.round((score / 100) * quizTotal)
+}
+
 export function computeWeightedGrade(
   studentId: string,
   groups: GradeGroup[],

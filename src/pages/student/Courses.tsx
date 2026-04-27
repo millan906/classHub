@@ -8,6 +8,7 @@ import { useQuizzes } from '../../hooks/useQuizzes'
 import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
 import { useAnnouncements } from '../../hooks/useAnnouncements'
 import { printSyllabus } from '../../utils/syllabuspPrint'
+import { downloadFile } from '../../utils/downloadFile'
 import type { Course, CourseResource, SyllabusCell } from '../../types'
 
 const SCHEDULE_TYPE_LABELS: Record<string, string> = { lecture: 'Lecture', lab: 'Lab', other: 'Other' }
@@ -21,10 +22,11 @@ function SyllabusFileLink({ cell, getResourceUrl }: { cell: SyllabusCell; getRes
     <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
       {cell.text && <span style={{ fontSize: '12px', color: '#333' }}>{cell.text}</span>}
       {cell.file_path && (
-        <a href={getResourceUrl(cell.file_path)} target="_blank" rel="noopener noreferrer"
-          style={{ fontSize: '11px', color: '#185FA5', textDecoration: 'none' }}>
+        <button
+          onClick={() => void downloadFile(getResourceUrl(cell.file_path!), cell.file_name ?? 'file')}
+          style={{ fontSize: '11px', color: '#185FA5', textDecoration: 'none', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
           📎 {cell.file_name ?? 'File'}
-        </a>
+        </button>
       )}
       {!cell.file_path && cell.link && (
         <a href={cell.link} target="_blank" rel="noopener noreferrer"
@@ -204,14 +206,21 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
                           <div style={{ fontSize: '13px', fontWeight: 500, color: '#1a1a1a' }}>{r.title || r.file_name || r.link}</div>
                           {r.file_name && r.title && <div style={{ fontSize: '11px', color: '#aaa' }}>{r.file_name}</div>}
                         </div>
-                        {href ? (
+                        {r.file_path ? (
+                          <button
+                            onClick={() => void downloadFile(getResourceUrl(r.file_path!), r.file_name ?? r.title ?? 'file')}
+                            style={{ fontSize: '12px', color: '#185FA5', fontWeight: 500, flexShrink: 0, padding: '3px 10px', border: '0.5px solid #185FA5', borderRadius: '6px', background: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                          >
+                            Download
+                          </button>
+                        ) : r.link ? (
                           <a
-                            href={href}
+                            href={r.link}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: '12px', color: '#185FA5', textDecoration: 'none', fontWeight: 500, flexShrink: 0, padding: '3px 10px', border: '0.5px solid #185FA5', borderRadius: '6px' }}
                           >
-                            {r.file_path ? 'Download' : 'Open'}
+                            Open
                           </a>
                         ) : null}
                       </div>

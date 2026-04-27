@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
+import { withTimeout } from '../utils/withTimeout'
 import { fireQuizOpenEmail } from './useNotifications'
 import type { PdfQuiz, PdfQuizSubmission, PdfQuizFormData, Profile } from '../types'
 
@@ -52,8 +53,8 @@ export function usePdfQuizzes() {
     if (file) {
       const ext = file.name.split('.').pop()
       pdfPath = `${userId}/${crypto.randomUUID()}.${ext}`
-      const { error: uploadErr } = await supabase.storage
-        .from('pdf-quizzes').upload(pdfPath, file, { upsert: false })
+      const { error: uploadErr } = await withTimeout(120_000, supabase.storage
+        .from('pdf-quizzes').upload(pdfPath, file, { upsert: false }))
       if (uploadErr) throw uploadErr
     }
 
@@ -96,8 +97,8 @@ export function usePdfQuizzes() {
     if (newFile && userId) {
       const ext = newFile.name.split('.').pop()
       const path = `${userId}/${crypto.randomUUID()}.${ext}`
-      const { error: uploadErr } = await supabase.storage
-        .from('pdf-quizzes').upload(path, newFile, { upsert: false })
+      const { error: uploadErr } = await withTimeout(120_000, supabase.storage
+        .from('pdf-quizzes').upload(path, newFile, { upsert: false }))
       if (uploadErr) throw uploadErr
       if (existing?.pdf_path) await supabase.storage.from('pdf-quizzes').remove([existing.pdf_path])
       pdfPath = path

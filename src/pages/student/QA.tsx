@@ -10,9 +10,9 @@ export default function StudentQA() {
   const { institution } = useInstitutionContext()
   const { questions, error: qaError, postQuestion, updateQuestion, postAnswer } = useQA(institution?.id)
 
-  async function handlePost(title: string, body: string, tag: string) {
+  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean) {
     if (!profile) return
-    await postQuestion(title, body, tag, profile.id)
+    await postQuestion(title, body, tag, profile.id, isPrivate)
   }
 
   async function handleAnswer(questionId: string, body: string) {

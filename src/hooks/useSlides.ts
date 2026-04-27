@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { withTimeout } from '../utils/withTimeout'
 import type { Slide } from '../types'
 
 export function useSlides(institutionId?: string | null) {
@@ -34,7 +35,7 @@ export function useSlides(institutionId?: string | null) {
   async function uploadSlide(file: File, title: string, userId: string, courseId: string | null = null) {
     const ext = file.name.split('.').pop()
     const filePath = `${userId}/${crypto.randomUUID()}.${ext}`
-    const { error: uploadError } = await supabase.storage.from('slides').upload(filePath, file)
+    const { error: uploadError } = await withTimeout(60_000, supabase.storage.from('slides').upload(filePath, file))
     if (uploadError) throw uploadError
 
     const fileSizeMb = parseFloat((file.size / (1024 * 1024)).toFixed(2))

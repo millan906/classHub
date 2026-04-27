@@ -8,6 +8,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { PageHeader } from '../../components/ui/Card'
 import { SlideGrid } from '../../components/slides/SlideGrid'
 import { Spinner, PageError } from '../../components/ui/Spinner'
+import { downloadFile } from '../../utils/downloadFile'
 import type { Slide } from '../../types'
 
 export default function StudentSlides() {
@@ -36,8 +37,7 @@ export default function StudentSlides() {
 
   async function handleDownload(slide: Slide) {
     const url = await getDownloadUrl(slide.file_path)
-    const a = document.createElement('a')
-    a.href = url; a.download = slide.title; a.click()
+    await downloadFile(url, slide.title)
   }
 
   if (loading) return <Spinner />

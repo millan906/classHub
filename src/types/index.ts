@@ -196,6 +196,7 @@ export interface Question {
   tag?: string
   posted_by: string
   is_answered: boolean
+  is_private: boolean
   created_at: string
   updated_at?: string
   poster?: Profile

@@ -25,7 +25,7 @@ interface QACardProps {
   currentProfile: Profile
   onAnswer: (questionId: string, body: string) => Promise<void>
   onEndorse?: (answerId: string) => Promise<void>
-  onUpdate?: (id: string, title: string, body: string, tag: string) => Promise<void>
+  onUpdate?: (id: string, title: string, body: string, tag: string, isPrivate?: boolean) => Promise<void>
   onToggle?: (id: string, isAnswered: boolean) => Promise<void>
   onDelete?: (id: string) => Promise<void>
 }
@@ -39,6 +39,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
   const [editTitle, setEditTitle] = useState(question.title)
   const [editBody, setEditBody] = useState(question.body)
   const [editTag, setEditTag] = useState(question.tag ?? '')
+  const [editIsPrivate, setEditIsPrivate] = useState(question.is_private)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -68,7 +69,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
     if (!onUpdate || !editTitle.trim() || !editBody.trim()) return
     setSaving(true)
     try {
-      await onUpdate(question.id, editTitle.trim(), editBody.trim(), editTag.trim())
+      await onUpdate(question.id, editTitle.trim(), editBody.trim(), editTag.trim(), isOwner ? editIsPrivate : undefined)
       setEditing(false)
     } finally {
       setSaving(false)
@@ -79,6 +80,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
     setEditTitle(question.title)
     setEditBody(question.body)
     setEditTag(question.tag ?? '')
+    setEditIsPrivate(question.is_private)
     setEditing(false)
   }
 
@@ -106,6 +108,17 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
         <textarea value={editBody} onChange={e => setEditBody(e.target.value)} style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
         <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Tag (optional)</div>
         <input value={editTag} onChange={e => setEditTag(e.target.value)} placeholder="e.g. Lecture 3, Exam" style={inputStyle} />
+        {isOwner && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', marginBottom: '10px', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={editIsPrivate}
+              onChange={e => setEditIsPrivate(e.target.checked)}
+              style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#1D9E75' }}
+            />
+            <span style={{ fontSize: '12px', color: '#555' }}>🔒 Private — only visible to you and faculty</span>
+          </label>
+        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
           <Button onClick={handleCancelEdit}>Cancel</Button>
           <Button variant="primary" onClick={handleSaveEdit} disabled={saving}>
@@ -134,6 +147,14 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
             )}
           </div>
         </div>
+        {question.is_private && (
+          <span style={{
+            fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
+            background: '#F3F0FF', color: '#5B4FCF', flexShrink: 0,
+          }}>
+            🔒 Private
+          </span>
+        )}
         <Badge
           label={question.is_answered ? `${answerCount} response${answerCount !== 1 ? 's' : ''}` : 'Unanswered'}
           color={question.is_answered ? 'green' : 'amber'}

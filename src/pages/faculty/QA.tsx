@@ -12,9 +12,9 @@ export default function FacultyQA() {
   const { questions, error: qaError, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer } = useQA(institution?.id)
   const [pageError, setPageError] = useState('')
 
-  async function handlePost(title: string, body: string, tag: string) {
+  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean) {
     if (!profile) return
-    await postQuestion(title, body, tag, profile.id)
+    await postQuestion(title, body, tag, profile.id, isPrivate)
   }
 
   async function handleAnswer(questionId: string, body: string) {

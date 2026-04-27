@@ -11,7 +11,7 @@ const inputStyle: React.CSSProperties = {
 }
 
 interface PostQuestionProps {
-  onPost: (title: string, body: string, tag: string) => Promise<void>
+  onPost: (title: string, body: string, tag: string, isPrivate: boolean) => Promise<void>
 }
 
 export function PostQuestion({ onPost }: PostQuestionProps) {
@@ -19,14 +19,15 @@ export function PostQuestion({ onPost }: PostQuestionProps) {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [tag, setTag] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
   const [posting, setPosting] = useState(false)
 
   async function handlePost() {
     if (!title.trim() || !body.trim()) return
     setPosting(true)
     try {
-      await onPost(title.trim(), body.trim(), tag.trim())
-      setTitle(''); setBody(''); setTag(''); setOpen(false)
+      await onPost(title.trim(), body.trim(), tag.trim(), isPrivate)
+      setTitle(''); setBody(''); setTag(''); setIsPrivate(false); setOpen(false)
     } finally {
       setPosting(false)
     }
@@ -49,6 +50,17 @@ export function PostQuestion({ onPost }: PostQuestionProps) {
       <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Describe your question..." style={{ ...inputStyle, minHeight: '65px', resize: 'vertical' as const }} />
       <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Tag (optional)</div>
       <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="e.g. Lecture 3, Exam, General" style={inputStyle} />
+      <label style={{ display: 'flex', alignItems: 'center', gap: '7px', cursor: 'pointer', marginBottom: '10px', userSelect: 'none' }}>
+        <input
+          type="checkbox"
+          checked={isPrivate}
+          onChange={e => setIsPrivate(e.target.checked)}
+          style={{ width: '14px', height: '14px', cursor: 'pointer', accentColor: '#1D9E75' }}
+        />
+        <span style={{ fontSize: '12px', color: '#555' }}>
+          🔒 Private — only visible to you and faculty
+        </span>
+      </label>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
         <Button onClick={() => setOpen(false)}>Cancel</Button>
         <Button variant="primary" onClick={handlePost} disabled={posting}>{posting ? 'Posting...' : 'Post question'}</Button>
