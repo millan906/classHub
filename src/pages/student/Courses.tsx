@@ -198,7 +198,6 @@ function CourseDetail({ course, onBack, getResourceUrl }: {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {items.map(r => {
-                    const href = r.file_path ? getResourceUrl(r.file_path) : r.link
                     return (
                       <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px', background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '9px' }}>
                         <span style={{ fontSize: '16px', flexShrink: 0 }}>{r.file_path ? '📎' : '🔗'}</span>
