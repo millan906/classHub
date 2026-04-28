@@ -356,9 +356,17 @@ function downloadCSV(params: GradeBookExportParams) {
 
 // ─── ColHeader ────────────────────────────────────────────────────────────────
 
-function ColHeader({ col, onDeleteClick }: { col: GradeColumn; onDeleteClick: (col: GradeColumn) => void }) {
+function ColHeader({
+  col,
+  onDeleteClick,
+  onRelease,
+}: {
+  col: GradeColumn
+  onDeleteClick: (col: GradeColumn) => void
+  onRelease: (col: GradeColumn, released: boolean) => void
+}) {
   return (
-    <th style={{ ...thStyle, position: 'relative', minWidth: '70px' }}>
+    <th style={{ ...thStyle, position: 'relative', minWidth: '80px' }}>
       <div>{col.title}</div>
       <div style={{ fontSize: '10px', color: '#bbb' }}>
         /{col.max_score}
@@ -366,6 +374,20 @@ function ColHeader({ col, onDeleteClick }: { col: GradeColumn; onDeleteClick: (c
           <span title="Auto-filled from submissions" style={{ marginLeft: '3px', color: '#1D9E75' }}>⟳</span>
         )}
       </div>
+      <button
+        onClick={() => onRelease(col, !col.is_released)}
+        title={col.is_released ? 'Unrelease — hide from students' : 'Release — students can see their score'}
+        style={{
+          marginTop: '4px',
+          fontSize: '9px', padding: '1px 6px', borderRadius: '999px',
+          border: 'none', cursor: 'pointer', display: 'inline-block',
+          background: col.is_released ? '#E1F5EE' : '#F0F0EE',
+          color: col.is_released ? '#0F6E56' : '#aaa',
+          fontWeight: 600,
+        }}
+      >
+        {col.is_released ? '● Released' : '○ Release'}
+      </button>
       <button
         onClick={() => onDeleteClick(col)}
         style={{
@@ -397,7 +419,7 @@ export default function FacultyGradeBook() {
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<GradeGroup | null>(null)
   const [pageError, setPageError] = useState('')
 
-  const { groups, columns, entries, error: gradeBookError, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, deleteColumn, upsertEntry, batchUpsertEntries, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
+  const { groups, columns, entries, error: gradeBookError, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, releaseColumn, deleteColumn, upsertEntry, batchUpsertEntries, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
 
   useEffect(() => {
     fetchAllSubmissions()
@@ -502,6 +524,15 @@ export default function FacultyGradeBook() {
   }
 
   const totalWeight = visibleGroups.reduce((s, g) => s + g.weight_percent, 0)
+
+  async function handleReleaseColumn(col: GradeColumn, released: boolean) {
+    try {
+      setPageError('')
+      await releaseColumn(col.id, released)
+    } catch (err: unknown) {
+      setPageError(err instanceof Error ? err.message : String(err) || 'Failed to update release status')
+    }
+  }
 
   const exportFilename = selectedCourse
     ? `gradebook-${selectedCourse.name.toLowerCase().replace(/\s+/g, '-')}`
@@ -669,7 +700,7 @@ export default function FacultyGradeBook() {
                 <th style={{ ...thStyle, textAlign: 'left', minWidth: '120px' }}>Student Name</th>
                 {visibleGroups.flatMap(g =>
                   columns.filter(c => c.group_id === g.id).map(c => (
-                    <ColHeader key={c.id} col={c} onDeleteClick={setConfirmDeleteCol} />
+                    <ColHeader key={c.id} col={c} onDeleteClick={setConfirmDeleteCol} onRelease={handleReleaseColumn} />
                   ))
                 )}
                 <th style={{ ...thStyle, color: '#0F6E56', fontWeight: 600, minWidth: '80px' }}>Grade</th>

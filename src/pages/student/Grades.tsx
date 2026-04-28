@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useMyFinalGrades } from '../../hooks/useFinalGrades'
 import { useMyEnrollments } from '../../hooks/useEnrollments'
@@ -7,6 +7,8 @@ import { PageHeader } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { percentageToGWA, gwaColor } from '../../utils/gwaConversion'
+import { supabase } from '../../lib/supabase'
+import type { GradeColumn, GradeEntry } from '../../types'
 
 function getSemesterLabel(): string {
   const now = new Date()
@@ -36,6 +38,35 @@ export default function StudentGrades() {
   const { enrolledCourseIds, loading: enrollLoading } = useMyEnrollments(profile?.id ?? null)
   const { courses, loading: coursesLoading } = useCourses()
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [releasedColumns, setReleasedColumns] = useState<GradeColumn[]>([])
+  const [componentEntries, setComponentEntries] = useState<GradeEntry[]>([])
+
+  useEffect(() => {
+    if (!profile?.id || enrolledCourseIds.length === 0) {
+      setReleasedColumns([])
+      setComponentEntries([])
+      return
+    }
+    async function fetchComponentGrades() {
+      const { data: cols } = await supabase
+        .from('grade_columns')
+        .select('*')
+        .eq('is_released', true)
+        .in('course_id', enrolledCourseIds)
+        .order('created_at', { ascending: true })
+      const colList = (cols ?? []) as GradeColumn[]
+      setReleasedColumns(colList)
+      if (colList.length === 0) { setComponentEntries([]); return }
+      const colIds = colList.map(c => c.id)
+      const { data: ents } = await supabase
+        .from('grade_entries')
+        .select('*')
+        .eq('student_id', profile!.id)
+        .in('column_id', colIds)
+      setComponentEntries((ents ?? []) as GradeEntry[])
+    }
+    void fetchComponentGrades()
+  }, [profile?.id, enrolledCourseIds.join(',')])
 
   if (gradesLoading || enrollLoading || coursesLoading) return <Spinner />
 
@@ -227,6 +258,66 @@ export default function StudentGrades() {
           })}
         </div>
       )}
+
+      {/* Component Grades */}
+      {releasedColumns.length > 0 && (() => {
+        const byCourse = enrolledCourseIds
+          .map(cid => ({
+            course: courses.find(c => c.id === cid),
+            cols: releasedColumns.filter(col => col.course_id === cid),
+          }))
+          .filter(g => g.course && g.cols.length > 0)
+
+        if (byCourse.length === 0) return null
+        return (
+          <div style={{ marginTop: '28px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
+              Component Grades
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {byCourse.map(({ course, cols }) => (
+                <div key={course!.id} style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div style={{ padding: '10px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.07)', fontSize: '13px', fontWeight: 700, color: '#1a1a1a' }}>
+                    {course!.name}{course!.section ? ` · ${course!.section}` : ''}
+                  </div>
+                  {cols.map((col, i) => {
+                    const entry = componentEntries.find(e => e.column_id === col.id)
+                    const score = entry?.score ?? null
+                    const pct = score !== null && col.max_score > 0 ? (score / col.max_score) * 100 : null
+                    const barColor = pct !== null ? scoreBarColor(Math.round(pct)) : '#F1EFE8'
+                    return (
+                      <div
+                        key={col.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '14px',
+                          padding: '10px 16px',
+                          borderTop: i > 0 ? '0.5px solid rgba(0,0,0,0.06)' : undefined,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', color: '#555', marginBottom: '5px' }}>{col.title}</div>
+                          <div style={{ height: '4px', background: '#F1EFE8', borderRadius: '999px' }}>
+                            <div style={{
+                              height: '100%',
+                              width: `${pct ?? 0}%`,
+                              background: pct !== null ? barColor : '#F1EFE8',
+                              borderRadius: '999px',
+                              transition: 'width 0.3s',
+                            }} />
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: score !== null ? '#444' : '#ccc', flexShrink: 0 }}>
+                          {score !== null ? `${score} / ${col.max_score}` : '—'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Footer */}
       <div style={{ textAlign: 'center', fontSize: '12px', color: '#aaa', marginTop: '24px', paddingBottom: '8px' }}>

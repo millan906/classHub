@@ -312,6 +312,7 @@ export interface GradeColumn {
   created_by: string
   created_at: string
   course_id?: string | null
+  is_released: boolean
 }
 
 export interface GradeEntry {

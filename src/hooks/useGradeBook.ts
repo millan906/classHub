@@ -152,6 +152,12 @@ export function useGradeBook(courseId?: string | null) {
     setColumns(prev => prev.map(c => c.id === id ? { ...c, max_score: maxScore } : c))
   }
 
+  async function releaseColumn(id: string, released: boolean) {
+    const { error } = await supabase.from('grade_columns').update({ is_released: released }).eq('id', id)
+    if (error) throw error
+    setColumns(prev => prev.map(c => c.id === id ? { ...c, is_released: released } : c))
+  }
+
   async function deleteColumn(id: string) {
     const { error } = await supabase.from('grade_columns').delete().eq('id', id)
     if (error) throw error
@@ -197,7 +203,7 @@ export function useGradeBook(courseId?: string | null) {
   return {
     groups, columns, entries, loading, error,
     addGroup, updateGroup, deleteGroup,
-    addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, deleteColumn,
+    addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, releaseColumn, deleteColumn,
     upsertEntry, batchUpsertEntries,
     refetch: fetchAll,
   }

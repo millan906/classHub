@@ -186,7 +186,11 @@ export default function FacultyQuizzes() {
     total: number,
   ) {
     await saveEssayScores(submissionId, essayScores, earned, total)
-    if (!viewingResults || !profile || !viewingResults.grade_group_id) return
+    if (!viewingResults || !profile) return
+    if (!viewingResults.grade_group_id) {
+      showToast('Score saved, but this quiz is not linked to a grade group — gradebook was not updated.', 'error')
+      return
+    }
 
     try {
       // Use a live DB query — never rely on potentially-stale columns state.
@@ -195,8 +199,10 @@ export default function FacultyQuizzes() {
       )
       if (col.max_score !== total && total > 0) await updateColumnMaxScore(col.id, total)
       await upsertEntry(col.id, studentId, earned)
+      showToast('Score saved and gradebook updated.')
     } catch (err) {
       console.error('[GradeBook] handleSaveEssayScores failed:', err)
+      showToast('Score saved, but gradebook update failed. Check console for details.', 'error')
     }
   }
 
