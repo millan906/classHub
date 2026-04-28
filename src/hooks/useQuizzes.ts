@@ -294,11 +294,12 @@ export function useQuizzes() {
     totalPoints: number,
   ) {
     const score = calcScore(earnedPoints, totalPoints)
-    await supabase.from('quiz_submissions').update({
+    const { error } = await supabase.from('quiz_submissions').update({
       essay_scores: essayScores,
       earned_points: earnedPoints,
       score,
     }).eq('id', submissionId)
+    if (error) throw error
     await fetchAllSubmissions()
   }
 

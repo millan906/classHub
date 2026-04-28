@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { extractEarned } from '../../utils/gradeCalculations'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuizzes } from '../../hooks/useQuizzes'
@@ -107,13 +108,13 @@ export default function FacultyQuizzes() {
         async function syncToGradebook() {
           try {
             const col = await findOrCreateLinkedColumn(
-              quiz.id, quiz.title, quiz.grade_group_id!, correctMax, profile!.id,
+              quiz.id, quiz.title, quiz.grade_group_id!, correctMax, profile!.id, quiz.course_id,
             )
             if (col.max_score !== correctMax) await updateColumnMaxScore(col.id, correctMax)
             await Promise.all(
               quizSubs
                 .filter(sub => !hasEssay || sub.essay_scores)
-                .map(sub => upsertEntry(col.id, sub.student_id, sub.earned_points ?? 0))
+                .map(sub => upsertEntry(col.id, sub.student_id, extractEarned(sub.earned_points, sub.score, correctMax)))
             )
           } catch (err) {
             console.error('[GradeBook] syncToGradebook failed:', err)
