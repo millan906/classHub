@@ -14,7 +14,7 @@ import { Spinner, PageError } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { QuizCard } from '../../components/quizzes/QuizCard'
-import { QuizBuilder } from '../../components/quizzes/QuizBuilder'
+import { QuizBuilder, TYPE_CONFIG } from '../../components/quizzes/QuizBuilder'
 import { QuizResults } from '../../components/quizzes/QuizResults'
 import { ManualEntriesSection } from '../../components/quizzes/ManualEntriesSection'
 import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
@@ -187,15 +187,26 @@ export default function FacultyQuizzes() {
   ) {
     await saveEssayScores(submissionId, essayScores, earned, total)
     if (!viewingResults || !profile) return
-    if (!viewingResults.grade_group_id) {
+
+    // Mirror the same group resolution used in GradeBook's syncQuizScores:
+    // prefer explicit grade_group_id, fall back to name-match by item type.
+    let resolvedGroupId = viewingResults.grade_group_id ?? null
+    if (!resolvedGroupId) {
+      const targetName = TYPE_CONFIG[viewingResults.item_type as keyof typeof TYPE_CONFIG]?.groupName
+      const match = targetName
+        ? groups.find(g => g.name.toLowerCase() === targetName.toLowerCase())
+        : null
+      resolvedGroupId = match?.id ?? null
+    }
+
+    if (!resolvedGroupId) {
       showToast('Score saved, but this quiz is not linked to a grade group — gradebook was not updated.', 'error')
       return
     }
 
     try {
-      // Use a live DB query — never rely on potentially-stale columns state.
       const col = await findOrCreateLinkedColumn(
-        viewingResults.id, viewingResults.title, viewingResults.grade_group_id, total > 0 ? total : 100, profile.id,
+        viewingResults.id, viewingResults.title, resolvedGroupId, total > 0 ? total : 100, profile.id, viewingResults.course_id,
       )
       if (col.max_score !== total && total > 0) await updateColumnMaxScore(col.id, total)
       await upsertEntry(col.id, studentId, earned)
