@@ -9,7 +9,7 @@ import { AnnouncementCard } from '../../components/announcements/AnnouncementCar
 export default function StudentAnnouncements() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { announcements } = useAnnouncements(institution?.id)
+  const { announcements, loadingMore, hasMore, loadMore } = useAnnouncements(institution?.id)
   const { courses } = useCourses()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
 
@@ -24,6 +24,18 @@ export default function StudentAnnouncements() {
         ? <div style={{ fontSize: '13px', color: '#888' }}>No announcements yet.</div>
         : visibleAnnouncements.map(a => <AnnouncementCard key={a.id} ann={a} courses={courses} />)
       }
+      {hasMore && (
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button onClick={loadMore} disabled={loadingMore} style={{
+            fontSize: '13px', padding: '7px 20px', borderRadius: '8px',
+            border: '0.5px solid rgba(0,0,0,0.25)', background: 'transparent',
+            cursor: loadingMore ? 'default' : 'pointer', opacity: loadingMore ? 0.5 : 1,
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

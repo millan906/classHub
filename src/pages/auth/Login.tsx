@@ -49,18 +49,41 @@ export default function Login() {
 
     setLoading(true)
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
-      if (authError) {
-        recordFailure(key)
-        const { blocked: nowBlocked, remainingMs: ms } = checkRateLimit(key)
-        if (nowBlocked) {
-          startCooldownTimer(ms)
-          setError(`Too many failed attempts. Try again in ${Math.ceil(ms / 1000)}s.`)
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/login`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ email, password }),
+        },
+      )
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.blocked && data.remainingMs) {
+          // Server confirmed lockout — sync client-side limiter and show timer
+          recordFailure(key)
+          startCooldownTimer(data.remainingMs)
+          setError(`Too many failed attempts. Try again in ${Math.ceil(data.remainingMs / 1000)}s.`)
         } else {
-          throw authError
+          recordFailure(key)
+          const { blocked: nowBlocked, remainingMs: ms } = checkRateLimit(key)
+          if (nowBlocked) {
+            startCooldownTimer(ms)
+            setError(`Too many failed attempts. Try again in ${Math.ceil(ms / 1000)}s.`)
+          } else {
+            setError(data.error ?? 'Login failed')
+          }
         }
       } else {
         clearRateLimit(key)
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        })
         navigate('/')
       }
     } catch (err: unknown) {

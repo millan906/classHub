@@ -1,17 +1,50 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Announcement } from '../types'
+
+const PAGE_SIZE = 20
 
 export function useAnnouncements(institutionId?: string | null) {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const loadedCountRef = useRef(PAGE_SIZE)
 
-  async function fetchAnnouncements() {
-    let query = supabase.from('announcements').select('*').order('created_at', { ascending: false })
+  async function fetchAnnouncements(count = PAGE_SIZE) {
+    let query = supabase
+      .from('announcements')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .range(0, count - 1)
     if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
     const { data } = await query
-    setAnnouncements(data || [])
+    const rows = data || []
+    setAnnouncements(rows)
+    setHasMore(rows.length === count)
+    loadedCountRef.current = count
     setLoading(false)
+  }
+
+  async function loadMore() {
+    setLoadingMore(true)
+    const from = announcements.length
+    const to = from + PAGE_SIZE - 1
+    try {
+      let query = supabase
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      if (institutionId) query = query.eq('institution_id', institutionId) as typeof query
+      const { data } = await query
+      const rows = data || []
+      setAnnouncements(prev => [...prev, ...rows])
+      setHasMore(rows.length === PAGE_SIZE)
+      loadedCountRef.current = from + rows.length
+    } finally {
+      setLoadingMore(false)
+    }
   }
 
   useEffect(() => {
@@ -28,7 +61,7 @@ export function useAnnouncements(institutionId?: string | null) {
         setAnnouncements(prev => prev.map(x => x.id === a.id ? a : x))
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'announcements' }, () => {
-        fetchAnnouncements()
+        fetchAnnouncements(loadedCountRef.current)
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -45,7 +78,6 @@ export function useAnnouncements(institutionId?: string | null) {
 
     if (data) setAnnouncements(prev => [data as Announcement, ...prev])
 
-    // Fire-and-forget — email failure never blocks the UI
     if (data && session) {
       const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-announcement-email`
       fetch(fnUrl, {
@@ -79,5 +111,5 @@ export function useAnnouncements(institutionId?: string | null) {
     setAnnouncements(prev => prev.filter(a => a.id !== id))
   }
 
-  return { announcements, loading, postAnnouncement, updateAnnouncement, deleteAnnouncement }
+  return { announcements, loading, loadingMore, hasMore, loadMore, postAnnouncement, updateAnnouncement, deleteAnnouncement }
 }

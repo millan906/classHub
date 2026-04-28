@@ -35,6 +35,11 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
   })
   const [saving, setSaving] = useState(false)
   const [savedMsg, setSavedMsg] = useState(false)
+  const [overridePoints, setOverridePoints] = useState<string>(() =>
+    String(submission?.earned_points ?? getAutoEarned())
+  )
+  const [savingOverride, setSavingOverride] = useState(false)
+  const [savedOverride, setSavedOverride] = useState(false)
 
   function getAutoEarned(): number {
     if (!submission) return 0
@@ -65,6 +70,17 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
     setSaving(false)
     setSavedMsg(true)
     setTimeout(() => setSavedMsg(false), 2000)
+  }
+
+  async function handleSaveOverride() {
+    if (!submission) return
+    setSavingOverride(true)
+    const total = getTotalPoints()
+    const earned = Math.min(parseFloat(overridePoints) || 0, total)
+    await onSaveEssayScores(submission.id, student.id, submission.essay_scores ?? {}, earned, total)
+    setSavingOverride(false)
+    setSavedOverride(true)
+    setTimeout(() => setSavedOverride(false), 2000)
   }
 
   const optionStyles = {
@@ -188,6 +204,25 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
               </Button>
             </div>
           )}
+
+          <div style={{
+            marginTop: '16px', padding: '12px 14px',
+            background: '#F8F7F2', borderRadius: '12px',
+            display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+          }}>
+            <span style={{ fontSize: '13px', color: '#555', fontWeight: 500 }}>Override final score:</span>
+            <input
+              type="number" min="0" max={getTotalPoints()} step="0.5"
+              value={overridePoints}
+              onChange={e => setOverridePoints(e.target.value)}
+              style={{ ...inputStyle, width: '72px', marginBottom: 0 }}
+            />
+            <span style={{ fontSize: '12px', color: '#888' }}>/ {getTotalPoints()} pts</span>
+            {savedOverride && <span style={{ fontSize: '12px', color: '#1D9E75' }}>Saved!</span>}
+            <Button variant="primary" onClick={handleSaveOverride} disabled={savingOverride}>
+              {savingOverride ? 'Saving…' : 'Save override'}
+            </Button>
+          </div>
         </>
       )}
     </div>

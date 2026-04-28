@@ -8,7 +8,7 @@ import { QACard } from '../../components/qa/QACard'
 export default function StudentQA() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { questions, error: qaError, postQuestion, updateQuestion, postAnswer } = useQA(institution?.id)
+  const { questions, loadingMore, hasMore, loadMore, error: qaError, postQuestion, updateQuestion, postAnswer } = useQA(institution?.id)
 
   async function handlePost(title: string, body: string, tag: string, isPrivate: boolean) {
     if (!profile) return
@@ -37,6 +37,18 @@ export default function StudentQA() {
             <QACard key={q.id} question={q} currentProfile={profile!} onAnswer={handleAnswer} onUpdate={updateQuestion} />
           ))
       }
+      {hasMore && (
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button onClick={loadMore} disabled={loadingMore} style={{
+            fontSize: '13px', padding: '7px 20px', borderRadius: '8px',
+            border: '0.5px solid rgba(0,0,0,0.25)', background: 'transparent',
+            cursor: loadingMore ? 'default' : 'pointer', opacity: loadingMore ? 0.5 : 1,
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

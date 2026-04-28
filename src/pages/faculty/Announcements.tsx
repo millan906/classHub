@@ -12,7 +12,7 @@ import type { Announcement } from '../../types'
 export default function FacultyAnnouncements() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { announcements, postAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(institution?.id)
+  const { announcements, loadingMore, hasMore, loadMore, postAnnouncement, updateAnnouncement, deleteAnnouncement } = useAnnouncements(institution?.id)
   const { courses } = useCourses(null, profile?.id)
   const [confirmDelete, setConfirmDelete] = useState<Announcement | null>(null)
 
@@ -53,6 +53,18 @@ export default function FacultyAnnouncements() {
             />
           ))
       }
+      {hasMore && (
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button onClick={loadMore} disabled={loadingMore} style={{
+            fontSize: '13px', padding: '7px 20px', borderRadius: '8px',
+            border: '0.5px solid rgba(0,0,0,0.25)', background: 'transparent',
+            cursor: loadingMore ? 'default' : 'pointer', opacity: loadingMore ? 0.5 : 1,
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

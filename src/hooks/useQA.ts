@@ -1,21 +1,32 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Question } from '../types'
+
+const PAGE_SIZE = 20
+const QA_SELECT = `*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`
 
 export function useQA(institutionId?: string | null) {
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Tracks how many items are currently loaded so realtime refetches the right count
+  const loadedCountRef = useRef(PAGE_SIZE)
 
-  async function fetchQuestions() {
+  async function fetchQuestions(count = PAGE_SIZE) {
     try {
       setError(null)
       const { data, error: err } = await supabase
         .from('questions')
-        .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
+        .select(QA_SELECT)
         .order('created_at', { ascending: false })
+        .range(0, count - 1)
       if (err) throw err
-      setQuestions(data || [])
+      const rows = data || []
+      setQuestions(rows)
+      setHasMore(rows.length === count)
+      loadedCountRef.current = count
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'Failed to load questions')
     } finally {
@@ -23,10 +34,29 @@ export function useQA(institutionId?: string | null) {
     }
   }
 
+  async function loadMore() {
+    setLoadingMore(true)
+    const from = questions.length
+    const to = from + PAGE_SIZE - 1
+    try {
+      const { data } = await supabase
+        .from('questions')
+        .select(QA_SELECT)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+      const rows = data || []
+      setQuestions(prev => [...prev, ...rows])
+      setHasMore(rows.length === PAGE_SIZE)
+      loadedCountRef.current = from + rows.length
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   async function fetchSingleQuestion(id: string): Promise<Question | null> {
     const { data } = await supabase
       .from('questions')
-      .select(`*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`)
+      .select(QA_SELECT)
       .eq('id', id)
       .single()
     return data as Question | null
@@ -36,8 +66,8 @@ export function useQA(institutionId?: string | null) {
     fetchQuestions()
     const channel = supabase
       .channel(`qa-changes-${institutionId ?? 'all'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, fetchQuestions)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'answers' }, fetchQuestions)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'questions' }, () => fetchQuestions(loadedCountRef.current))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'answers' }, () => fetchQuestions(loadedCountRef.current))
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [institutionId])
@@ -76,7 +106,6 @@ export function useQA(institutionId?: string | null) {
   async function postAnswer(questionId: string, body: string, userId: string) {
     await supabase.from('answers').insert({ question_id: questionId, body, posted_by: userId })
     await supabase.from('questions').update({ is_answered: true }).eq('id', questionId)
-    // Re-fetch just this question to get the new answer with poster join
     const q = await fetchSingleQuestion(questionId)
     if (q) setQuestions(prev => prev.map(x => x.id === questionId ? q : x))
   }
@@ -91,5 +120,5 @@ export function useQA(institutionId?: string | null) {
     }) as Question))
   }
 
-  return { questions, loading, error, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
+  return { questions, loading, loadingMore, hasMore, loadMore, error, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
 }

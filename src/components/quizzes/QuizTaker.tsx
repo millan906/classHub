@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Button } from '../ui/Button'
 import { useLockdown } from '../../hooks/useLockdown'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import type { Quiz, QuizQuestion } from '../../types'
 
 const INACTIVITY_THRESHOLD_MS = 60_000
@@ -45,9 +46,10 @@ function QuizTimer({ totalSeconds, onExpire }: { totalSeconds: number; onExpire:
 }
 
 function LockdownModal({ onCancel, onAccept }: { onCancel: () => void; onAccept: () => void }) {
+  const isMobile = useIsMobile()
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div style={{ background: '#fff', borderRadius: '12px', padding: '28px 32px', maxWidth: '440px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: '#fff', borderRadius: isMobile ? '16px 16px 0 0' : '12px', padding: isMobile ? '24px 16px 32px' : '28px 32px', maxWidth: '440px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
         <div style={{ fontSize: '24px', marginBottom: '8px', textAlign: 'center' }}>🔒</div>
         <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '12px', textAlign: 'center' }}>Lockdown quiz</div>
         <ul style={{ fontSize: '13px', color: '#444', paddingLeft: '20px', lineHeight: '1.8', marginBottom: '20px' }}>
@@ -57,7 +59,7 @@ function LockdownModal({ onCancel, onAccept }: { onCancel: () => void; onAccept:
           <li>Losing focus will be logged</li>
           <li>Exiting fullscreen will be flagged as high risk</li>
         </ul>
-        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '8px', justifyContent: 'flex-end' }}>
           <Button onClick={onCancel}>Cancel</Button>
           <Button variant="primary" onClick={onAccept}>I understand, begin quiz</Button>
         </div>
@@ -67,9 +69,10 @@ function LockdownModal({ onCancel, onAccept }: { onCancel: () => void; onAccept:
 }
 
 function FullscreenWarningModal({ onReturn }: { onReturn: () => void }) {
+  const isMobile = useIsMobile()
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-      <div style={{ background: '#fff', borderRadius: '12px', padding: '24px 28px', maxWidth: '360px', width: '100%', textAlign: 'center' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 999 }}>
+      <div style={{ background: '#fff', borderRadius: isMobile ? '16px 16px 0 0' : '12px', padding: isMobile ? '24px 16px 32px' : '24px 28px', maxWidth: '360px', width: '100%', textAlign: 'center' }}>
         <div style={{ fontSize: '22px', marginBottom: '8px' }}>⚠️</div>
         <div style={{ fontSize: '15px', fontWeight: 600, marginBottom: '8px' }}>Fullscreen exited</div>
         <div style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
@@ -153,6 +156,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 }
 
 export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, existingFile }: QuizTakerProps) {
+  const isMobile = useIsMobile()
   const [questions] = useState(() => {
     const raw = quiz.questions ?? []
     return quiz.randomize_questions ? shuffleArray(raw) : raw
@@ -317,7 +321,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
         }} />
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+      <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: '6px', marginBottom: '3px' }}>
         <div style={{ fontSize: '17px', fontWeight: 500 }}>{quiz.title}</div>
         {quiz.time_limit_minutes && !submitted && (
           <QuizTimer totalSeconds={quiz.time_limit_minutes * 60} onExpire={() => handleSubmit(true)} />
@@ -402,10 +406,11 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
               return (
                 <div key={opt.label} onClick={() => selectAnswer(q.id, opt.label)} style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '8px 10px', border: `0.5px solid ${s.border}`,
+                  padding: isMobile ? '14px 12px' : '8px 10px', border: `0.5px solid ${s.border}`,
                   borderRadius: '8px', marginBottom: '6px',
                   cursor: submitted ? 'default' : 'pointer',
                   fontSize: '13px', background: s.bg, color: s.color,
+                  minHeight: isMobile ? '44px' : undefined,
                 }}>
                   {q.type !== 'truefalse' && <span style={{ fontWeight: 500, minWidth: '16px' }}>{opt.label.toUpperCase()}.</span>}
                   {opt.text}
@@ -448,9 +453,10 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
               {submitError}
             </div>
           )}
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <Button onClick={onCancel}>Cancel</Button>
-            <Button variant="primary" onClick={() => handleSubmit(false)} disabled={submitting}>
+          <div style={{ display: 'flex', flexDirection: isMobile ? 'column-reverse' : 'row', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+            <Button onClick={onCancel} style={isMobile ? { width: '100%', justifyContent: 'center', padding: '12px 16px' } : undefined}>Cancel</Button>
+            <Button variant="primary" onClick={() => handleSubmit(false)} disabled={submitting}
+              style={isMobile ? { width: '100%', justifyContent: 'center', padding: '12px 16px' } : undefined}>
               {submitting ? 'Submitting...' : quiz.item_type === 'quiz' ? 'Submit quiz' : quiz.item_type === 'activity' ? 'Mark as done' : 'Submit'}
             </Button>
           </div>
@@ -462,7 +468,10 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
           <SubmitResult earnedPoints={earnedPoints} autoTotal={autoTotal} allEssay={allEssay} hasEssay={hasEssay} resultsVisible={quiz.results_visible ?? false} />
           {hasEssay && (
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
-              <Button variant="primary" onClick={onCancel}>Back to quizzes</Button>
+              <Button variant="primary" onClick={onCancel}
+                style={isMobile ? { width: '100%', justifyContent: 'center', padding: '12px 16px' } : undefined}>
+                Back to quizzes
+              </Button>
             </div>
           )}
         </>
