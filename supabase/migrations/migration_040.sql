@@ -10,7 +10,7 @@ CREATE POLICY "Students can view released grade columns"
     AND course_id IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM public.course_enrollments ce
-      WHERE ce.course_id = grade_columns.course_id
+      WHERE ce.course_id::text = grade_columns.course_id::text
         AND ce.student_id = auth.uid()
     )
   );
