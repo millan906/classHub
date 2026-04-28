@@ -145,12 +145,18 @@ export function useQuizzes() {
       ])
       const ids = (enrollments ?? []).map((e: { student_id: string }) => e.student_id).filter(Boolean)
       const courseName = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
+      const typeLabel = quiz.item_type
+        ? quiz.item_type.charAt(0).toUpperCase() + quiz.item_type.slice(1)
+        : 'Assessment'
+      const dueStr = quiz.due_date
+        ? ` · Due ${new Date(quiz.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : ''
       if (ids.length > 0) {
         await supabase.from('notifications').insert(
           ids.map(uid => ({
             user_id: uid,
             title: `${quiz.title} is now open`,
-            body: `${quiz.item_type ?? 'Assessment'} is now available${courseName ? ` for ${courseName}` : ''}. Head to Assessments to begin.`,
+            body: `${typeLabel} is now available${courseName ? ` for ${courseName}` : ''}${dueStr}. Head to Assessments to begin.`,
             type: 'quiz_open',
             related_id: id,
           }))
@@ -294,12 +300,13 @@ export function useQuizzes() {
     totalPoints: number,
   ) {
     const score = calcScore(earnedPoints, totalPoints)
-    const { error } = await supabase.from('quiz_submissions').update({
+    const { data, error } = await supabase.from('quiz_submissions').update({
       essay_scores: essayScores,
       earned_points: earnedPoints,
       score,
-    }).eq('id', submissionId)
+    }).eq('id', submissionId).select()
     if (error) throw error
+    if (!data || data.length === 0) throw new Error('Score update was blocked — you may not have permission to grade this submission.')
     await fetchAllSubmissions()
   }
 

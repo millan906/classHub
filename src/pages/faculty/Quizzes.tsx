@@ -153,7 +153,12 @@ export default function FacultyQuizzes() {
     setShowBuilder(false)
     showToast('Quiz created!')
     if (data.notifyStudents) {
-      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `New assessment: ${data.title}`, data.description || `A new ${data.itemType || 'assessment'} has been posted.`, 'quiz_created', quizId)
+      const course = courses.find(c => c.id === data.courseId)
+      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
+      const typeLabel = TYPE_CONFIG[data.itemType as keyof typeof TYPE_CONFIG]?.label ?? 'Assessment'
+      const dueStr = data.dueDate ? ` · Due ${new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
+      const body = `A new ${typeLabel} has been posted${courseLabel ? ` for ${courseLabel}` : ''}${dueStr}. Open Assessments to view it.`
+      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `New assessment: ${data.title}`, body, 'quiz_created', quizId)
     }
   }
 
@@ -175,7 +180,12 @@ export default function FacultyQuizzes() {
     setEditingQuiz(null)
     showToast('Quiz updated!')
     if (data.notifyStudents) {
-      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `Assessment updated: ${data.title}`, 'An assessment has been updated. Please review the details.', 'quiz_updated', quizId)
+      const course = courses.find(c => c.id === data.courseId)
+      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
+      const typeLabel = TYPE_CONFIG[data.itemType as keyof typeof TYPE_CONFIG]?.label ?? 'Assessment'
+      const dueStr = data.dueDate ? ` · Due ${new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
+      const body = `${typeLabel} "${data.title}" has been updated${courseLabel ? ` in ${courseLabel}` : ''}${dueStr}. Please review the changes.`
+      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `Assessment updated: ${data.title}`, body, 'quiz_updated', quizId)
     }
   }
 
@@ -246,7 +256,11 @@ export default function FacultyQuizzes() {
     setShowPdfBuilder(false)
     showToast('Assessment created!')
     if (formData.notifyStudents) {
-      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `New assessment: ${formData.title}`, 'A new assessment has been posted.', 'quiz_created', quizId)
+      const course = courses.find(c => c.id === formData.courseId)
+      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
+      const dueStr = formData.dueDate ? ` · Due ${new Date(formData.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
+      const body = `A new paper assessment has been posted${courseLabel ? ` for ${courseLabel}` : ''}${dueStr}. Open Assessments to view it.`
+      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `New assessment: ${formData.title}`, body, 'quiz_created', quizId)
     }
   }
 
@@ -256,7 +270,11 @@ export default function FacultyQuizzes() {
     setEditingPdfQuiz(null)
     showToast('Assessment updated!')
     if (formData.notifyStudents) {
-      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `Assessment updated: ${formData.title}`, 'An assessment has been updated. Please review the details.', 'quiz_updated', editingPdfQuiz.id)
+      const course = courses.find(c => c.id === formData.courseId)
+      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
+      const dueStr = formData.dueDate ? ` · Due ${new Date(formData.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
+      const body = `Paper assessment "${formData.title}" has been updated${courseLabel ? ` in ${courseLabel}` : ''}${dueStr}. Please review the changes.`
+      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `Assessment updated: ${formData.title}`, body, 'quiz_updated', editingPdfQuiz.id)
     }
   }
 
