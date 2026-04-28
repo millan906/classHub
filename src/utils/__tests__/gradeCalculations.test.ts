@@ -18,7 +18,7 @@ function makeCol(id: string, groupId: string, maxScore: number): GradeColumn {
   return {
     id, title: id, category: null, max_score: maxScore,
     group_id: groupId, entry_type: 'manual', linked_quiz_id: null,
-    description: null, created_by: 'fac1', created_at: '',
+    description: null, created_by: 'fac1', created_at: '', is_released: false,
   }
 }
 
