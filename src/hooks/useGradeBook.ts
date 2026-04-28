@@ -112,11 +112,16 @@ export function useGradeBook(courseId?: string | null) {
     userId: string,
     quizCourseId?: string | null,
   ): Promise<GradeColumn> {
-    const { data: existing } = await supabase
+    // Use limit(1) instead of maybeSingle() so duplicate linked columns
+    // (created by concurrent sync runs) never cause a query error that
+    // silently falls through and creates yet another duplicate.
+    const { data: rows } = await supabase
       .from('grade_columns')
       .select('*')
       .eq('linked_quiz_id', quizId)
-      .maybeSingle()
+      .order('created_at', { ascending: true })
+      .limit(1)
+    const existing = rows?.[0] ?? null
     if (existing) {
       if (!existing.course_id && quizCourseId) {
         await supabase.from('grade_columns').update({ course_id: quizCourseId }).eq('id', existing.id)
