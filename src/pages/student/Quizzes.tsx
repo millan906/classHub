@@ -9,6 +9,7 @@ import { useCourses } from '../../hooks/useCourses'
 import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { scoreBarColor } from '../../utils/scoreColors'
+import { getSubmissionSignedUrl } from '../../utils/submissionUrl'
 import { Spinner, PageError } from '../../components/ui/Spinner'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
 import { PdfQuizTaker } from '../../components/pdfquizzes/PdfQuizTaker'
@@ -31,6 +32,7 @@ export default function StudentQuizzes() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'open' | 'submitted' | 'graded' | 'missed'>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [fileSubMap, setFileSubMap] = useState<Record<string, FileSubmission | null>>({})
+  const [fileSignedUrlMap, setFileSignedUrlMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (profile) {
@@ -387,7 +389,14 @@ export default function StudentQuizzes() {
                   onClick={() => {
                     if (item.quizRef) {
                       if (item.quizRef.allow_file_upload) {
-                        fetchMyFileSubmission(item.quizRef.id, profile?.id ?? '').then(f => setExistingFile(f))
+                        fetchMyFileSubmission(item.quizRef.id, profile?.id ?? '').then(async f => {
+                          if (f) {
+                            const signedUrl = await getSubmissionSignedUrl(f.file_url).catch(() => f.file_url)
+                            setExistingFile({ ...f, file_url: signedUrl })
+                          } else {
+                            setExistingFile(null)
+                          }
+                        })
                       } else {
                         setExistingFile(null)
                       }
@@ -415,7 +424,13 @@ export default function StudentQuizzes() {
                     const next = isExpanded ? null : item.id
                     setExpandedId(next)
                     if (next && !item.isPdf && item.quizRef?.allow_file_upload && !(item.id in fileSubMap) && profile) {
-                      fetchMyFileSubmission(item.id, profile.id).then(f => setFileSubMap(prev => ({ ...prev, [item.id]: f })))
+                      fetchMyFileSubmission(item.id, profile.id).then(async f => {
+                          setFileSubMap(prev => ({ ...prev, [item.id]: f }))
+                          if (f) {
+                            const signedUrl = await getSubmissionSignedUrl(f.file_url).catch(() => f.file_url)
+                            setFileSignedUrlMap(prev => ({ ...prev, [item.id]: signedUrl }))
+                          }
+                        })
                     }
                   }}
                   style={{ fontSize: '12px', fontWeight: 500, color: '#1ecf96', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
@@ -429,7 +444,13 @@ export default function StudentQuizzes() {
                     const next = isExpanded ? null : item.id
                     setExpandedId(next)
                     if (next && !item.isPdf && item.quizRef?.allow_file_upload && !(item.id in fileSubMap) && profile) {
-                      fetchMyFileSubmission(item.id, profile.id).then(f => setFileSubMap(prev => ({ ...prev, [item.id]: f })))
+                      fetchMyFileSubmission(item.id, profile.id).then(async f => {
+                          setFileSubMap(prev => ({ ...prev, [item.id]: f }))
+                          if (f) {
+                            const signedUrl = await getSubmissionSignedUrl(f.file_url).catch(() => f.file_url)
+                            setFileSignedUrlMap(prev => ({ ...prev, [item.id]: signedUrl }))
+                          }
+                        })
                     }
                   }}
                   style={{ fontSize: '12px', fontWeight: 500, color: '#1ecf96', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
@@ -461,8 +482,10 @@ export default function StudentQuizzes() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: '12px' }}>
                     <div>
                       {fs ? (
-                        <a href={fs.file_url} target="_blank" rel="noreferrer"
-                          style={{ color: '#185FA5', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <a href={fileSignedUrlMap[item.id] ?? ''} target="_blank" rel="noreferrer"
+                          style={{ color: '#185FA5', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px',
+                            pointerEvents: fileSignedUrlMap[item.id] ? 'auto' : 'none',
+                            opacity: fileSignedUrlMap[item.id] ? 1 : 0.4 }}>
                           📎 {fs.file_name}
                         </a>
                       ) : (

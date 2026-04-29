@@ -11,6 +11,7 @@ interface QuizResultsProps {
   submissions: QuizSubmission[]
   enrolled: Profile[]
   fileSubmissions: FileSubmission[]
+  fileSignedUrlMap: Record<string, string>
   onBack: () => void
   onSaveEssayScores: (submissionId: string, studentId: string, essayScores: Record<string, number>, earned: number, total: number) => Promise<void>
   onSaveFileScore?: (studentId: string, earned: number, max: number) => Promise<void>
@@ -231,7 +232,7 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBack, onSaveEssayScores, onSaveFileScore }: QuizResultsProps) {
+export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, fileSignedUrlMap, onBack, onSaveEssayScores, onSaveFileScore }: QuizResultsProps) {
   const PAGE_SIZE = 20
   const isActivity = quiz.item_type === 'activity'
   const showFilesTab = !!(!isActivity && quiz.allow_file_upload)
@@ -518,11 +519,13 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, onBa
                   </div>
                 )}
                 {fs ? (
-                  <a href={fs.file_url} target="_blank" rel="noreferrer"
+                  <a href={fileSignedUrlMap[fs.id] ?? ''} target="_blank" rel="noreferrer"
                     style={{
                       fontSize: '12px', color: '#185FA5', textDecoration: 'none',
                       padding: '5px 12px', border: '0.5px solid #185FA5',
                       borderRadius: '8px', whiteSpace: 'nowrap', flexShrink: 0,
+                      pointerEvents: fileSignedUrlMap[fs.id] ? 'auto' : 'none',
+                      opacity: fileSignedUrlMap[fs.id] ? 1 : 0.4,
                     }}>
                     View File
                   </a>

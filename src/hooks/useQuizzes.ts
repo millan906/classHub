@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
 import { withTimeout } from '../utils/withTimeout'
+import { extractSubmissionPath } from '../utils/submissionUrl'
 import { fireQuizOpenEmail } from './useNotifications'
 import type { Quiz, QuizSubmission, FileSubmission, QuizFormData } from '../types'
 
@@ -257,16 +258,15 @@ export function useQuizzes() {
     // Delete previous submission file if one exists
     const existing = await fetchMyFileSubmission(quizId, studentId)
     if (existing?.file_url) {
-      const oldPath = existing.file_url.split('/storage/v1/object/public/submissions/')[1]
+      const oldPath = extractSubmissionPath(existing.file_url)
       if (oldPath) await supabase.storage.from('submissions').remove([oldPath])
     }
     const { error: upErr } = await withTimeout(60_000, supabase.storage
       .from('submissions')
       .upload(path, file, { upsert: false }))
     if (upErr) throw upErr
-    const { data: { publicUrl } } = supabase.storage.from('submissions').getPublicUrl(path)
     const { error } = await supabase.from('file_submissions').upsert(
-      { quiz_id: quizId, student_id: studentId, file_url: publicUrl, file_name: file.name, file_size: file.size },
+      { quiz_id: quizId, student_id: studentId, file_url: path, file_name: file.name, file_size: file.size },
       { onConflict: 'quiz_id,student_id' }
     )
     if (error) throw error

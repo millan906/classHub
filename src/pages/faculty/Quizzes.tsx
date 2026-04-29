@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { extractEarned } from '../../utils/gradeCalculations'
+import { getSubmissionSignedUrl } from '../../utils/submissionUrl'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuizzes } from '../../hooks/useQuizzes'
@@ -39,6 +40,7 @@ export default function FacultyQuizzes() {
   const [viewingResults, setViewingResults] = useState<Quiz | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<Quiz | null>(null)
   const [fileSubmissions, setFileSubmissions] = useState<FileSubmission[]>([])
+  const [fileSignedUrlMap, setFileSignedUrlMap] = useState<Record<string, string>>({})
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
   const [collapsedTypes, setCollapsedTypes] = useState<Set<string>>(new Set())
   const [showPdfBuilder, setShowPdfBuilder] = useState(false)
@@ -79,6 +81,16 @@ export default function FacultyQuizzes() {
     }
     syncPdfOnView()
   }, [viewingPdfResults?.id])
+
+  useEffect(() => {
+    if (!fileSubmissions.length) { setFileSignedUrlMap({}); return }
+    Promise.all(
+      fileSubmissions.map(async fs => {
+        const url = await getSubmissionSignedUrl(fs.file_url).catch(() => '')
+        return [fs.id, url] as const
+      })
+    ).then(entries => setFileSignedUrlMap(Object.fromEntries(entries)))
+  }, [fileSubmissions])
 
   useEffect(() => {
     if (!viewingResults) return
@@ -364,6 +376,7 @@ export default function FacultyQuizzes() {
         submissions={quizSubs}
         enrolled={enrolledForCourse(viewingResults.course_id)}
         fileSubmissions={fileSubmissions}
+        fileSignedUrlMap={fileSignedUrlMap}
         onBack={() => setViewingResults(null)}
         onSaveEssayScores={handleSaveEssayScores}
         onSaveFileScore={handleSaveFileScore}

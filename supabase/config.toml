@@ -1,2 +1,5 @@
+[functions.login]
+verify_jwt = false
+
 [functions.quiz-scheduler]
 verify_jwt = false
