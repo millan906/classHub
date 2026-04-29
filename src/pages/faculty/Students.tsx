@@ -103,7 +103,7 @@ export default function FacultyStudents() {
     const allScorePcts = studentEntries
       .map(e => {
         const col = columns.find(c => c.id === e.column_id)
-        return col && col.max_score > 0 ? (e.score / col.max_score) * 100 : null
+        return col && col.max_score > 0 && e.score != null ? (e.score / col.max_score) * 100 : null
       })
       .filter((p): p is number => p !== null)
     const overallScore = allScorePcts.length > 0
