@@ -99,6 +99,23 @@ export default function FacultyStudents() {
       return { group: g, rows }
     }).filter(g => g.rows.length > 0)
 
+    // Academic snapshot
+    const allScorePcts = studentEntries
+      .map(e => {
+        const col = columns.find(c => c.id === e.column_id)
+        return col && col.max_score > 0 ? (e.score / col.max_score) * 100 : null
+      })
+      .filter((p): p is number => p !== null)
+    const overallScore = allScorePcts.length > 0
+      ? Math.round(allScorePcts.reduce((a, b) => a + b, 0) / allScorePcts.length)
+      : null
+    const completedCount = relevantQuizzes.filter(q => submittedQuizIds.has(q.id)).length
+    const standing = overallScore === null ? null
+      : overallScore >= 85 ? { label: 'Excellent', color: '#1D9E75' }
+      : overallScore >= 75 ? { label: 'Good Standing', color: '#185FA5' }
+      : overallScore >= 60 ? { label: 'Needs Monitoring', color: '#EF9F27' }
+      : { label: 'At Risk', color: '#A32D2D' }
+
     const colors = getAvatarColors(viewingStudent.full_name)
     const studentCourses = getStudentCourses(viewingStudent.id)
 
@@ -129,6 +146,18 @@ export default function FacultyStudents() {
             ))}
           </div>
         )}
+
+        {/* Academic Snapshot */}
+        <div style={{ background: '#fff', border: '0.5px solid rgba(0,0,0,0.1)', borderRadius: '12px', padding: '12px 14px', marginBottom: '1.25rem' }}>
+          <div style={{ fontSize: '10px', fontWeight: 700, color: '#bbb', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Academic Snapshot</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0' }}>
+            {standing && <SnapshotStat label="Standing" value={standing.label} valueColor={standing.color} />}
+            {overallScore !== null && <SnapshotStat label="Overall Score" value={`${overallScore}%`} valueColor={scoreBarColor(overallScore)} />}
+            {relevantQuizzes.length > 0 && <SnapshotStat label="Completed" value={`${completedCount} / ${relevantQuizzes.length}`} />}
+            <SnapshotStat label="Due Soon" value={String(dueItems.length)} />
+            <SnapshotStat label="Missed" value={String(missedItems.length)} valueColor={missedItems.length > 0 ? '#A32D2D' : undefined} />
+          </div>
+        </div>
 
         {/* Scores */}
         <SectionHeader label="Scores" />
@@ -364,6 +393,15 @@ export default function FacultyStudents() {
 }
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
+
+function SnapshotStat({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return (
+    <div style={{ flex: '1 1 80px', minWidth: '80px', padding: '4px 8px', borderRight: '0.5px solid #F1EFE8' }}>
+      <div style={{ fontSize: '10px', color: '#bbb', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '3px' }}>{label}</div>
+      <div style={{ fontSize: '14px', fontWeight: 700, color: valueColor ?? '#1a1a1a' }}>{value}</div>
+    </div>
+  )
+}
 
 function SectionHeader({ label }: { label: string }) {
   return (
