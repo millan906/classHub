@@ -13,6 +13,7 @@ import { inputStyle } from '../../styles/shared'
 import { computeWeightedGrade, extractEarned } from '../../utils/gradeCalculations'
 import { TYPE_CONFIG } from '../../components/quizzes/QuizBuilder'
 import type { GradeGroup, GradeColumn } from '../../hooks/useGradeBook'
+import type { QuizException } from '../../types'
 
 const thStyle: React.CSSProperties = {
   padding: '8px 10px', fontWeight: 500, fontSize: '11px',
@@ -354,16 +355,129 @@ function downloadCSV(params: GradeBookExportParams) {
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
+// ─── ExceptionsPanel ──────────────────────────────────────────────────────────
+
+function ExceptionsPanel({
+  col,
+  maxAttempts,
+  students,
+  submissionCounts,
+  exceptions,
+  onGrant,
+  onRevoke,
+  onClose,
+}: {
+  col: GradeColumn
+  maxAttempts: number
+  students: { id: string; full_name: string }[]
+  submissionCounts: Record<string, number>   // studentId → attempts used
+  exceptions: QuizException[]
+  onGrant: (studentId: string) => Promise<void>
+  onRevoke: (studentId: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [saving, setSaving] = useState<string | null>(null) // studentId being saved
+  const exceptionMap = new Map(exceptions.map(e => [e.student_id, e]))
+
+  async function handleGrant(studentId: string) {
+    setSaving(studentId)
+    try { await onGrant(studentId) } finally { setSaving(null) }
+  }
+  async function handleRevoke(studentId: string) {
+    setSaving(studentId)
+    try { await onRevoke(studentId) } finally { setSaving(null) }
+  }
+
+  return (
+    <div style={{
+      background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)',
+      borderRadius: '12px', padding: '14px 16px', marginBottom: '12px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 600 }}>Student Exceptions — {col.title}</div>
+          <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
+            Grant extra attempts for specific students. Does not affect the rest of the class.
+          </div>
+        </div>
+        <Button onClick={onClose} style={{ fontSize: '11px' }}>Done</Button>
+      </div>
+
+      {students.length === 0 && (
+        <div style={{ fontSize: '12px', color: '#aaa' }}>No enrolled students.</div>
+      )}
+
+      {students.map(s => {
+        const exc = exceptionMap.get(s.id)
+        const used = submissionCounts[s.id] ?? 0
+        const effective = maxAttempts + (exc?.extra_attempts ?? 0)
+        const isSaving = saving === s.id
+
+        return (
+          <div key={s.id} style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '8px 0', borderBottom: '0.5px solid rgba(0,0,0,0.06)',
+          }}>
+            {/* Avatar */}
+            <div style={{
+              width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+              background: '#E6F1FB', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', fontSize: '12px', fontWeight: 600, color: '#1a5fa8',
+            }}>
+              {s.full_name.split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase()}
+            </div>
+
+            {/* Name + attempt count */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '13px', fontWeight: 500 }}>{s.full_name}</div>
+              <div style={{ fontSize: '11px', color: '#888' }}>
+                {used} / {effective} attempt{effective !== 1 ? 's' : ''} used
+                {exc && (
+                  <span style={{ marginLeft: '6px', color: '#1D9E75', fontWeight: 600 }}>
+                    +{exc.extra_attempts} granted
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Action */}
+            {exc ? (
+              <Button
+                variant="danger"
+                onClick={() => { void handleRevoke(s.id) }}
+                disabled={isSaving}
+                style={{ fontSize: '11px' }}
+              >
+                {isSaving ? '…' : 'Revoke'}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => { void handleGrant(s.id) }}
+                disabled={isSaving}
+                style={{ fontSize: '11px' }}
+              >
+                {isSaving ? '…' : 'Grant attempt'}
+              </Button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── ColHeader ────────────────────────────────────────────────────────────────
 
 function ColHeader({
   col,
   onDeleteClick,
   onRelease,
+  onManageExceptions,
 }: {
   col: GradeColumn
   onDeleteClick: (col: GradeColumn) => void
   onRelease: (col: GradeColumn, released: boolean) => void
+  onManageExceptions?: (col: GradeColumn) => void
 }) {
   return (
     <th style={{ ...thStyle, position: 'relative', minWidth: '80px' }}>
@@ -388,6 +502,20 @@ function ColHeader({
       >
         {col.is_released ? '● Released' : '○ Release'}
       </button>
+      {col.entry_type === 'quiz_linked' && onManageExceptions && (
+        <button
+          onClick={() => onManageExceptions(col)}
+          title="Manage per-student exceptions"
+          style={{
+            marginTop: '3px', marginLeft: '4px',
+            fontSize: '9px', padding: '1px 6px', borderRadius: '999px',
+            border: 'none', cursor: 'pointer', display: 'inline-block',
+            background: '#F0F0EE', color: '#888', fontWeight: 600,
+          }}
+        >
+          Exceptions
+        </button>
+      )}
       <button
         onClick={() => onDeleteClick(col)}
         style={{
@@ -405,7 +533,7 @@ function ColHeader({
 
 export default function FacultyGradeBook() {
   const { profile } = useAuth()
-  const { quizzes, submissions, fetchAllSubmissions } = useQuizzes()
+  const { quizzes, submissions, fetchAllSubmissions, fetchExceptionsForQuiz, grantException, revokeException } = useQuizzes()
   const { students } = useStudents()
   const { courses } = useCourses(null, profile?.id)
   const { enrollments } = useAllEnrollments()
@@ -418,6 +546,8 @@ export default function FacultyGradeBook() {
   const [confirmDeleteCol, setConfirmDeleteCol] = useState<GradeColumn | null>(null)
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<GradeGroup | null>(null)
   const [pageError, setPageError] = useState('')
+  const [exceptionsCol, setExceptionsCol] = useState<GradeColumn | null>(null)
+  const [colExceptions, setColExceptions] = useState<QuizException[]>([])
 
   const { groups, columns, entries, error: gradeBookError, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, releaseColumn, deleteColumn, upsertEntry, batchUpsertEntries, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
 
@@ -429,6 +559,12 @@ export default function FacultyGradeBook() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
+
+  // Reload exceptions whenever the active column changes
+  useEffect(() => {
+    if (!exceptionsCol?.linked_quiz_id) { setColExceptions([]); return }
+    fetchExceptionsForQuiz(exceptionsCol.linked_quiz_id).then(setColExceptions)
+  }, [exceptionsCol?.id])
 
   // Sync quiz_submissions → grade_entries so the gradebook has one source of truth
   useEffect(() => {
@@ -461,6 +597,7 @@ export default function FacultyGradeBook() {
             if (hasEssay && !sub.essay_scores) continue
             const earned = extractEarned(sub.earned_points, sub.score, quizTotal)
             const existing = entryMap.get(`${sub.student_id}:${col.id}`)
+            if (existing?.manually_overridden) continue  // never clobber a manual override
             if (existing !== undefined && existing.score === earned) continue
             toUpsert.push({ column_id: col.id, student_id: sub.student_id, score: earned })
           }
@@ -626,19 +763,55 @@ export default function FacultyGradeBook() {
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
         {!showAddColumn && (
-          <Button onClick={() => { setShowAddColumn(true); setShowManageGroups(false) }} style={{ fontSize: '12px' }}>
+          <Button
+            onClick={() => { setShowAddColumn(true); setShowManageGroups(false) }}
+            style={{ fontSize: '12px' }}
+            disabled={!selectedCourseId}
+            title={!selectedCourseId ? 'Select a course first' : undefined}
+          >
             + Add Column
           </Button>
         )}
         <Button
           onClick={() => { setShowManageGroups(v => !v); setShowAddColumn(false) }}
           style={{ fontSize: '12px', background: showManageGroups ? '#1D9E75' : undefined, color: showManageGroups ? '#fff' : undefined }}
+          disabled={!selectedCourseId}
+          title={!selectedCourseId ? 'Select a course first' : undefined}
         >
           Manage Groups
         </Button>
+        {!selectedCourseId && (
+          <span style={{ fontSize: '11px', color: '#aaa' }}>Select a course to add columns and groups</span>
+        )}
       </div>
+
+      {exceptionsCol && exceptionsCol.linked_quiz_id && (
+        <ExceptionsPanel
+          col={exceptionsCol}
+          maxAttempts={quizzes.find(q => q.id === exceptionsCol.linked_quiz_id)?.max_attempts ?? 1}
+          students={enrolled}
+          submissionCounts={Object.fromEntries(
+            enrolled.map(s => [
+              s.id,
+              submissions.filter(sub => sub.quiz_id === exceptionsCol.linked_quiz_id && sub.student_id === s.id).length,
+            ])
+          )}
+          exceptions={colExceptions}
+          onGrant={async studentId => {
+            if (!profile || !exceptionsCol.linked_quiz_id) return
+            await grantException(exceptionsCol.linked_quiz_id, studentId, 1, profile.id)
+            setColExceptions(await fetchExceptionsForQuiz(exceptionsCol.linked_quiz_id))
+          }}
+          onRevoke={async studentId => {
+            if (!exceptionsCol.linked_quiz_id) return
+            await revokeException(exceptionsCol.linked_quiz_id, studentId)
+            setColExceptions(await fetchExceptionsForQuiz(exceptionsCol.linked_quiz_id))
+          }}
+          onClose={() => setExceptionsCol(null)}
+        />
+      )}
 
       {showManageGroups && (
         <ManageGroupsPanel
@@ -700,7 +873,12 @@ export default function FacultyGradeBook() {
                 <th style={{ ...thStyle, textAlign: 'left', minWidth: '120px' }}>Student Name</th>
                 {visibleGroups.flatMap(g =>
                   columns.filter(c => c.group_id === g.id).map(c => (
-                    <ColHeader key={c.id} col={c} onDeleteClick={setConfirmDeleteCol} onRelease={handleReleaseColumn} />
+                    <ColHeader
+                      key={c.id} col={c}
+                      onDeleteClick={setConfirmDeleteCol}
+                      onRelease={handleReleaseColumn}
+                      onManageExceptions={setExceptionsCol}
+                    />
                   ))
                 )}
                 <th style={{ ...thStyle, color: '#0F6E56', fontWeight: 600, minWidth: '80px' }}>Grade</th>

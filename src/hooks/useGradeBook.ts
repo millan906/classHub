@@ -174,7 +174,7 @@ export function useGradeBook(courseId?: string | null) {
     const { data, error } = await supabase
       .from('grade_entries')
       .upsert(
-        { column_id: columnId, student_id: studentId, score },
+        { column_id: columnId, student_id: studentId, score, manually_overridden: true },
         { onConflict: 'column_id,student_id' },
       )
       .select()

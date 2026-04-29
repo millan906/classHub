@@ -320,6 +320,16 @@ export interface GradeEntry {
   column_id: string
   student_id: string
   score: number | null
+  manually_overridden: boolean
+}
+
+export interface QuizException {
+  id: string
+  quiz_id: string
+  student_id: string
+  extra_attempts: number
+  granted_by: string
+  created_at: string
 }
 
 // ── Attendance ────────────────────────────────────────────────────────────────

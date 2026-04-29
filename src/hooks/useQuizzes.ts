@@ -4,7 +4,7 @@ import { calcScore } from '../utils/gradeCalculations'
 import { withTimeout } from '../utils/withTimeout'
 import { extractSubmissionPath } from '../utils/submissionUrl'
 import { fireQuizOpenEmail } from './useNotifications'
-import type { Quiz, QuizSubmission, FileSubmission, QuizFormData } from '../types'
+import type { Quiz, QuizSubmission, FileSubmission, QuizFormData, QuizException } from '../types'
 
 export function useQuizzes() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
@@ -316,6 +316,41 @@ export function useQuizzes() {
     await fetchQuizzes()
   }
 
+  async function fetchMyExceptions(studentId: string): Promise<QuizException[]> {
+    const { data } = await supabase
+      .from('quiz_exceptions')
+      .select('*')
+      .eq('student_id', studentId)
+    return (data ?? []) as QuizException[]
+  }
+
+  async function fetchExceptionsForQuiz(quizId: string): Promise<QuizException[]> {
+    const { data } = await supabase
+      .from('quiz_exceptions')
+      .select('*')
+      .eq('quiz_id', quizId)
+    return (data ?? []) as QuizException[]
+  }
+
+  async function grantException(quizId: string, studentId: string, extraAttempts: number, grantedBy: string): Promise<void> {
+    const { error } = await supabase
+      .from('quiz_exceptions')
+      .upsert(
+        { quiz_id: quizId, student_id: studentId, extra_attempts: extraAttempts, granted_by: grantedBy },
+        { onConflict: 'quiz_id,student_id' },
+      )
+    if (error) throw error
+  }
+
+  async function revokeException(quizId: string, studentId: string): Promise<void> {
+    const { error } = await supabase
+      .from('quiz_exceptions')
+      .delete()
+      .eq('quiz_id', quizId)
+      .eq('student_id', studentId)
+    if (error) throw error
+  }
+
   async function copyQuiz(quizId: string, targetCourseId: string, userId: string) {
     const quiz = quizzes.find(q => q.id === quizId)
     if (!quiz) throw new Error('Quiz not found')
@@ -363,5 +398,5 @@ export function useQuizzes() {
     return newQuiz.id
   }
 
-  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, uploadAttachment, fetchFileSubmissions, fetchMyFileSubmission, saveEssayScores, releaseResults, copyQuiz }
+  return { quizzes, submissions, loading, error, fetchMySubmissions, fetchAllSubmissions, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, submitQuiz, uploadFile, uploadAttachment, fetchFileSubmissions, fetchMyFileSubmission, saveEssayScores, releaseResults, copyQuiz, fetchMyExceptions, fetchExceptionsForQuiz, grantException, revokeException }
 }

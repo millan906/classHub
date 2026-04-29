@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuizzes } from '../../hooks/useQuizzes'
@@ -14,12 +14,12 @@ import { viewFile } from '../../utils/viewFile'
 import { Spinner, PageError } from '../../components/ui/Spinner'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
 import { PdfQuizTaker } from '../../components/pdfquizzes/PdfQuizTaker'
-import type { Quiz, PdfQuiz, QuizSubmission, PdfQuizSubmission, FileSubmission } from '../../types'
+import type { Quiz, PdfQuiz, QuizSubmission, PdfQuizSubmission, FileSubmission, QuizException } from '../../types'
 
 export default function StudentQuizzes() {
   const navigate = useNavigate()
   const { profile } = useAuth()
-  const { quizzes, submissions, loading, error, fetchMySubmissions, submitQuiz, uploadFile, fetchMyFileSubmission } = useQuizzes()
+  const { quizzes, submissions, loading, error, fetchMySubmissions, submitQuiz, uploadFile, fetchMyFileSubmission, fetchMyExceptions } = useQuizzes()
   const { pdfQuizzes, submissions: pdfSubmissions, fetchMySubmissions: fetchMyPdfSubmissions, submitPdfQuiz, getPdfUrl } = usePdfQuizzes()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
   const { logEvent } = useIntegrityLogs()
@@ -34,13 +34,20 @@ export default function StudentQuizzes() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [fileSubMap, setFileSubMap] = useState<Record<string, FileSubmission | null>>({})
   const [fileSignedUrlMap, setFileSignedUrlMap] = useState<Record<string, string>>({})
+  const [myExceptions, setMyExceptions] = useState<QuizException[]>([])
 
   useEffect(() => {
     if (profile) {
       fetchMySubmissions(profile.id)
       fetchMyPdfSubmissions(profile.id)
+      fetchMyExceptions(profile.id).then(setMyExceptions)
     }
   }, [profile])
+
+  const exceptionMap = useMemo(
+    () => new Map(myExceptions.map(e => [e.quiz_id, e.extra_attempts])),
+    [myExceptions]
+  )
 
   const visibleQuizzes = quizzes.filter(q =>
     q.course_id == null || enrolledCourseIds.includes(q.course_id)
@@ -149,7 +156,7 @@ export default function StudentQuizzes() {
         dueDate: q.due_date ?? null,
         closeAt: q.close_at ?? null,
         isOpen: q.is_open,
-        maxAttempts: q.max_attempts ?? 1,
+        maxAttempts: (q.max_attempts ?? 1) + (exceptionMap.get(q.id) ?? 0),
         isFileSub: !!(q.allow_file_upload && (q.questions?.length ?? 0) === 0),
         isPdf: false,
         quizRef: q,
