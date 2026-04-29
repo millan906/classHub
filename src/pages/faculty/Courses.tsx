@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react'
+import { viewFile } from '../../utils/viewFile'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useCourses } from '../../hooks/useCourses'
@@ -362,7 +363,7 @@ function CourseInfoPanel({ course, getResourceUrl }: { course: Course; getResour
       <div>
         {c.text && <div style={{ fontSize: '12px', color: '#333', marginBottom: '2px' }}>{c.text}</div>}
         {c.file_path
-          ? <a href={getResourceUrl(c.file_path)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: '#185FA5' }}>📎 {c.file_name}</a>
+          ? <button onClick={() => void viewFile(getResourceUrl(c.file_path!))} style={{ fontSize: '11px', color: '#185FA5', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>📎 {c.file_name}</button>
           : c.link
           ? <a href={c.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '11px', color: '#185FA5' }}>🔗 Link</a>
           : null
@@ -459,7 +460,7 @@ function CourseInfoPanel({ course, getResourceUrl }: { course: Course; getResour
           {resources.map(r => (
             <div key={r.id} style={{ marginBottom: '4px' }}>
               {r.file_path
-                ? <a href={getResourceUrl(r.file_path)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#185FA5', textDecoration: 'none' }}>📎 {r.title || r.file_name}</a>
+                ? <button onClick={() => void viewFile(getResourceUrl(r.file_path!))} style={{ fontSize: '12px', color: '#185FA5', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>📎 {r.title || r.file_name}</button>
                 : r.link
                 ? <a href={r.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#185FA5', textDecoration: 'none' }}>🔗 {r.title || r.link}</a>
                 : <span style={{ fontSize: '12px', color: '#555' }}>{r.title}</span>

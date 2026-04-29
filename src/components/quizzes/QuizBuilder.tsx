@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { viewFile } from '../../utils/viewFile'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { DraftQuestionEditor } from './DraftQuestionEditor'
@@ -259,10 +260,10 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
           <div style={{ fontSize: '12px', color: '#888', marginBottom: '3px' }}>Attachment (optional)</div>
           {attachmentUrl && attachmentName ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <a href={attachmentUrl} target="_blank" rel="noreferrer"
-                style={{ fontSize: '12px', color: '#185FA5', textDecoration: 'none' }}>
+              <button onClick={() => void viewFile(attachmentUrl)}
+                style={{ fontSize: '12px', color: '#185FA5', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>
                 📎 {attachmentName}
-              </a>
+              </button>
               <button onClick={() => { setAttachmentUrl(null); setAttachmentName(null) }}
                 style={{ fontSize: '11px', color: '#aaa', background: 'none', border: 'none', cursor: 'pointer' }}>
                 Remove

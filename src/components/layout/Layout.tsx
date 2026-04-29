@@ -211,6 +211,7 @@ export function Layout({ children, profile, onSignOut }: LayoutProps) {
                               }}
                             >
                               <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '1px', color: 'var(--color-text)' }}>{n.title}</div>
+                              {n.course_name && <div style={{ fontSize: '10px', color: '#1D9E75', fontWeight: 500, marginBottom: '2px' }}>📚 {n.course_name}</div>}
                               {n.body && <div style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>{n.body}</div>}
                               <div style={{ fontSize: '10px', color: 'var(--color-text-faint)', marginTop: '2px' }}>{timeAgo(n.created_at)}</div>
                               {dest && <div style={{ fontSize: '10px', color: '#1D9E75', marginTop: '2px' }}>Tap to view →</div>}

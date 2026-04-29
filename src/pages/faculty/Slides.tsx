@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { viewFile } from '../../utils/viewFile'
+import { downloadFile } from '../../utils/downloadFile'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useSlides } from '../../hooks/useSlides'
@@ -26,13 +28,12 @@ export default function FacultySlides() {
 
   async function handleView(slide: Slide) {
     const url = await getDownloadUrl(slide.file_path)
-    window.open(url, '_blank')
+    await viewFile(url)
   }
 
   async function handleDownload(slide: Slide) {
     const url = await getDownloadUrl(slide.file_path)
-    const a = document.createElement('a')
-    a.href = url; a.download = slide.title; a.click()
+    await downloadFile(url, slide.title)
   }
 
   const filteredSlides = selectedCourseId

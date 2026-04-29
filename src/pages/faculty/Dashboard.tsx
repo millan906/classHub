@@ -171,7 +171,7 @@ export default function FacultyDashboard() {
           {pending.length > 0 && (
             <AlertBanner color="#EF9F27" bg="#FEFDF7"
               label={`${pending.length} student${pending.length > 1 ? 's' : ''} waiting for enrollment approval`}
-              action="Review" onAction={() => navigate('/faculty/students')} />
+              action="Review" onAction={() => navigate('/admin/dashboard?tab=pending')} />
           )}
           {essayPendingCount > 0 && (
             <AlertBanner color="#378ADD" bg="#EEF5FC"

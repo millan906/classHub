@@ -169,8 +169,8 @@ export default function FacultyQuizzes() {
       const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
       const typeLabel = TYPE_CONFIG[data.itemType as keyof typeof TYPE_CONFIG]?.label ?? 'Assessment'
       const dueStr = data.dueDate ? ` · Due ${new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `A new ${typeLabel} has been posted${courseLabel ? ` for ${courseLabel}` : ''}${dueStr}. Open Assessments to view it.`
-      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `New assessment: ${data.title}`, body, 'quiz_created', quizId)
+      const body = `A new ${typeLabel} has been posted${dueStr}. Open Assessments to view it.`
+      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `New assessment: ${data.title}`, body, 'quiz_created', quizId, courseLabel)
     }
   }
 
@@ -196,8 +196,8 @@ export default function FacultyQuizzes() {
       const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
       const typeLabel = TYPE_CONFIG[data.itemType as keyof typeof TYPE_CONFIG]?.label ?? 'Assessment'
       const dueStr = data.dueDate ? ` · Due ${new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `${typeLabel} "${data.title}" has been updated${courseLabel ? ` in ${courseLabel}` : ''}${dueStr}. Please review the changes.`
-      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `Assessment updated: ${data.title}`, body, 'quiz_updated', quizId)
+      const body = `${typeLabel} "${data.title}" has been updated${dueStr}. Please review the changes.`
+      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `Assessment updated: ${data.title}`, body, 'quiz_updated', quizId, courseLabel)
     }
   }
 
@@ -271,8 +271,8 @@ export default function FacultyQuizzes() {
       const course = courses.find(c => c.id === formData.courseId)
       const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
       const dueStr = formData.dueDate ? ` · Due ${new Date(formData.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `A new paper assessment has been posted${courseLabel ? ` for ${courseLabel}` : ''}${dueStr}. Open Assessments to view it.`
-      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `New assessment: ${formData.title}`, body, 'quiz_created', quizId)
+      const body = `A new paper assessment has been posted${dueStr}. Open Assessments to view it.`
+      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `New assessment: ${formData.title}`, body, 'quiz_created', quizId, courseLabel)
     }
   }
 
@@ -285,8 +285,8 @@ export default function FacultyQuizzes() {
       const course = courses.find(c => c.id === formData.courseId)
       const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
       const dueStr = formData.dueDate ? ` · Due ${new Date(formData.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `Paper assessment "${formData.title}" has been updated${courseLabel ? ` in ${courseLabel}` : ''}${dueStr}. Please review the changes.`
-      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `Assessment updated: ${formData.title}`, body, 'quiz_updated', editingPdfQuiz.id)
+      const body = `Paper assessment "${formData.title}" has been updated${dueStr}. Please review the changes.`
+      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `Assessment updated: ${formData.title}`, body, 'quiz_updated', editingPdfQuiz.id, courseLabel)
     }
   }
 

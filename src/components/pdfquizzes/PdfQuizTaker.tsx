@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '../ui/Button'
 import { scoreBarColor } from '../../utils/scoreColors'
+import { viewFile } from '../../utils/viewFile'
 import type { PdfQuiz, PdfQuizAnswerKeyEntry } from '../../types'
 
 interface PdfQuizTakerProps {
@@ -81,6 +82,17 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [result, setResult] = useState<{ earned: number; total: number; score: number } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [blobPdfUrl, setBlobPdfUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!pdfUrl) return
+    let objectUrl: string
+    fetch(pdfUrl)
+      .then(r => r.blob())
+      .then(blob => { objectUrl = URL.createObjectURL(blob); setBlobPdfUrl(objectUrl) })
+      .catch(() => setBlobPdfUrl(pdfUrl)) // fallback to raw URL if fetch fails
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl) }
+  }, [pdfUrl])
 
   // OCR scan state
   const [scanning, setScanning] = useState(false)
@@ -172,9 +184,9 @@ export function PdfQuizTaker({ quiz, pdfUrl, onSubmit, onClose }: PdfQuizTakerPr
         <div style={{ flex: '1 1 58%', borderRight: '0.5px solid rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: '10px 14px', borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
             <div style={{ fontSize: '13px', fontWeight: 500 }}>{quiz.title}</div>
-            <a href={pdfUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#378ADD' }}>Open in new tab</a>
+            <button onClick={() => pdfUrl && void viewFile(pdfUrl)} style={{ fontSize: '12px', color: '#378ADD', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit' }}>Open in new tab</button>
           </div>
-          <iframe src={pdfUrl} title={quiz.title} style={{ flex: 1, width: '100%', border: 'none' }} />
+          <iframe src={blobPdfUrl ?? undefined} title={quiz.title} style={{ flex: 1, width: '100%', border: 'none' }} />
         </div>
       )}
 

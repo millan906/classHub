@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { viewFile } from '../../utils/viewFile'
 import { Button } from '../ui/Button'
 import { useLockdown } from '../../hooks/useLockdown'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -342,15 +343,15 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
 
       {quiz.attachment_url && quiz.attachment_name && (
         <div style={{ marginBottom: '14px' }}>
-          <a href={quiz.attachment_url} target="_blank" rel="noreferrer"
+          <button onClick={() => void viewFile(quiz.attachment_url!)}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
-              fontSize: '13px', color: '#185FA5', textDecoration: 'none',
+              fontSize: '13px', color: '#185FA5', background: '#E6F1FB',
               padding: '7px 12px', border: '0.5px solid #185FA5',
-              borderRadius: '8px', background: '#E6F1FB',
+              borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit',
             }}>
             📎 {quiz.attachment_name}
-          </a>
+          </button>
           <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>Attached by your instructor</div>
         </div>
       )}
@@ -426,7 +427,7 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
           <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>File upload</div>
           {existingFile ? (
             <div style={{ fontSize: '12px', color: '#888', marginBottom: '8px', padding: '7px 10px', background: '#FEF3CD', borderRadius: '8px', border: '0.5px solid #E5C100' }}>
-              📎 Current submission: <a href={existingFile.file_url} target="_blank" rel="noreferrer" style={{ color: '#185FA5' }}>{existingFile.file_name}</a>
+              📎 Current submission: <button onClick={() => viewFile(existingFile.file_url)} style={{ color: '#185FA5', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>{existingFile.file_name}</button>
               <div style={{ fontSize: '11px', color: '#7A4F00', marginTop: '3px' }}>Uploading a new file will replace this submission.</div>
             </div>
           ) : null}

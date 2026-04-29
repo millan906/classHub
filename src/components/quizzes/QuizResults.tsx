@@ -4,6 +4,7 @@ import { IntegrityReport } from './IntegrityReport'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import { useIntegrityLogs } from '../../hooks/useIntegrityLogs'
 import { inputStyle } from '../../styles/shared'
+import { viewFile } from '../../utils/viewFile'
 import type { Quiz, QuizQuestion, QuizSubmission, FileSubmission, Profile } from '../../types'
 
 interface QuizResultsProps {
@@ -519,16 +520,19 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, file
                   </div>
                 )}
                 {fs ? (
-                  <a href={fileSignedUrlMap[fs.id] ?? ''} target="_blank" rel="noreferrer"
+                  <button
+                    onClick={() => fileSignedUrlMap[fs.id] && viewFile(fileSignedUrlMap[fs.id])}
+                    disabled={!fileSignedUrlMap[fs.id]}
                     style={{
-                      fontSize: '12px', color: '#185FA5', textDecoration: 'none',
+                      fontSize: '12px', color: '#185FA5', background: 'none',
                       padding: '5px 12px', border: '0.5px solid #185FA5',
                       borderRadius: '8px', whiteSpace: 'nowrap', flexShrink: 0,
-                      pointerEvents: fileSignedUrlMap[fs.id] ? 'auto' : 'none',
+                      cursor: fileSignedUrlMap[fs.id] ? 'pointer' : 'not-allowed',
                       opacity: fileSignedUrlMap[fs.id] ? 1 : 0.4,
+                      fontFamily: 'Inter, sans-serif',
                     }}>
                     View File
-                  </a>
+                  </button>
                 ) : (
                   <span style={{ fontSize: '11px', color: '#ccc' }}>—</span>
                 )}

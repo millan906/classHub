@@ -26,7 +26,6 @@ export default function FacultyStudents() {
   const [selectedCourses, setSelectedCourses] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [filterCourseId, setFilterCourseId] = useState<string>('all')
-  const [filterSection, setFilterSection] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'first_asc' | 'first_desc' | 'last_asc' | 'last_desc'>('last_asc')
   const [viewingStudent, setViewingStudent] = useState<Profile | null>(null)
@@ -36,10 +35,6 @@ export default function FacultyStudents() {
   const rejected = students.filter(s => s.status === 'rejected')
   const openCourses = courses.filter(c => c.status === 'open')
 
-  // Unique sections across all enrolled students (for filter dropdown)
-  const allSections = [...new Set(
-    enrolled.map(s => s.section).filter((sec): sec is string => !!sec)
-  )].sort()
 
   function startApproving(studentId: string) {
     setApprovingId(studentId)
@@ -307,13 +302,6 @@ export default function FacultyStudents() {
           <option value="first_asc">First Name A–Z</option>
           <option value="first_desc">First Name Z–A</option>
         </select>
-        {allSections.length > 0 && (
-          <select value={filterSection} onChange={e => setFilterSection(e.target.value)}
-            style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}>
-            <option value="all">All Sections</option>
-            {allSections.map(sec => <option key={sec} value={sec}>{sec}</option>)}
-          </select>
-        )}
         <select value={filterCourseId} onChange={e => setFilterCourseId(e.target.value)}
           style={{ fontSize: '12px', padding: '4px 8px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.2)', background: '#fff', color: '#1a1a1a', cursor: 'pointer' }}>
           <option value="all">All Courses</option>
@@ -326,7 +314,6 @@ export default function FacultyStudents() {
           const q = searchQuery.trim().toLowerCase()
           visible = visible.filter(s => s.full_name.toLowerCase().includes(q))
         }
-        if (filterSection !== 'all') visible = visible.filter(s => s.section === filterSection)
         if (filterCourseId !== 'all') visible = visible.filter(s => enrollments.some(e => e.student_id === s.id && e.course_id === filterCourseId))
         visible = [...visible].sort((a, b) => {
           const last = (n: string) => n.trim().split(' ').slice(-1)[0] ?? n

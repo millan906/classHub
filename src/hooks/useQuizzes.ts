@@ -157,9 +157,10 @@ export function useQuizzes() {
           ids.map(uid => ({
             user_id: uid,
             title: `${quiz.title} is now open`,
-            body: `${typeLabel} is now available${courseName ? ` for ${courseName}` : ''}${dueStr}. Head to Assessments to begin.`,
+            body: `${typeLabel} is now available${dueStr}. Head to Assessments to begin.`,
             type: 'quiz_open',
             related_id: id,
+            course_name: courseName || null,
           }))
         )
       }

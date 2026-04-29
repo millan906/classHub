@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { supabase } from '../../lib/supabase'
@@ -24,7 +25,8 @@ type Tab = 'members' | 'courses' | 'roster' | 'pending'
 export default function AdminDashboard() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const [activeTab, setActiveTab] = useState<Tab>('members')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<Tab>((searchParams.get('tab') as Tab) || 'members')
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'admin' | 'faculty' | 'student'>('all')

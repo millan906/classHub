@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Security Fundamentals</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #e2e8f0;
+            overflow: hidden;
+        }
+        
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .slide {
+            width: 100%;
+            height: 100vh;
+            display: none;
+            padding: 60px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            overflow-y: auto;
+        }
+        
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .slide-header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .slide-number {
+            position: absolute;
+            top: 30px;
+            right: 60px;
+            font-size: 14px;
+            color: #64ffda;
+            opacity: 0.6;
+            font-weight: 600;
+        }
+        
+        h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #64ffda, #00b4d8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+        
+        h2 {
+            font-size: 2.2em;
+            color: #64ffda;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #64ffda;
+            padding-bottom: 15px;
+            display: inline-block;
+        }
+        
+        .subtitle {
+            font-size: 1.3em;
+            color: #94a3b8;
+            margin-top: 10px;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .content-full {
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(100, 255, 218, 0.2);
+            border-radius: 16px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 180, 255, 0.15);
+            border-color: rgba(100, 255, 218, 0.4);
+        }
+        
+        .card h3 {
+            color: #64ffda;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+        
+        .card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .card li {
+            padding: 10px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+        
+        .card li:before {
+            content: "▹";
+            position: absolute;
+            left: 0;
+            color: #64ffda;
+        }
+        
+        .threat-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 25px;
+            margin-top: 30px;
+        }
+        
+        .threat-card {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .threat-card h4 {
+            color: #ef4444;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .threat-card p {
+            font-size: 0.9em;
+            color: #94a3b8;
+        }
+        
+        .architecture-diagram {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            border: 1px solid rgba(100, 255, 218, 0.2);
+        }
+        
+        .diagram-box {
+            background: rgba(10, 15, 40, 0.8);
+            border: 2px solid #64ffda;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            position: relative;
+        }
+        
+        .diagram-label {
+            position: absolute;
+            background: #0a0e27;
+            color: #64ffda;
+            padding: 5px 12px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+            border: 1px solid #64ffda;
+        }
+        
+        .firewall { border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+        .dmz { border-color: #ec4899; background: rgba(236, 72, 153, 0.1); }
+        .internal { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .monitoring { border-color: #10b981; background: rgba(16, 185, 129, 0.1); }
+        
+        .best-practices {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .practice-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(100, 255, 218, 0.1);
+        }
+        
+        .practice-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #64ffda, #00b4d8);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #0a0e27;
+            flex-shrink: 0;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-box {
+            text-align: center;
+            padding: 25px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            border: 1px solid rgba(100, 255, 218, 0.2);
+        }
+        
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: 800;
+            color: #64ffda;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .navigation {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 1000;
+        }
+        
+        .nav-btn {
+            padding: 12px 30px;
+            background: transparent;
+            border: 2px solid #64ffda;
+            color: #64ffda;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(100, 255, 218, 0.2);
+            transform: scale(1.05);
+        }
+        
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #64ffda, #00b4d8);
+            transition: width 0.5s ease;
+            z-index: 1000;
+        }
+        
+        .code-block {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            border-left: 4px solid #64ffda;
+            margin: 15px 0;
+        }
+        
+        .highlight {
+            color: #64ffda;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 968px) {
+            .content-grid { grid-template-columns: 1fr; }
+            .threat-grid { grid-template-columns: 1fr; }
+            .best-practices { grid-template-columns: 1fr; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            h1 { font-size: 2.5em; }
+            h2 { font-size: 1.8em; }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    
+    <div class="presentation-container">
+        <!-- Slide 1: Title -->
+        <div class="slide active" id="slide1">
+            <div class="slide-number">01 / 08</div>
+            <div class="slide-header">
+                <h1>Network Security Fundamentals</h1>
+                <p class="subtitle">Protecting Infrastructure in the Modern Threat Landscape</p>
+            </div>
+            <div class="content-full" style="text-align: center;">
+                <div class="stats-container">
+                    <div class="stat-box">
+                        <span class="stat-number">76%</span>
+                        <span class="stat-label">Orgs Attacked 2023</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">$4.45M</span>
+                        <span class="stat-label">Avg Breach Cost</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">48%</span>
+                        <span class="stat-label">Cloud Attacks ↑</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number">99.9%</span>
+                        <span class="stat-label">MFA Blocks</span>
+                    </div>
+                </div>
+                <p style="margin-top: 30px; color: #64748b; font-size: 1.1em;">
+                    Essential principles and practices for securing modern network infrastructure
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 2: Core Concepts -->
+        <div class="slide" id="slide2">
+            <div class="slide-number">02 / 08</div>
+            <div class="slide-header">
+                <h2>Core Security Concepts</h2>
+                <p class="subtitle">The foundation of network protection</p>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <h3>🔒 Confidentiality</h3>
+                    <ul>
+                        <li>Ensures sensitive data is accessible only to authorized users</li>
+                        <li>Implementation: Encryption, access controls, authentication</li>
+                        <li>Prevents unauthorized disclosure of information</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🛡️ Integrity</h3>
+                    <ul>
+                        <li>Guarantees data accuracy and trustworthiness</li>
+                        <li>Protection against unauthorized modification</li>
+                        <li>Methods: Hashing, digital signatures, version control</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>⚡ Availability</h3>
+                    <ul>
+                        <li>Ensures systems and data are accessible when needed</li>
+                        <li>Protection against downtime and service disruptions</li>
+                        <li>Strategies: Redundancy, failover, load balancing</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🔐 Authentication</h3>
+                    <ul>
+                        <li>Verifies identity of users and devices</li>
+                        <li>Multi-factor authentication (MFA) essential</li>
+                        <li>Methods: Passwords, biometrics, tokens, SSO</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>📋 Authorization</h3>
+                    <ul>
+                        <li>Defines what authenticated users can access</li>
+                        <li>Principle of least privilege (PoLP)</li>
+                        <li>Implementation: RBAC, ACLs, permissions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Threat Landscape -->
+        <div class="slide" id="slide3">
+            <div class="slide-number">03 / 08</div>
+            <div class="slide-header">
+                <h2>Modern Threat Landscape</h2>
+                <p class="subtitle">Understanding current cyber threats and attack vectors</p>
+            </div>
+            <div class="content-full">
+                <div class="threat-grid">
+                    <div class="threat-card">
+                        <h4>🎯 Malware & Ransomware</h4>
+                        <p>Malicious software designed to disrupt, damage, or gain unauthorized access. Ransomware encrypts data demanding payment for decryption.</p>
+                    </div>
+                    <div class="threat-card">
+                        <h4>🎣 Phishing & Social Engineering</h4>
+                        <p>Psychological manipulation of users to reveal confidential information. Leading cause of security breaches through human error.</p>
+                    </div>
+                    <div class="threat-card">
+                        <h4>🌐 Advanced Persistent Threats</h4>
+                        <p>Long-term targeted attacks by sophisticated adversaries. Stealthy infiltration with specific objectives like data exfiltration.</p>
+                    </div>
+                    <div class="threat-card">
+                        <h4>☁️ Cloud Vulnerabilities</h4>
+                        <p>Misconfigured cloud storage, weak access management, and insecure APIs. Shared responsibility model requires vigilance.</p>
+                    </div>
+                    <div class="threat-card">
+                        <h4>📱 IoT Exploitation</h4>
+                        <p>Internet of Things devices often lack security controls. Botnets and DDoS attacks frequently leverage compromised IoT devices.</p>
+                    </div>
+                    <div class="threat-card">
+                        <h4>👤 Insider Threats</h4>
+                        <p>Malicious or negligent actions by employees. Requires monitoring, access controls, and behavioral analytics.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Architecture -->
+        <div class="slide" id="slide4">
+            <div class="slide-number">04 / 08</div>
+            <div class="slide-header">
+                <h2>Network Security Architecture</h2>
+                <p class="subtitle">Defense in depth: Layered security approach</p>
+            </div>
+            <div class="content-full">
+                <div class="architecture-diagram">
+                    <div class="diagram-box firewall">
+                        <span class="diagram-label" style="top: -15px; left: 20px;">Perimeter Firewall</span>
+                        <strong>🛡️ First Line of Defense</strong><br>
+                        Filters traffic based on predefined rules<br>
+                        Blocks unauthorized external access
+                    </div>
+                    <div class="diagram-box dmz">
+                        <span class="diagram-label" style="top: -15px; right: 20px;">DMZ</span>
+                        <strong>📡 Demilitarized Zone</strong><br>
+                        Hosts public-facing services<br>
+                        Web servers, Email servers, DNS
+                    </div>
+                    <div class="diagram-box internal">
+                        <span class="diagram-label" style="top: 50%; left: -80px; transform: translateY(-50%) rotate(-90deg);">Internal Network</span>
+                        <strong>🔐 Core Assets</strong><br>
+                        Databases, Internal Apps, File Servers<br>
+                        Strict access controls, Encryption at rest
+                    </div>
+                    <div class="diagram-box monitoring" style="margin-top: 20px;">
+                        <span class="diagram-label" style="top: -15px; left: 50%; transform: translateX(-50%);">Monitoring & IDS/IPS</span>
+                        <strong>👁️ Continuous Monitoring</strong><br>
+                        SIEM, Traffic Analysis, Behavioral Analytics<br>
+                        Real-time threat detection and response
+                    </div>
+                </div>
+                <div class="code-block" style="margin-top: 20px;">
+<span class="highlight">Zero Trust Principle:</span> Never trust, always verify.<br>
+<span class="highlight">Micro-segmentation:</span> Isolate workloads<br>
+<span class="highlight">Encryption:</span> In transit (TLS 1.3) & at rest (AES-256)
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Best Practices -->
+        <div class="slide" id="slide5">
+            <div class="slide-number">05 / 08</div>
+            <div class="slide-header">
+                <h2>Security Best Practices</h2>
+                <p class="subtitle">Essential controls for 2025 and beyond</p>
+            </div>
+            <div class="content-full">
+                <div class="best-practices">
+                    <div class="practice-item">
+                        <div class="practice-number">1</div>
+                        <div>
+                            <strong>Multi-Factor Authentication (MFA)</strong><br>
+                            <span style="color: #94a3b8;">Implement on all critical systems. Risk-based authentication for sensitive access.</span>
+                        </div>
+                    </div>
+                    <div class="practice-item">
+                        <div class="practice-number">2</div>
+                        <div>
+                            <strong>Zero Trust Architecture</strong><br>
+                            <span style="color: #94a3b8;">Verify every access request. Micro-segmentation limits lateral movement.</span>
+                        </div>
+                    </div>
+                    <div class="practice-item">
+                        <div class="practice-number">3</div>
+                        <div>
+                            <strong>Regular Patching & Updates</strong><br>
+                            <span style="color: #94a3b8;">Automate patch management. Unpatched vulnerabilities are primary attack vectors.</span>
+                        </div>
+                    </div>
+                    <div class="practice-item">
+                        <div class="practice-number">4</div>
+                        <div>
+                            <strong>Network Segmentation</strong><br>
+                            <span style="color: #94a3b8;">VLANs, Subnetting, and micro-segmentation contain breaches.</span>
+                        </div>
+                    </div>
+                    <div class="practice-item">
+                        <div class="practice-number">5</div>
+                        <div>
+                            <strong>Data Loss Prevention (DLP)</strong><br>
+                            <span style="color: #94a3b8;">Monitor and control data transfer. Prevent exfiltration of sensitive information.</span>
+                        </div>
+                    </div>
+                    <div class="practice-item">
+                        <div class="practice-number">6</div>
+                        <div>
+                            <strong>Security Awareness Training</strong><br>
+                            <span style="color: #94a3b8;">Regular phishing simulations. Human error remains the weakest link.</span>
+                        </div>
+                    </div>
+                    <div class="practice-item">
+                        <div class="practice-number">7</div>
+                        <div>
+                            <strong>Incident Response Planning</strong><br>
+                            <span style="color: #94a3b8;">Documented procedures for containment, eradication, and recovery.</span>
+                        </div>
+                    </div>
+                    <div class="practice-item">
+                        <div class="practice-number">8</div>
+                        <div>
+                            <strong>Backup & Recovery</strong><br>
+                            <span style="color: #94a3b8;">3-2-1 backup strategy. Regular restoration testing.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Technical Controls -->
+        <div class="slide" id="slide6">
+            <div class="slide-number">06 / 08</div>
+            <div class="slide-header">
+                <h2>Technical Security Controls</h2>
+                <p class="subtitle">Tools and technologies for implementation</p>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <h3>🔥 Next-Generation Firewalls (NGFW)</h3>
+                    <ul>
+                        <li>Deep packet inspection capabilities</li>
+                        <li>Application awareness and control</li>
+                        <li>Integrated intrusion prevention (IPS)</li>
+                        <li>SSL/TLS inspection for encrypted traffic</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>📊 SIEM & SOAR</h3>
+                    <ul>
+                        <li>Security Information and Event Management</li>
+                        <li>Real-time log aggregation and correlation</li>
+                        <li>Automated response workflows (SOAR)</li>
+                        <li>Behavioral analytics and anomaly detection</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🔍 Endpoint Detection & Response (EDR)</h3>
+                    <ul>
+                        <li>Continuous monitoring of endpoints</li>
+                        <li>Threat hunting capabilities</li>
+                        <li>Automated remediation actions</li>
+                        <li>Forensic investigation tools</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🌐 Cloud Security Posture Management</h3>
+                    <ul>
+                        <li>Visibility across multi-cloud environments</li>
+                        <li>Compliance monitoring and enforcement</li>
+                        <li>Identity and access management integration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Future Trends -->
+        <div class="slide" id="slide7">
+            <div class="slide-number">07 / 08</div>
+            <div class="slide-header">
+                <h2>Emerging Trends 2025+</h2>
+                <p class="subtitle">Preparing for the next generation of threats</p>
+            </div>
+            <div class="content-grid">
+                <div class="card">
+                    <h3>🤖 AI-Powered Security</h3>
+                    <ul>
+                        <li>Machine learning for anomaly detection</li>
+                        <li>Predictive threat intelligence</li>
+                        <li>Automated incident response</li>
+                        <li>Adversarial AI defense strategies</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🔐 Quantum-Safe Cryptography</h3>
+                    <ul>
+                        <li>Preparing for post-quantum threats</li>
+                        <li>NIST standardized algorithms</li>
+                        <li>Hybrid cryptographic approaches</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>☁️ SASE Architecture</h3>
+                    <ul>
+                        <li>Secure Access Service Edge convergence</li>
+                        <li>Cloud-native security delivery</li>
+                        <li>Zero trust network access (ZTNA)</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h3>🌐 Extended Detection & Response (XDR)</h3>
+                    <ul>
+                        <li>Unified visibility across endpoints, network, cloud</li>
+                        <li>Cross-layered threat detection</li>
+                        <li>Improved mean time to detect (MTTD)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Summary -->
+        <div class="slide" id="slide8">
+            <div class="slide-number">08 / 08</div>
+            <div class="slide-header">
+                <h2>Key Takeaways</h2>
+                <p class="subtitle">Building a resilient security posture</p>
+            </div>
+            <div class="content-full">
+                <div class="card" style="text-align: center; padding: 40px;">
+                    <h3 style="border: none;">Security is a Journey, Not a Destination</h3>
+                    <p style="margin-top: 20px; line-height: 2; color: #cbd5e1;">
+                        • <span class="highlight">Defense in Depth:</span> Layer multiple security controls<br>
+                        • <span class="highlight">Zero Trust:</span> Verify explicitly, trust implicitly<br>
+                        • <span class="highlight">Continuous Monitoring:</span> Detect and respond in real-time<br>
+                        • <span class="highlight">Human Factor:</span> Train and empower users<br>
+                        • <span class="highlight">Preparation:</span> Plan for incidents before they occur
+                    </p>
+                </div>
+                <div class="stats-container" style="margin-top: 40px;">
+                    <div class="stat-box">
+                        <span class="stat-number" style="color: #ef4444;">24/7</span>
+                        <span class="stat-label">Monitoring</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number" style="color: #f59e0b;">Layered</span>
+                        <span class="stat-label">Defense</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number" style="color: #ec4899;">Always</span>
+                        <span class="stat-label">Verify</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-number" style="color: #10b981;">Update</span>
+                        <span class="stat-label">Continuously</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="navigation">
+        <button class="nav-btn" onclick="prevSlide()">← Previous</button>
+        <button class="nav-btn" onclick="nextSlide()">Next →</button>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = 8;
+        
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+            const progressBar = document.getElementById('progressBar');
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            
+            if (n > totalSlides) currentSlide = 1;
+            else if (n < 1) currentSlide = totalSlides;
+            else currentSlide = n;
+            
+            document.getElementById('slide' + currentSlide).classList.add('active');
+            
+            const progress = (currentSlide / totalSlides) * 100;
+            progressBar.style.width = progress + '%';
+        }
+        
+        function nextSlide() {
+            showSlide(currentSlide + 1);
+        }
+        
+        function prevSlide() {
+            showSlide(currentSlide - 1);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            else if (e.key === 'ArrowLeft') prevSlide();
+        });
+        
+        // Initialize
+        showSlide(1);
+    </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ import { usePdfQuizzes } from '../../hooks/usePdfQuizzes'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { getSubmissionSignedUrl } from '../../utils/submissionUrl'
+import { viewFile } from '../../utils/viewFile'
 import { Spinner, PageError } from '../../components/ui/Spinner'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
 import { PdfQuizTaker } from '../../components/pdfquizzes/PdfQuizTaker'
@@ -482,12 +483,15 @@ export default function StudentQuizzes() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', fontSize: '12px' }}>
                     <div>
                       {fs ? (
-                        <a href={fileSignedUrlMap[item.id] ?? ''} target="_blank" rel="noreferrer"
-                          style={{ color: '#185FA5', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px',
-                            pointerEvents: fileSignedUrlMap[item.id] ? 'auto' : 'none',
+                        <button
+                          onClick={() => fileSignedUrlMap[item.id] && viewFile(fileSignedUrlMap[item.id])}
+                          disabled={!fileSignedUrlMap[item.id]}
+                          style={{ color: '#185FA5', background: 'none', border: 'none', padding: 0,
+                            display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'inherit',
+                            cursor: fileSignedUrlMap[item.id] ? 'pointer' : 'not-allowed',
                             opacity: fileSignedUrlMap[item.id] ? 1 : 0.4 }}>
                           📎 {fs.file_name}
-                        </a>
+                        </button>
                       ) : (
                         <span style={{ color: '#aaa' }}>
                           {item.id in fileSubMap ? 'No file found' : 'Loading…'}

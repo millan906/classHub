@@ -8,6 +8,7 @@ export interface AppNotification {
   body: string | null
   type: string
   related_id: string | null
+  course_name: string | null
   read: boolean
   created_at: string
 }
@@ -81,6 +82,7 @@ export async function sendNotificationsToStudents(
   body: string,
   type: string,
   relatedId?: string,
+  courseName?: string,
 ) {
   if (studentIds.length === 0) return
   await supabase.from('notifications').insert(
@@ -90,6 +92,7 @@ export async function sendNotificationsToStudents(
       body,
       type,
       related_id: relatedId ?? null,
+      course_name: courseName ?? null,
     }))
   )
 }

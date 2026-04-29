@@ -183,9 +183,10 @@ export function usePdfQuizzes() {
           ids.map(uid => ({
             user_id: uid,
             title: `${quiz.title} is now open`,
-            body: `Paper assessment is now available${courseName ? ` for ${courseName}` : ''}. Head to Assessments to begin.`,
+            body: `Paper assessment is now available. Head to Assessments to begin.`,
             type: 'quiz_open',
             related_id: id,
+            course_name: courseName || null,
           }))
         )
       }
