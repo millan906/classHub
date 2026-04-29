@@ -9,7 +9,7 @@ import { AnnouncementCard } from '../../components/announcements/AnnouncementCar
 export default function StudentAnnouncements() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { announcements, loadingMore, hasMore, loadMore } = useAnnouncements(institution?.id)
+  const { announcements, loading, loadingMore, hasMore, loadMore } = useAnnouncements(institution?.id)
   const { courses } = useCourses()
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
 
@@ -20,9 +20,11 @@ export default function StudentAnnouncements() {
   return (
     <div>
       <PageHeader title="Announcements" subtitle="Stay up to date with class updates." />
-      {visibleAnnouncements.length === 0
-        ? <div style={{ fontSize: '13px', color: '#888' }}>No announcements yet.</div>
-        : visibleAnnouncements.map(a => <AnnouncementCard key={a.id} ann={a} courses={courses} />)
+      {loading
+        ? null
+        : visibleAnnouncements.length === 0
+          ? <div style={{ fontSize: '13px', color: '#888' }}>No announcements yet.</div>
+          : visibleAnnouncements.map(a => <AnnouncementCard key={a.id} ann={a} courses={courses} />)
       }
       {hasMore && (
         <div style={{ textAlign: 'center', marginTop: '12px' }}>

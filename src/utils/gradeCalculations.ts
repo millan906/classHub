@@ -43,5 +43,5 @@ export function computeWeightedGrade(
     }
   }
 
-  return hasAny ? Math.round(total) : null
+  return hasAny ? Math.min(100, Math.round(total)) : null
 }
