@@ -5,6 +5,7 @@ import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import { useIntegrityLogs } from '../../hooks/useIntegrityLogs'
 import { inputStyle } from '../../styles/shared'
 import { viewFile } from '../../utils/viewFile'
+import { supabase } from '../../lib/supabase'
 import type { Quiz, QuizQuestion, QuizSubmission, FileSubmission, Profile } from '../../types'
 
 interface QuizResultsProps {
@@ -244,6 +245,9 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, file
   const [maxPoints, setMaxPoints] = useState(quiz.file_max_points?.toString() ?? '100')
   const [savingFileScore, setSavingFileScore] = useState<string | null>(null)
   const [savedFileScores, setSavedFileScores] = useState<Set<string>>(new Set())
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({})
+  const [savingFeedback, setSavingFeedback] = useState<string | null>(null)
+  const [savedFeedbackSet, setSavedFeedbackSet] = useState<Set<string>>(new Set())
   const { fetchLogsForQuiz } = useIntegrityLogs()
 
   useEffect(() => {
@@ -251,6 +255,27 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, file
       if (logs.length > 0) setResultsTab('integrity')
     })
   }, [])
+
+  useEffect(() => {
+    supabase.from('quiz_feedback').select('student_id, feedback').eq('quiz_id', quiz.id)
+      .then(({ data }) => {
+        if (data) setFeedbackMap(Object.fromEntries(data.map(r => [r.student_id, r.feedback])))
+      })
+  }, [quiz.id])
+
+  async function handleSaveFeedback(studentId: string) {
+    setSavingFeedback(studentId)
+    try {
+      await supabase.from('quiz_feedback').upsert(
+        { quiz_id: quiz.id, student_id: studentId, feedback: feedbackMap[studentId] ?? '', updated_at: new Date().toISOString() },
+        { onConflict: 'quiz_id,student_id' },
+      )
+      setSavedFeedbackSet(prev => new Set(prev).add(studentId))
+      setTimeout(() => setSavedFeedbackSet(prev => { const s = new Set(prev); s.delete(studentId); return s }), 2000)
+    } finally {
+      setSavingFeedback(null)
+    }
+  }
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: '5px 14px', fontSize: '12px', borderRadius: '8px',
@@ -329,41 +354,64 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, file
             }
             return (
               <div key={student.id} style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '9px 14px', background: '#fff',
-                border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
+                background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)',
+                borderRadius: '12px', marginBottom: '8px', overflow: 'hidden',
               }}>
-                <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
-                  <div style={{ fontSize: '12px', color: sub ? '#1D9E75' : '#aaa' }}>
-                    {sub ? `Marked done · ${new Date(sub.submitted_at).toLocaleDateString()}` : 'Not yet done'}
+                {/* Top row: avatar + name + score */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px' }}>
+                  <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
+                    <div style={{ fontSize: '12px', color: sub ? '#1D9E75' : '#aaa' }}>
+                      {sub ? `Marked done · ${new Date(sub.submitted_at).toLocaleDateString()}` : 'Not yet done'}
+                    </div>
                   </div>
+                  {onSaveFileScore && quiz.grade_group_id && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <input
+                        type="number" min="0" max={maxPoints} step="0.5"
+                        placeholder="—"
+                        value={fileScores[student.id] ?? ''}
+                        onChange={e => setFileScores(prev => ({ ...prev, [student.id]: e.target.value }))}
+                        style={{ ...inputStyle, width: '56px', marginBottom: 0, textAlign: 'center' }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#888' }}>/ {maxPoints}</span>
+                      <button
+                        onClick={handleSaveManual}
+                        disabled={isSaving || fileScores[student.id] === undefined || fileScores[student.id] === ''}
+                        style={{
+                          fontSize: '12px', padding: '5px 10px', borderRadius: '8px',
+                          border: 'none', background: isSaved ? '#1D9E75' : '#6B4E9E',
+                          color: '#fff', cursor: 'pointer',
+                          opacity: (isSaving || !fileScores[student.id]) ? 0.5 : 1,
+                          fontFamily: 'Inter, sans-serif',
+                        }}>
+                        {isSaved ? '✓' : isSaving ? '…' : 'Save'}
+                      </button>
+                    </div>
+                  )}
                 </div>
-                {onSaveFileScore && quiz.grade_group_id && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                    <input
-                      type="number" min="0" max={maxPoints} step="0.5"
-                      placeholder="—"
-                      value={fileScores[student.id] ?? ''}
-                      onChange={e => setFileScores(prev => ({ ...prev, [student.id]: e.target.value }))}
-                      style={{ ...inputStyle, width: '56px', marginBottom: 0, textAlign: 'center' }}
-                    />
-                    <span style={{ fontSize: '12px', color: '#888' }}>/ {maxPoints}</span>
-                    <button
-                      onClick={handleSaveManual}
-                      disabled={isSaving || fileScores[student.id] === undefined || fileScores[student.id] === ''}
-                      style={{
-                        fontSize: '12px', padding: '5px 10px', borderRadius: '8px',
-                        border: 'none', background: isSaved ? '#1D9E75' : '#6B4E9E',
-                        color: '#fff', cursor: 'pointer',
-                        opacity: (isSaving || !fileScores[student.id]) ? 0.5 : 1,
-                        fontFamily: 'Inter, sans-serif',
-                      }}>
-                      {isSaved ? '✓' : isSaving ? '…' : 'Save'}
-                    </button>
-                  </div>
-                )}
+                {/* Feedback row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '6px 14px 10px', borderTop: '0.5px solid rgba(0,0,0,0.06)' }}>
+                  <span style={{ fontSize: '11px', color: '#888', paddingTop: '6px', flexShrink: 0 }}>Feedback:</span>
+                  <textarea
+                    rows={2}
+                    placeholder="Add feedback for this student…"
+                    value={feedbackMap[student.id] ?? ''}
+                    onChange={e => setFeedbackMap(prev => ({ ...prev, [student.id]: e.target.value }))}
+                    style={{ ...inputStyle, flex: 1, resize: 'vertical', fontSize: '12px', lineHeight: '1.5', marginBottom: 0 }}
+                  />
+                  <button
+                    onClick={() => { void handleSaveFeedback(student.id) }}
+                    disabled={savingFeedback === student.id}
+                    style={{
+                      fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: 'none',
+                      background: savedFeedbackSet.has(student.id) ? '#1D9E75' : '#555',
+                      color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', flexShrink: 0,
+                    }}>
+                    {savedFeedbackSet.has(student.id) ? '✓ Saved' : savingFeedback === student.id ? '…' : 'Save'}
+                  </button>
+                </div>
               </div>
             )
           })}
@@ -476,66 +524,91 @@ export function QuizResults({ quiz, submissions, enrolled, fileSubmissions, file
 
             return (
               <div key={student.id} style={{
-                display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '9px 14px', background: '#fff',
-                border: '0.5px solid rgba(0,0,0,0.12)', borderRadius: '12px', marginBottom: '8px',
+                background: '#fff', border: '0.5px solid rgba(0,0,0,0.12)',
+                borderRadius: '12px', marginBottom: '8px', overflow: 'hidden',
               }}>
-                <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
-                  {fs ? (
-                    <>
-                      <div style={{ fontSize: '12px', color: '#888' }}>
-                        {fs.file_name}{fs.file_size ? ` · ${(fs.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#aaa' }}>
-                        Submitted {new Date(fs.submitted_at).toLocaleString()}
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize: '12px', color: '#aaa' }}>No submission</div>
+                {/* Top row: avatar + name + score + view */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px' }}>
+                  <Avatar initials={getInitials(student.full_name)} bg={colors.bg} color={colors.color} seed={student.avatar_seed} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '13px', fontWeight: 500 }}>{student.full_name}</div>
+                    {fs ? (
+                      <>
+                        <div style={{ fontSize: '12px', color: '#888' }}>
+                          {fs.file_name}{fs.file_size ? ` · ${(fs.file_size / 1024 / 1024).toFixed(1)} MB` : ''}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#aaa' }}>
+                          Submitted {new Date(fs.submitted_at).toLocaleString()}
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ fontSize: '12px', color: '#aaa' }}>No submission</div>
+                    )}
+                  </div>
+                  {fs && onSaveFileScore && quiz.grade_group_id && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                      <input
+                        type="number" min="0" max={maxPoints} step="0.5"
+                        placeholder="—"
+                        value={fileScores[student.id] ?? ''}
+                        onChange={e => setFileScores(prev => ({ ...prev, [student.id]: e.target.value }))}
+                        style={{ ...inputStyle, width: '56px', marginBottom: 0, textAlign: 'center' }}
+                      />
+                      <span style={{ fontSize: '12px', color: '#888' }}>/ {maxPoints}</span>
+                      <button
+                        onClick={handleSaveScore}
+                        disabled={isSaving || fileScores[student.id] === undefined || fileScores[student.id] === ''}
+                        style={{
+                          fontSize: '12px', padding: '5px 10px', borderRadius: '8px',
+                          border: 'none', background: isSaved ? '#1D9E75' : '#185FA5',
+                          color: '#fff', cursor: 'pointer', opacity: (isSaving || !fileScores[student.id]) ? 0.5 : 1,
+                          fontFamily: 'Inter, sans-serif',
+                        }}>
+                        {isSaved ? '✓' : isSaving ? '…' : 'Save'}
+                      </button>
+                    </div>
                   )}
-                </div>
-                {fs && onSaveFileScore && quiz.grade_group_id && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                    <input
-                      type="number" min="0" max={maxPoints} step="0.5"
-                      placeholder="—"
-                      value={fileScores[student.id] ?? ''}
-                      onChange={e => setFileScores(prev => ({ ...prev, [student.id]: e.target.value }))}
-                      style={{ ...inputStyle, width: '56px', marginBottom: 0, textAlign: 'center' }}
-                    />
-                    <span style={{ fontSize: '12px', color: '#888' }}>/ {maxPoints}</span>
+                  {fs ? (
                     <button
-                      onClick={handleSaveScore}
-                      disabled={isSaving || fileScores[student.id] === undefined || fileScores[student.id] === ''}
+                      onClick={() => fileSignedUrlMap[fs.id] && viewFile(fileSignedUrlMap[fs.id])}
+                      disabled={!fileSignedUrlMap[fs.id]}
                       style={{
-                        fontSize: '12px', padding: '5px 10px', borderRadius: '8px',
-                        border: 'none', background: isSaved ? '#1D9E75' : '#185FA5',
-                        color: '#fff', cursor: 'pointer', opacity: (isSaving || !fileScores[student.id]) ? 0.5 : 1,
+                        fontSize: '12px', color: '#185FA5', background: 'none',
+                        padding: '5px 12px', border: '0.5px solid #185FA5',
+                        borderRadius: '8px', whiteSpace: 'nowrap', flexShrink: 0,
+                        cursor: fileSignedUrlMap[fs.id] ? 'pointer' : 'not-allowed',
+                        opacity: fileSignedUrlMap[fs.id] ? 1 : 0.4,
                         fontFamily: 'Inter, sans-serif',
                       }}>
-                      {isSaved ? '✓' : isSaving ? '…' : 'Save'}
+                      View File
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: '11px', color: '#ccc' }}>—</span>
+                  )}
+                </div>
+                {/* Feedback row */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '6px 14px 10px', borderTop: '0.5px solid rgba(0,0,0,0.06)' }}>
+                  <span style={{ fontSize: '11px', color: '#888', paddingTop: '6px', flexShrink: 0 }}>Feedback:</span>
+                  <textarea
+                    rows={2}
+                    placeholder="Add feedback for this student…"
+                    value={feedbackMap[student.id] ?? ''}
+                    onChange={e => setFeedbackMap(prev => ({ ...prev, [student.id]: e.target.value }))}
+                    style={{ ...inputStyle, flex: 1, resize: 'vertical', fontSize: '12px', lineHeight: '1.5', marginBottom: 0 }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                    <button
+                      onClick={() => { void handleSaveFeedback(student.id) }}
+                      disabled={savingFeedback === student.id}
+                      style={{
+                        fontSize: '11px', padding: '4px 10px', borderRadius: '6px', border: 'none',
+                        background: savedFeedbackSet.has(student.id) ? '#1D9E75' : '#555',
+                        color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                      }}>
+                      {savedFeedbackSet.has(student.id) ? '✓ Saved' : savingFeedback === student.id ? '…' : 'Save'}
                     </button>
                   </div>
-                )}
-                {fs ? (
-                  <button
-                    onClick={() => fileSignedUrlMap[fs.id] && viewFile(fileSignedUrlMap[fs.id])}
-                    disabled={!fileSignedUrlMap[fs.id]}
-                    style={{
-                      fontSize: '12px', color: '#185FA5', background: 'none',
-                      padding: '5px 12px', border: '0.5px solid #185FA5',
-                      borderRadius: '8px', whiteSpace: 'nowrap', flexShrink: 0,
-                      cursor: fileSignedUrlMap[fs.id] ? 'pointer' : 'not-allowed',
-                      opacity: fileSignedUrlMap[fs.id] ? 1 : 0.4,
-                      fontFamily: 'Inter, sans-serif',
-                    }}>
-                    View File
-                  </button>
-                ) : (
-                  <span style={{ fontSize: '11px', color: '#ccc' }}>—</span>
-                )}
+                </div>
               </div>
             )
           })}

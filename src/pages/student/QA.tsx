@@ -22,6 +22,10 @@ export default function StudentQA() {
 
   if (!profile) return null
 
+  // Defense-in-depth: hide private questions that don't belong to this student.
+  // RLS already enforces this server-side; this prevents any accidental client leak.
+  const visibleQuestions = questions.filter(q => !q.is_private || q.posted_by === profile.id)
+
   return (
     <div>
       <PageHeader title="Q&A" subtitle="Ask questions and help your classmates." />
@@ -31,9 +35,9 @@ export default function StudentQA() {
         </div>
       )}
       <PostQuestion onPost={handlePost} />
-      {questions.length === 0
+      {visibleQuestions.length === 0
         ? <div style={{ fontSize: '13px', color: '#888' }}>No questions yet. Be the first to ask!</div>
-        : questions.map(q => (
+        : visibleQuestions.map(q => (
             <QACard key={q.id} question={q} currentProfile={profile!} onAnswer={handleAnswer} onUpdate={updateQuestion} />
           ))
       }
