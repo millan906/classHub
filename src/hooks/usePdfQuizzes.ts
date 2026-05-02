@@ -403,7 +403,7 @@ export function usePdfQuizzes() {
       .insert({
         title: quiz.title,
         course_id: targetCourseId,
-        grade_group_id: quiz.grade_group_id,
+        grade_group_id: null, // must not carry over — group belongs to the source course
         instructions: quiz.instructions ?? null,
         pdf_path: quiz.pdf_path,
         due_date: null,

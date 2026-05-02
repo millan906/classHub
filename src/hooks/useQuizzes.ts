@@ -134,11 +134,6 @@ export function useQuizzes() {
     await supabase.from('quizzes').update(updates).eq('id', id)
     setQuizzes(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q))
 
-    if (!isOpen) return // only notify students when opening
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    // In-app notification
     if (quiz?.course_id) {
       const [{ data: enrollments }, { data: course }] = await Promise.all([
         supabase.from('course_enrollments').select('student_id').eq('course_id', quiz.course_id),
@@ -149,24 +144,41 @@ export function useQuizzes() {
       const typeLabel = quiz.item_type
         ? quiz.item_type.charAt(0).toUpperCase() + quiz.item_type.slice(1)
         : 'Assessment'
-      const dueStr = quiz.due_date
-        ? ` · Due ${new Date(quiz.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-        : ''
+
       if (ids.length > 0) {
-        await supabase.from('notifications').insert(
-          ids.map(uid => ({
-            user_id: uid,
-            title: `${quiz.title} is now open`,
-            body: `${typeLabel} is now available${dueStr}. Head to Assessments to begin.`,
-            type: 'quiz_open',
-            related_id: id,
-            course_name: courseName || null,
-          }))
-        )
+        if (isOpen) {
+          const dueStr = quiz.due_date
+            ? ` · Due ${new Date(quiz.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+            : ''
+          await supabase.from('notifications').insert(
+            ids.map(uid => ({
+              user_id: uid,
+              title: `${quiz.title} is now open`,
+              body: `${typeLabel} is now available${dueStr}. Head to Assessments to begin.`,
+              type: 'quiz_open',
+              related_id: id,
+              course_name: courseName || null,
+            }))
+          )
+        } else {
+          await supabase.from('notifications').insert(
+            ids.map(uid => ({
+              user_id: uid,
+              title: `${quiz.title} is now closed`,
+              body: `${typeLabel} is no longer accepting submissions.`,
+              type: 'quiz_close',
+              related_id: id,
+              course_name: courseName || null,
+            }))
+          )
+        }
       }
     }
 
-    // Email notification — refresh session first to ensure a non-expired token
+    if (!isOpen) return
+
+    // Email notification on open — refresh session first to ensure a non-expired token
+    const { data: { session } } = await supabase.auth.getSession()
     const { data: { session: freshSession } } = await supabase.auth.refreshSession()
     const emailSession = freshSession ?? session
     if (emailSession) fireQuizOpenEmail(emailSession.access_token, id)
@@ -368,7 +380,7 @@ export function useQuizzes() {
         max_attempts: quiz.max_attempts ?? 1,
         created_by: userId,
         item_type: quiz.item_type ?? 'quiz',
-        grade_group_id: quiz.grade_group_id ?? null,
+        grade_group_id: null, // must not carry over — group belongs to the source course
         allow_file_upload: quiz.allow_file_upload ?? false,
         description: quiz.description ?? null,
         is_open: false,
