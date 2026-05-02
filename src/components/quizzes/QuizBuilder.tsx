@@ -81,7 +81,6 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
   const [allowFileUpload, setAllowFileUpload] = useState(initialQuiz?.allow_file_upload ?? (initialQuiz ? false : itemType !== 'quiz'))
   const [randomizeQuestions, setRandomizeQuestions] = useState(initialQuiz?.randomize_questions ?? false)
   const [fileMaxPoints, setFileMaxPoints] = useState<string>(initialQuiz?.file_max_points?.toString() ?? '100')
-  const [notifyStudents, setNotifyStudents] = useState(!initialQuiz)
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(initialQuiz?.attachment_url ?? null)
   const [attachmentName, setAttachmentName] = useState<string | null>(initialQuiz?.attachment_name ?? null)
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
@@ -157,7 +156,6 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
       gradeGroupId: manualGroupId || null,
       allowFileUpload,
       description: description.trim() || null,
-      notifyStudents,
       attachmentUrl,
       attachmentName,
       randomizeQuestions,
@@ -359,10 +357,6 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
             </>
           )}
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#555', cursor: 'pointer' }}>
-          <input type="checkbox" checked={notifyStudents} onChange={e => setNotifyStudents(e.target.checked)} />
-          Notify students
-        </label>
         <div style={{ display: 'flex', gap: '6px' }}>
           <Button onClick={onCancel}>Cancel</Button>
           <Button variant="primary" onClick={handleSave} disabled={saving}>

@@ -72,7 +72,7 @@ export function useQA(institutionId?: string | null) {
     return () => { supabase.removeChannel(channel) }
   }, [institutionId])
 
-  async function postQuestion(title: string, body: string, tag: string, userId: string, isPrivate = false) {
+  async function postQuestion(title: string, body: string, tag: string, userId: string, isPrivate = false, posterRole?: string) {
     const { data } = await supabase
       .from('questions')
       .insert({ title, body, tag: tag || null, posted_by: userId, is_private: isPrivate })
@@ -81,6 +81,27 @@ export function useQA(institutionId?: string | null) {
     if (data) {
       const q = await fetchSingleQuestion(data.id)
       if (q) setQuestions(prev => [q, ...prev])
+    }
+
+    // Notify all faculty when a student posts a question
+    if (posterRole === 'student' && data) {
+      const { data: faculty } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'faculty')
+      const facultyIds = (faculty ?? []).map((f: { id: string }) => f.id).filter(id => id !== userId)
+      if (facultyIds.length > 0) {
+        await supabase.from('notifications').insert(
+          facultyIds.map((uid: string) => ({
+            user_id: uid,
+            title: 'New question in Q&A',
+            body: `"${title}"${isPrivate ? ' (private)' : ''} — needs your attention.`,
+            type: 'qa_new_question',
+            related_id: data.id,
+            course_name: null,
+          }))
+        )
+      }
     }
   }
 
@@ -103,11 +124,47 @@ export function useQA(institutionId?: string | null) {
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, is_answered: isAnswered } : q))
   }
 
-  async function postAnswer(questionId: string, body: string, userId: string) {
+  async function postAnswer(questionId: string, body: string, userId: string, posterRole?: string) {
     await supabase.from('answers').insert({ question_id: questionId, body, posted_by: userId })
     await supabase.from('questions').update({ is_answered: true }).eq('id', questionId)
     const q = await fetchSingleQuestion(questionId)
     if (q) setQuestions(prev => prev.map(x => x.id === questionId ? q : x))
+
+    const question = questions.find(x => x.id === questionId)
+    const questionTitle = question?.title ?? 'your question'
+
+    // Notify the question poster if they're not the one responding
+    if (question && question.posted_by !== userId) {
+      await supabase.from('notifications').insert({
+        user_id: question.posted_by,
+        title: 'New response on your question',
+        body: `Someone responded to "${questionTitle}". Check the Q&A.`,
+        type: 'qa_new_response',
+        related_id: questionId,
+        course_name: null,
+      })
+    }
+
+    // If a student is responding, also notify all faculty
+    if (posterRole === 'student') {
+      const { data: faculty } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'faculty')
+      const facultyIds = (faculty ?? []).map((f: { id: string }) => f.id).filter(id => id !== userId)
+      if (facultyIds.length > 0) {
+        await supabase.from('notifications').insert(
+          facultyIds.map((uid: string) => ({
+            user_id: uid,
+            title: 'Student responded in Q&A',
+            body: `New response on "${questionTitle}".`,
+            type: 'qa_new_response',
+            related_id: questionId,
+            course_name: null,
+          }))
+        )
+      }
+    }
   }
 
   async function endorseAnswer(answerId: string) {
@@ -121,4 +178,5 @@ export function useQA(institutionId?: string | null) {
   }
 
   return { questions, loading, loadingMore, hasMore, loadMore, error, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
+
 }

@@ -166,12 +166,17 @@ export default function FacultyDashboard() {
       </div>
 
       {/* Action alerts */}
-      {(closingSoon.length > 0 || essayPendingCount > 0 || pending.length > 0 || totalFlags > 0) && (
+      {(closingSoon.length > 0 || essayPendingCount > 0 || pending.length > 0 || totalFlags > 0 || openQuestions > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1rem' }}>
           {pending.length > 0 && (
             <AlertBanner color="#EF9F27" bg="#FEFDF7"
               label={`${pending.length} student${pending.length > 1 ? 's' : ''} waiting for enrollment approval`}
               action="Review" onAction={() => navigate('/admin/dashboard?tab=pending')} />
+          )}
+          {openQuestions > 0 && (
+            <AlertBanner color="#5B4FCF" bg="#F3F0FF"
+              label={`${openQuestions} unanswered question${openQuestions > 1 ? 's' : ''} in Q&A`}
+              action="Answer" onAction={() => navigate('/faculty/qa')} />
           )}
           {essayPendingCount > 0 && (
             <AlertBanner color="#378ADD" bg="#EEF5FC"
@@ -251,30 +256,37 @@ export default function FacultyDashboard() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '10px' }}>
-        {/* Recent activity */}
+        {/* Unanswered Q&A */}
         <Card>
-          <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '10px' }}>Recent activity</div>
-          {questions.slice(0, 3).map(q => (
-            <div key={q.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: q.is_answered ? '#1D9E75' : '#EF9F27', flexShrink: 0 }} />
-              <div style={{ fontSize: '12px', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span style={{ fontWeight: 500 }}>{q.poster?.full_name ?? 'Student'}</span> asked: {q.title}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 500 }}>Unanswered Q&A</div>
+            {openQuestions > 0 && (
+              <button
+                onClick={() => navigate('/faculty/qa')}
+                style={{ fontSize: '11px', color: '#5B4FCF', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'Inter, sans-serif' }}
+              >
+                View all →
+              </button>
+            )}
+          </div>
+          {questions.filter(q => !q.is_answered).length === 0 ? (
+            <div style={{ fontSize: '12px', color: '#aaa' }}>No open questions.</div>
+          ) : (
+            questions.filter(q => !q.is_answered).slice(0, 5).map(q => (
+              <div key={q.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '10px' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#EF9F27', flexShrink: 0, marginTop: '4px' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {q.title}
+                    {q.is_private && <span style={{ marginLeft: '5px', fontSize: '10px', color: '#5B4FCF' }}>🔒</span>}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#aaa' }}>
+                    {q.poster?.full_name ?? 'Student'} · {new Date(q.created_at).toLocaleDateString()}
+                    {(q.answers?.length ?? 0) > 0 && ` · ${q.answers!.length} response${q.answers!.length > 1 ? 's' : ''}`}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: '11px', color: '#aaa', whiteSpace: 'nowrap' }}>
-                {new Date(q.created_at).toLocaleDateString()}
-              </div>
-            </div>
-          ))}
-          {pending.slice(0, 2).map(s => (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#EF9F27', flexShrink: 0 }} />
-              <div style={{ fontSize: '12px' }}>
-                <span style={{ fontWeight: 500 }}>{s.full_name}</span> requested enrollment
-              </div>
-            </div>
-          ))}
-          {questions.length === 0 && pending.length === 0 && (
-            <div style={{ fontSize: '12px', color: '#aaa' }}>No recent activity.</div>
+            ))
           )}
         </Card>
 

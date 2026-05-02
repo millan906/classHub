@@ -74,7 +74,6 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
   const [maxAttempts, setMaxAttempts] = useState(initialQuiz?.max_attempts ?? 1)
   const [file, setFile] = useState<File | undefined>()
   const [fileError, setFileError] = useState('')
-  const [notifyStudents, setNotifyStudents] = useState(!initialQuiz)
   const [instructions, setInstructions] = useState(initialQuiz?.instructions ?? '')
   const [saving, setSaving] = useState(false)
 
@@ -176,7 +175,6 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
         openAt: openAt ? toUTCIso(openAt) : null,
         closeAt: closeAt ? toUTCIso(closeAt) : null,
         maxAttempts: Number(maxAttempts) || 1,
-        notifyStudents,
         instructions: instructions.trim() || null,
         answerKey: keyRows.map(r => ({
           question_number: r.question_number,
@@ -351,10 +349,6 @@ export function PdfQuizBuilder({ courses, groups, onSave, onCancel, initialQuiz 
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: '#555', cursor: 'pointer' }}>
-          <input type="checkbox" checked={notifyStudents} onChange={e => setNotifyStudents(e.target.checked)} />
-          Notify students
-        </label>
         <Button type="button" onClick={onCancel}>Cancel</Button>
         <Button type="submit" variant="primary" disabled={saving}>
           {saving ? 'Saving…' : initialQuiz ? 'Save Changes' : 'Create PDF Quiz'}

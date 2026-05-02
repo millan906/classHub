@@ -12,12 +12,12 @@ export default function StudentQA() {
 
   async function handlePost(title: string, body: string, tag: string, isPrivate: boolean) {
     if (!profile) return
-    await postQuestion(title, body, tag, profile.id, isPrivate)
+    await postQuestion(title, body, tag, profile.id, isPrivate, profile.role)
   }
 
   async function handleAnswer(questionId: string, body: string) {
     if (!profile) return
-    await postAnswer(questionId, body, profile.id)
+    await postAnswer(questionId, body, profile.id, profile.role)
   }
 
   if (!profile) return null

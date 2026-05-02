@@ -23,7 +23,6 @@ import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
 import { PdfQuizBuilder } from '../../components/pdfquizzes/PdfQuizBuilder'
 import { PdfQuizResults } from '../../components/pdfquizzes/PdfQuizResults'
 import { Toast } from '../../components/ui/Toast'
-import { sendNotificationsToStudents } from '../../hooks/useNotifications'
 import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } from '../../types'
 
 export default function FacultyQuizzes() {
@@ -164,14 +163,6 @@ export default function FacultyQuizzes() {
     }
     setShowBuilder(false)
     showToast('Quiz created!')
-    if (data.notifyStudents) {
-      const course = courses.find(c => c.id === data.courseId)
-      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
-      const typeLabel = TYPE_CONFIG[data.itemType as keyof typeof TYPE_CONFIG]?.label ?? 'Assessment'
-      const dueStr = data.dueDate ? ` · Due ${new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `A new ${typeLabel} has been posted${dueStr}. Open Assessments to view it.`
-      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `New assessment: ${data.title}`, body, 'quiz_created', quizId, courseLabel)
-    }
   }
 
   async function handleUpdate(quizId: string, data: QuizFormData) {
@@ -191,14 +182,6 @@ export default function FacultyQuizzes() {
     }
     setEditingQuiz(null)
     showToast('Quiz updated!')
-    if (data.notifyStudents) {
-      const course = courses.find(c => c.id === data.courseId)
-      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
-      const typeLabel = TYPE_CONFIG[data.itemType as keyof typeof TYPE_CONFIG]?.label ?? 'Assessment'
-      const dueStr = data.dueDate ? ` · Due ${new Date(data.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `${typeLabel} "${data.title}" has been updated${dueStr}. Please review the changes.`
-      await sendNotificationsToStudents(enrolledForCourse(data.courseId).map(s => s.id), `Assessment updated: ${data.title}`, body, 'quiz_updated', quizId, courseLabel)
-    }
   }
 
   async function handleSaveEssayScores(
@@ -267,13 +250,6 @@ export default function FacultyQuizzes() {
     }
     setShowPdfBuilder(false)
     showToast('Assessment created!')
-    if (formData.notifyStudents) {
-      const course = courses.find(c => c.id === formData.courseId)
-      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
-      const dueStr = formData.dueDate ? ` · Due ${new Date(formData.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `A new paper assessment has been posted${dueStr}. Open Assessments to view it.`
-      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `New assessment: ${formData.title}`, body, 'quiz_created', quizId, courseLabel)
-    }
   }
 
   async function handleUpdatePdf(file: File | undefined, formData: PdfQuizFormData) {
@@ -281,13 +257,6 @@ export default function FacultyQuizzes() {
     await updatePdfQuiz(editingPdfQuiz.id, formData, file, profile.id)
     setEditingPdfQuiz(null)
     showToast('Assessment updated!')
-    if (formData.notifyStudents) {
-      const course = courses.find(c => c.id === formData.courseId)
-      const courseLabel = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
-      const dueStr = formData.dueDate ? ` · Due ${new Date(formData.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''
-      const body = `Paper assessment "${formData.title}" has been updated${dueStr}. Please review the changes.`
-      await sendNotificationsToStudents(enrolledForCourse(formData.courseId).map(s => s.id), `Assessment updated: ${formData.title}`, body, 'quiz_updated', editingPdfQuiz.id, courseLabel)
-    }
   }
 
   async function syncPdfToGradebook(quiz: PdfQuiz, studentId: string, earned: number) {

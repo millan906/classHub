@@ -163,7 +163,6 @@ export interface QuizFormData {
   gradeGroupId: string | null
   allowFileUpload: boolean
   description: string | null
-  notifyStudents: boolean
   attachmentUrl: string | null
   attachmentName: string | null
   randomizeQuestions: boolean
@@ -275,7 +274,6 @@ export interface PdfQuizFormData {
   openAt: string | null
   closeAt: string | null
   maxAttempts: number
-  notifyStudents: boolean
   instructions: string | null
   answerKey: {
     question_number: number
