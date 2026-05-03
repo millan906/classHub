@@ -494,7 +494,7 @@ export default function FacultyQuizzes() {
                         const targetGroup = groups.find(g => g.course_id === targetCourseId && g.name === sourceGroup?.name)
                         const newQuizId = await copyQuiz(quizId, targetCourseId, profile!.id, targetGroup?.id ?? null)
                         if (targetGroup && newQuizId && sourceQuiz) {
-                          const max = sourceQuiz.total_points ?? sourceQuiz.file_max_points ?? 0
+                          const max = sourceQuiz.file_max_points ?? (sourceQuiz.questions?.reduce((s, q) => s + (q.points ?? 1), 0) ?? 0)
                           await findOrCreateLinkedColumn(newQuizId, sourceQuiz.title, targetGroup.id, max, profile!.id, targetCourseId)
                           showToast('Quiz copied and added to gradebook.')
                         } else {
