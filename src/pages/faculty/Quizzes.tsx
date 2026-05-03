@@ -489,8 +489,17 @@ export default function FacultyQuizzes() {
                       onToggle={toggleQuiz}
                       onReleaseResults={releaseResults}
                       onCopy={async (quizId, targetCourseId) => {
-                        await copyQuiz(quizId, targetCourseId, profile!.id)
-                        showToast('Quiz copied successfully')
+                        const sourceQuiz = quizzes.find(q => q.id === quizId)
+                        const sourceGroup = groups.find(g => g.id === sourceQuiz?.grade_group_id)
+                        const targetGroup = groups.find(g => g.course_id === targetCourseId && g.name === sourceGroup?.name)
+                        const newQuizId = await copyQuiz(quizId, targetCourseId, profile!.id, targetGroup?.id ?? null)
+                        if (targetGroup && newQuizId && sourceQuiz) {
+                          const max = sourceQuiz.total_points ?? sourceQuiz.file_max_points ?? 0
+                          await findOrCreateLinkedColumn(newQuizId, sourceQuiz.title, targetGroup.id, max, profile!.id, targetCourseId)
+                          showToast('Quiz copied and added to gradebook.')
+                        } else {
+                          showToast('Quiz copied, but the target section has no matching grade group — set one up in the Gradebook to link it.', 'error')
+                        }
                       }}
                       onEdit={setEditingQuiz}
                       onDelete={setConfirmDelete}

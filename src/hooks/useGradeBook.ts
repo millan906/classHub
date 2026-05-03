@@ -122,15 +122,7 @@ export function useGradeBook(courseId?: string | null) {
       .order('created_at', { ascending: true })
       .limit(1)
     const existing = rows?.[0] ?? null
-    if (existing) {
-      if (!existing.course_id && quizCourseId) {
-        await supabase.from('grade_columns').update({ course_id: quizCourseId }).eq('id', existing.id)
-        const updated = { ...existing, course_id: quizCourseId } as GradeColumn
-        setColumns(prev => prev.map(c => c.id === existing.id ? updated : c))
-        return updated
-      }
-      return existing as GradeColumn
-    }
+    if (existing) return existing as GradeColumn
     const { data: created, error } = await supabase
       .from('grade_columns')
       .insert({

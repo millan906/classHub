@@ -85,9 +85,16 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, cour
       {isFaculty && (
         <div style={{ display: 'flex', gap: '10px', marginTop: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Button onClick={() => onEdit?.(quiz)}>Edit</Button>
-          <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
-            {quiz.is_open ? 'Close' : 'Open'}
-          </Button>
+          <div>
+            <Button onClick={() => onToggle?.(quiz.id, !quiz.is_open)}>
+              {quiz.is_open ? 'Close' : 'Open'}
+            </Button>
+            {quiz.open_at && (
+              <div style={{ fontSize: '10px', color: '#aaa', marginTop: '3px' }}>
+                Manual · no notification sent
+              </div>
+            )}
+          </div>
           <Button onClick={() => onViewResults?.(quiz)}>Submissions</Button>
           <Button
             onClick={() => onReleaseResults?.(quiz.id, !quiz.results_visible)}

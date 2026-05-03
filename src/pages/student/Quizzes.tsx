@@ -11,6 +11,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { scoreBarColor } from '../../utils/scoreColors'
 import { getSubmissionSignedUrl } from '../../utils/submissionUrl'
 import { viewFile } from '../../utils/viewFile'
+import { supabase } from '../../lib/supabase'
 import { Spinner, PageError } from '../../components/ui/Spinner'
 import { QuizTaker } from '../../components/quizzes/QuizTaker'
 import { PdfQuizTaker } from '../../components/pdfquizzes/PdfQuizTaker'
@@ -35,13 +36,21 @@ export default function StudentQuizzes() {
   const [fileSubMap, setFileSubMap] = useState<Record<string, FileSubmission | null>>({})
   const [fileSignedUrlMap, setFileSignedUrlMap] = useState<Record<string, string>>({})
   const [myExceptions, setMyExceptions] = useState<QuizException[]>([])
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (profile) {
-      fetchMySubmissions(profile.id)
-      fetchMyPdfSubmissions(profile.id)
-      fetchMyExceptions(profile.id).then(setMyExceptions)
-    }
+    if (!profile) return
+    fetchMySubmissions(profile.id)
+    fetchMyPdfSubmissions(profile.id)
+    fetchMyExceptions(profile.id).then(setMyExceptions)
+    const channel = supabase
+      .channel('my-exceptions')
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'quiz_exceptions',
+        filter: `student_id=eq.${profile.id}`,
+      }, () => { fetchMyExceptions(profile.id).then(setMyExceptions) })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
   }, [profile])
 
   const exceptionMap = useMemo(
@@ -196,8 +205,9 @@ export default function StudentQuizzes() {
 
   function getStatus(item: AssessmentItem): AssessmentStatus {
     const hasSubmission = item.isPdf ? item.pdfSubs.length > 0 : item.quizSubs.length > 0
-    if (!hasSubmission && !item.isOpen) return 'missed'
-    if (item.isOpen && item.attemptsUsed < item.maxAttempts) return 'open'
+    const hasException = !item.isPdf && exceptionMap.has(item.id)
+    if (!hasSubmission && !item.isOpen && !hasException) return 'missed'
+    if ((item.isOpen || hasException) && item.attemptsUsed < item.maxAttempts) return 'open'
     if (!hasSubmission) return 'missed'
     if (item.resultsVisible && (item.isPdf ? item.pdfSubs[0]?.earned_points != null : item.bestSub?.earned_points != null)) return 'graded'
     return 'submitted'
@@ -328,6 +338,11 @@ export default function StudentQuizzes() {
                 <span style={{ fontSize: '10px', fontWeight: 500, padding: '2px 8px', borderRadius: '20px', background: statusStyle.bg, color: statusStyle.color }}>
                   {statusStyle.label}
                 </span>
+                {status === 'open' && !item.isOpen && exceptionMap.has(item.id) && (
+                  <span style={{ fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '20px', background: '#fff3e0', color: '#b35c00', border: '0.5px solid #f0a500' }}>
+                    Makeup
+                  </span>
+                )}
                 {courseLabel && (
                   <span style={{ fontSize: '11px', color: '#aaa' }}>{courseLabel}</span>
                 )}
@@ -426,44 +441,36 @@ export default function StudentQuizzes() {
                   {item.attemptsUsed === 0 ? 'Start →' : 'Retake →'}
                 </button>
               )}
-              {status === 'submitted' && (
+              {(status === 'submitted' || status === 'graded') && (
                 <button
                   onClick={() => {
                     const next = isExpanded ? null : item.id
                     setExpandedId(next)
-                    if (next && !item.isPdf && item.quizRef?.allow_file_upload && !(item.id in fileSubMap) && profile) {
-                      fetchMyFileSubmission(item.id, profile.id).then(async f => {
+                    if (next && profile) {
+                      if (!item.isPdf && item.quizRef?.allow_file_upload && !(item.id in fileSubMap)) {
+                        fetchMyFileSubmission(item.id, profile.id).then(async f => {
                           setFileSubMap(prev => ({ ...prev, [item.id]: f }))
                           if (f) {
                             const signedUrl = await getSubmissionSignedUrl(f.file_url).catch(() => f.file_url)
                             setFileSignedUrlMap(prev => ({ ...prev, [item.id]: signedUrl }))
                           }
                         })
+                      }
+                      if (!(item.id in feedbackMap)) {
+                        supabase.from('quiz_feedback')
+                          .select('feedback')
+                          .eq('quiz_id', item.id)
+                          .eq('student_id', profile.id)
+                          .maybeSingle()
+                          .then(({ data }) => {
+                            setFeedbackMap(prev => ({ ...prev, [item.id]: data?.feedback ?? '' }))
+                          })
+                      }
                     }
                   }}
                   style={{ fontSize: '12px', fontWeight: 500, color: '#1ecf96', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
                 >
-                  {isExpanded ? 'Hide ↑' : 'View submission →'}
-                </button>
-              )}
-              {status === 'graded' && (
-                <button
-                  onClick={() => {
-                    const next = isExpanded ? null : item.id
-                    setExpandedId(next)
-                    if (next && !item.isPdf && item.quizRef?.allow_file_upload && !(item.id in fileSubMap) && profile) {
-                      fetchMyFileSubmission(item.id, profile.id).then(async f => {
-                          setFileSubMap(prev => ({ ...prev, [item.id]: f }))
-                          if (f) {
-                            const signedUrl = await getSubmissionSignedUrl(f.file_url).catch(() => f.file_url)
-                            setFileSignedUrlMap(prev => ({ ...prev, [item.id]: signedUrl }))
-                          }
-                        })
-                    }
-                  }}
-                  style={{ fontSize: '12px', fontWeight: 500, color: '#1ecf96', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}
-                >
-                  {isExpanded ? 'Hide ↑' : 'View feedback →'}
+                  {isExpanded ? 'Hide ↑' : status === 'graded' ? 'View feedback →' : 'View submission →'}
                 </button>
               )}
               {status === 'missed' && (
@@ -549,6 +556,12 @@ export default function StudentQuizzes() {
                 </span>
               </div>
             ))}
+          </div>
+        )}
+        {isExpanded && feedbackMap[item.id] && (
+          <div style={{ borderTop: '0.5px solid #f2f0ec', padding: '10px 16px', background: '#fafaf8' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#aaa', marginBottom: '4px' }}>Instructor Feedback</div>
+            <div style={{ fontSize: '13px', color: '#333', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{feedbackMap[item.id]}</div>
           </div>
         )}
       </div>

@@ -89,7 +89,7 @@ export function QuizBuilder({ slides, courses, groups = [], onCreate, onCancel, 
   const [error, setError] = useState('')
 
   const [questions, setQuestions] = useState<DraftQuestion[]>(
-    initialQuiz?.questions?.map(q => ({
+    [...(initialQuiz?.questions ?? [])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)).map(q => ({
       question_text: q.question_text,
       type: q.type ?? 'mcq',
       options: Array.isArray(q.options) && q.options.length > 0 ? q.options : makeMcqOptions(),

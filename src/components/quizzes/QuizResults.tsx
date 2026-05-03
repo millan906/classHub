@@ -28,7 +28,7 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
   onSaveEssayScores: (submissionId: string, studentId: string, essayScores: Record<string, number>, earned: number, total: number) => Promise<void>
   onBack: () => void
 }) {
-  const questions = quiz.questions ?? []
+  const questions = [...(quiz.questions ?? [])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
   const essayQuestions = questions.filter(q => q.type === 'essay')
   const hasEssay = essayQuestions.length > 0
 

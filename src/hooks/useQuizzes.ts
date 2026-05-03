@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
 import { withTimeout } from '../utils/withTimeout'
 import { extractSubmissionPath } from '../utils/submissionUrl'
-import { fireQuizOpenEmail } from './useNotifications'
 import type { Quiz, QuizSubmission, FileSubmission, QuizFormData, QuizException } from '../types'
 
 export function useQuizzes() {
@@ -125,7 +124,11 @@ export function useQuizzes() {
 
   async function toggleQuiz(id: string, isOpen: boolean) {
     const quiz = quizzes.find(q => q.id === id)
-    const updates: Record<string, unknown> = { is_open: isOpen }
+    const updates: Record<string, unknown> = {
+      is_open: isOpen,
+      open_notif_sent: false,
+      reminder_notif_sent: false,
+    }
     // If manually reopening after the deadline has passed, clear close_at so the
     // scheduler doesn't auto-close it again within the next minute.
     if (isOpen && quiz?.close_at && new Date(quiz.close_at) <= new Date()) {
@@ -133,55 +136,6 @@ export function useQuizzes() {
     }
     await supabase.from('quizzes').update(updates).eq('id', id)
     setQuizzes(prev => prev.map(q => q.id === id ? { ...q, ...updates } : q))
-
-    if (quiz?.course_id) {
-      const [{ data: enrollments }, { data: course }] = await Promise.all([
-        supabase.from('course_enrollments').select('student_id').eq('course_id', quiz.course_id),
-        supabase.from('courses').select('name, section').eq('id', quiz.course_id).single(),
-      ])
-      const ids = (enrollments ?? []).map((e: { student_id: string }) => e.student_id).filter(Boolean)
-      const courseName = course ? `${course.name}${course.section ? ` · Section ${course.section}` : ''}` : ''
-      const typeLabel = quiz.item_type
-        ? quiz.item_type.charAt(0).toUpperCase() + quiz.item_type.slice(1)
-        : 'Assessment'
-
-      if (ids.length > 0) {
-        if (isOpen) {
-          const dueStr = quiz.due_date
-            ? ` · Due ${new Date(quiz.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-            : ''
-          await supabase.from('notifications').insert(
-            ids.map(uid => ({
-              user_id: uid,
-              title: `${quiz.title} is now open`,
-              body: `${typeLabel} is now available${dueStr}. Head to Assessments to begin.`,
-              type: 'quiz_open',
-              related_id: id,
-              course_name: courseName || null,
-            }))
-          )
-        } else {
-          await supabase.from('notifications').insert(
-            ids.map(uid => ({
-              user_id: uid,
-              title: `${quiz.title} is now closed`,
-              body: `${typeLabel} is no longer accepting submissions.`,
-              type: 'quiz_close',
-              related_id: id,
-              course_name: courseName || null,
-            }))
-          )
-        }
-      }
-    }
-
-    if (!isOpen) return
-
-    // Email notification on open — refresh session first to ensure a non-expired token
-    const { data: { session } } = await supabase.auth.getSession()
-    const { data: { session: freshSession } } = await supabase.auth.refreshSession()
-    const emailSession = freshSession ?? session
-    if (emailSession) fireQuizOpenEmail(emailSession.access_token, id)
   }
 
   async function submitQuiz(
@@ -344,11 +298,11 @@ export function useQuizzes() {
     return (data ?? []) as QuizException[]
   }
 
-  async function grantException(quizId: string, studentId: string, extraAttempts: number, grantedBy: string): Promise<void> {
+  async function grantException(quizId: string, studentId: string, extraAttempts: number, grantedBy: string, reason?: string): Promise<void> {
     const { error } = await supabase
       .from('quiz_exceptions')
       .upsert(
-        { quiz_id: quizId, student_id: studentId, extra_attempts: extraAttempts, granted_by: grantedBy },
+        { quiz_id: quizId, student_id: studentId, extra_attempts: extraAttempts, granted_by: grantedBy, reason: reason ?? null },
         { onConflict: 'quiz_id,student_id' },
       )
     if (error) throw error
@@ -363,7 +317,7 @@ export function useQuizzes() {
     if (error) throw error
   }
 
-  async function copyQuiz(quizId: string, targetCourseId: string, userId: string) {
+  async function copyQuiz(quizId: string, targetCourseId: string, userId: string, targetGroupId?: string | null) {
     const quiz = quizzes.find(q => q.id === quizId)
     if (!quiz) throw new Error('Quiz not found')
     const { data: newQuiz, error } = await supabase
@@ -380,7 +334,7 @@ export function useQuizzes() {
         max_attempts: quiz.max_attempts ?? 1,
         created_by: userId,
         item_type: quiz.item_type ?? 'quiz',
-        grade_group_id: null, // must not carry over — group belongs to the source course
+        grade_group_id: targetGroupId ?? null,
         allow_file_upload: quiz.allow_file_upload ?? false,
         description: quiz.description ?? null,
         is_open: false,

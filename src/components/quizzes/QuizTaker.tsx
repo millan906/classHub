@@ -159,7 +159,7 @@ function shuffleArray<T>(arr: T[]): T[] {
 export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, existingFile }: QuizTakerProps) {
   const isMobile = useIsMobile()
   const [questions] = useState(() => {
-    const raw = quiz.questions ?? []
+    const raw = [...(quiz.questions ?? [])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
     return quiz.randomize_questions ? shuffleArray(raw) : raw
   })
   const [answers, setAnswers] = useState<Record<string, string>>({})

@@ -328,6 +328,7 @@ export interface QuizException {
   extra_attempts: number
   granted_by: string
   created_at: string
+  reason?: string | null
 }
 
 // ── Attendance ────────────────────────────────────────────────────────────────
