@@ -558,7 +558,7 @@ export default function StudentQuizzes() {
             ))}
           </div>
         )}
-        {isExpanded && feedbackMap[item.id] && (
+        {isExpanded && item.resultsVisible && feedbackMap[item.id] && (
           <div style={{ borderTop: '0.5px solid #f2f0ec', padding: '10px 16px', background: '#fafaf8' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: '#aaa', marginBottom: '4px' }}>Instructor Feedback</div>
             <div style={{ fontSize: '13px', color: '#333', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{feedbackMap[item.id]}</div>
