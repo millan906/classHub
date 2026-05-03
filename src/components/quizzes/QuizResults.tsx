@@ -36,14 +36,6 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
     const scores = submission?.essay_scores ?? {}
     return Object.fromEntries(essayQuestions.map(q => [q.id, String(scores[q.id] ?? '')]))
   })
-  const [saving, setSaving] = useState(false)
-  const [savedMsg, setSavedMsg] = useState(false)
-  const [overridePoints, setOverridePoints] = useState<string>(() =>
-    String(submission?.earned_points ?? getAutoEarned())
-  )
-  const [savingOverride, setSavingOverride] = useState(false)
-  const [savedOverride, setSavedOverride] = useState(false)
-
   function getAutoEarned(): number {
     if (!submission) return 0
     return questions.reduce((sum, q) => {
@@ -56,6 +48,14 @@ function SubmissionDetail({ quiz, submission, student, onSaveEssayScores, onBack
   function getTotalPoints(): number {
     return questions.reduce((sum, q) => sum + (q.points ?? 1), 0)
   }
+
+  const [saving, setSaving] = useState(false)
+  const [savedMsg, setSavedMsg] = useState(false)
+  const [overridePoints, setOverridePoints] = useState<string>(() =>
+    String(submission?.earned_points ?? getAutoEarned())
+  )
+  const [savingOverride, setSavingOverride] = useState(false)
+  const [savedOverride, setSavedOverride] = useState(false)
 
   async function handleSave() {
     if (!submission) return
