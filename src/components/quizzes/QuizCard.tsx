@@ -89,7 +89,7 @@ export function QuizCard({ quiz, submissions, totalStudents = 0, isFaculty, cour
             {quiz.is_open ? 'Close' : 'Open'}
           </Button>
           {quiz.open_at && (
-            <span style={{ fontSize: '10px', color: '#bbb', fontStyle: 'italic' }}>
+            <span style={{ fontSize: '10px', color: '#bbb', fontStyle: 'italic', marginTop: '6px' }}>
               Manual · no notif
             </span>
           )}

@@ -19,13 +19,16 @@ export function useNotifications(userId: string | null) {
 
   async function fetchNotifications() {
     if (!userId) return
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
     const { data } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(50)
-    const items = data || []
+    const items = (data || []).filter((n: AppNotification) =>
+      n.created_at >= cutoff || n.type === 'quiz_open' || n.type === 'quiz_reminder'
+    )
     setNotifications(items)
     setUnreadCount(items.filter((n: AppNotification) => !n.read).length)
   }
