@@ -147,7 +147,15 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
             )}
           </div>
         </div>
-        {question.is_private && (
+        {question.recipient_ids && question.recipient_ids.length > 0 && isFaculty && (
+          <span style={{
+            fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
+            background: '#EFF6FF', color: '#1D4ED8', flexShrink: 0,
+          }}>
+            → {question.recipient_ids.length === 1 ? '1 student' : `${question.recipient_ids.length} students`}
+          </span>
+        )}
+        {question.is_private && !question.recipient_ids?.length && (
           <span style={{
             fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
             background: '#F3F0FF', color: '#5B4FCF', flexShrink: 0,

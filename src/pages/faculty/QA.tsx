@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useQA } from '../../hooks/useQA'
+import { useCourses } from '../../hooks/useCourses'
+import { useStudents } from '../../hooks/useStudents'
+import { useAllEnrollments } from '../../hooks/useEnrollments'
 import { PageHeader } from '../../components/ui/Card'
 import { PostQuestion } from '../../components/qa/PostQuestion'
 import { QACard } from '../../components/qa/QACard'
@@ -9,12 +12,27 @@ import { QACard } from '../../components/qa/QACard'
 export default function FacultyQA() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { questions, loadingMore, hasMore, loadMore, error: qaError, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer } = useQA(institution?.id)
+  const [courseFilter, setCourseFilter] = useState<string | null>(null)
   const [pageError, setPageError] = useState('')
 
-  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean) {
+  const { questions: allQuestions, loadingMore, hasMore, loadMore, error: qaError, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer } = useQA(institution?.id)
+  const { courses } = useCourses(institution?.id, profile?.id)
+  const { students } = useStudents(institution?.id)
+  const { enrollments: allEnrollments } = useAllEnrollments()
+
+  const approvedStudents = students.filter(s => s.status === 'approved')
+
+  // Client-side course filter for the question list
+  const enrolledInFilter = courseFilter
+    ? new Set(allEnrollments.filter(e => e.course_id === courseFilter).map(e => e.student_id))
+    : null
+  const questions = enrolledInFilter
+    ? allQuestions.filter(q => q.course_id === courseFilter || enrolledInFilter.has(q.posted_by))
+    : allQuestions
+
+  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean, courseId?: string | null, recipientIds?: string[] | null) {
     if (!profile) return
-    await postQuestion(title, body, tag, profile.id, isPrivate, profile.role)
+    await postQuestion(title, body, tag, profile.id, isPrivate, profile.role, courseId, recipientIds)
   }
 
   async function handleAnswer(questionId: string, body: string) {
@@ -36,19 +54,45 @@ export default function FacultyQA() {
   return (
     <div>
       <PageHeader title="Q&A" subtitle="Answer student questions." />
+
       {(qaError || pageError) && (
         <div style={{ margin: '0 0 12px', padding: '10px 14px', background: '#FEE2E2', border: '0.5px solid #FCA5A5', borderRadius: '8px', fontSize: '13px', color: '#991B1B' }}>
           {qaError || pageError}
         </div>
       )}
-      <PostQuestion onPost={handlePost} />
+
+      {/* Course filter */}
+      {courses.length > 0 && (
+        <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '12px', color: '#888', flexShrink: 0 }}>Filter by course:</span>
+          <select
+            value={courseFilter ?? ''}
+            onChange={e => setCourseFilter(e.target.value || null)}
+            style={{
+              fontSize: '12px', padding: '5px 10px', borderRadius: '8px',
+              border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff',
+              fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+            }}
+          >
+            <option value=''>All courses</option>
+            {courses.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}{c.section ? ` — ${c.section}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <PostQuestion onPost={handlePost} courses={courses} students={approvedStudents} allEnrollments={allEnrollments} />
+
       {questions.length === 0
         ? <div style={{ fontSize: '13px', color: '#888' }}>No questions yet.</div>
         : questions.map(q => (
             <QACard
               key={q.id}
               question={q}
-              currentProfile={profile!}
+              currentProfile={profile}
               onAnswer={handleAnswer}
               onEndorse={endorseAnswer}
               onUpdate={updateQuestion}
@@ -57,6 +101,7 @@ export default function FacultyQA() {
             />
           ))
       }
+
       {hasMore && (
         <div style={{ textAlign: 'center', marginTop: '12px' }}>
           <button onClick={loadMore} disabled={loadingMore} style={{

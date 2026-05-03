@@ -72,10 +72,20 @@ export function useQA(institutionId?: string | null) {
     return () => { supabase.removeChannel(channel) }
   }, [institutionId])
 
-  async function postQuestion(title: string, body: string, tag: string, userId: string, isPrivate = false, posterRole?: string) {
+  async function postQuestion(
+    title: string, body: string, tag: string, userId: string,
+    isPrivate = false, posterRole?: string,
+    courseId?: string | null, recipientIds?: string[] | null,
+  ) {
+    const isDM = recipientIds && recipientIds.length > 0
     const { data } = await supabase
       .from('questions')
-      .insert({ title, body, tag: tag || null, posted_by: userId, is_private: isPrivate })
+      .insert({
+        title, body, tag: tag || null, posted_by: userId,
+        is_private: isDM ? true : isPrivate,
+        course_id: courseId ?? null,
+        recipient_ids: isDM ? recipientIds : null,
+      })
       .select('id')
       .single()
     if (data) {
@@ -83,8 +93,25 @@ export function useQA(institutionId?: string | null) {
       if (q) setQuestions(prev => [q, ...prev])
     }
 
-    // Notify all faculty when a student posts a question
-    if (posterRole === 'student' && data) {
+    if (!data) return
+
+    // DM: notify each recipient
+    if (isDM && recipientIds) {
+      await supabase.from('notifications').insert(
+        recipientIds.map(uid => ({
+          user_id: uid,
+          title: 'New message from faculty',
+          body: `"${title}" — your instructor sent you a direct message.`,
+          type: 'qa_new_question',
+          related_id: data.id,
+          course_name: null,
+        }))
+      )
+      return
+    }
+
+    // Student post: notify all faculty
+    if (posterRole === 'student') {
       const { data: faculty } = await supabase
         .from('profiles')
         .select('id')

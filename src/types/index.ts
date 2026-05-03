@@ -196,6 +196,8 @@ export interface Question {
   posted_by: string
   is_answered: boolean
   is_private: boolean
+  course_id?: string | null
+  recipient_ids?: string[] | null
   created_at: string
   updated_at?: string
   poster?: Profile

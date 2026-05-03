@@ -1,6 +1,8 @@
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useQA } from '../../hooks/useQA'
+import { useCourses } from '../../hooks/useCourses'
+import { useMyEnrollments } from '../../hooks/useEnrollments'
 import { PageHeader } from '../../components/ui/Card'
 import { PostQuestion } from '../../components/qa/PostQuestion'
 import { QACard } from '../../components/qa/QACard'
@@ -9,10 +11,15 @@ export default function StudentQA() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
   const { questions, loadingMore, hasMore, loadMore, error: qaError, postQuestion, updateQuestion, postAnswer } = useQA(institution?.id)
+  const { courses: allCourses } = useCourses(institution?.id)
+  const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
 
-  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean) {
+  // Only show courses the student is enrolled in
+  const enrolledCourses = allCourses.filter(c => enrolledCourseIds.includes(c.id))
+
+  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean, courseId?: string | null) {
     if (!profile) return
-    await postQuestion(title, body, tag, profile.id, isPrivate, profile.role)
+    await postQuestion(title, body, tag, profile.id, isPrivate, profile.role, courseId)
   }
 
   async function handleAnswer(questionId: string, body: string) {
@@ -24,7 +31,9 @@ export default function StudentQA() {
 
   // Defense-in-depth: hide private questions that don't belong to this student.
   // RLS already enforces this server-side; this prevents any accidental client leak.
-  const visibleQuestions = questions.filter(q => !q.is_private || q.posted_by === profile.id)
+  const visibleQuestions = questions.filter(q =>
+    !q.is_private || q.posted_by === profile.id || q.recipient_ids?.includes(profile.id)
+  )
 
   return (
     <div>
@@ -34,7 +43,7 @@ export default function StudentQA() {
           {qaError}
         </div>
       )}
-      <PostQuestion onPost={handlePost} />
+      <PostQuestion onPost={handlePost} courses={enrolledCourses} />
       {visibleQuestions.length === 0
         ? <div style={{ fontSize: '13px', color: '#888' }}>No questions yet. Be the first to ask!</div>
         : visibleQuestions.map(q => (

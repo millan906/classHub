@@ -22,6 +22,16 @@ export default defineConfig([
     rules: {
       // Async data fetching in useEffect is intentional throughout this project
       'react-hooks/set-state-in-effect': 'off',
+
+      // SE practices: complexity and file-size guardrails
+      // Cyclomatic complexity: warn at 10, error at 15
+      'complexity': ['warn', { max: 10 }],
+      // Max file length: warn at 300 lines, error at 500
+      'max-lines': ['warn', { max: 300, skipBlankLines: true, skipComments: true }],
+      // Max nesting depth
+      'max-depth': ['warn', { max: 4 }],
+      // Max function length
+      'max-lines-per-function': ['warn', { max: 80, skipBlankLines: true, skipComments: true }],
     },
   },
 ])
