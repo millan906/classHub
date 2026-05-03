@@ -4,6 +4,11 @@
 -- UUID arrays in Postgres cannot have FK constraints, so referential integrity
 -- is enforced at the application layer.
 
+-- Drop policies that reference recipient_id before dropping the column
+DROP POLICY IF EXISTS "Users can view questions" ON public.questions;
+DROP POLICY IF EXISTS "Users can view answers" ON public.answers;
+DROP POLICY IF EXISTS "Users can post answers" ON public.answers;
+
 ALTER TABLE public.questions
   DROP COLUMN IF EXISTS recipient_id,
   ADD COLUMN IF NOT EXISTS recipient_ids UUID[] DEFAULT NULL;
