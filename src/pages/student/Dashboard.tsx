@@ -201,6 +201,7 @@ export default function StudentDashboard() {
     earnedPoints: number | null
     totalPoints: number | null
     submittedAt: string
+    resultsVisible: boolean
   }
 
   const recentSubmissions: RecentSub[] = useMemo(() => [
@@ -213,6 +214,7 @@ export default function StudentDashboard() {
         earnedPoints: s.earned_points ?? null,
         totalPoints: s.total_points ?? null,
         submittedAt: s.submitted_at,
+        resultsVisible: quiz?.results_visible ?? false,
       }
     }),
     ...pdfSubmissions.map(s => {
@@ -224,6 +226,7 @@ export default function StudentDashboard() {
         earnedPoints: s.earned_points ?? null,
         totalPoints: quiz?.total_points ?? null,
         submittedAt: s.submitted_at,
+        resultsVisible: quiz?.results_visible ?? false,
       }
     }),
   ]
@@ -516,7 +519,7 @@ export default function StudentDashboard() {
               {recentSubmissions.length === 0 ? (
                 <div style={{ fontSize: '12px', color: '#aaa' }}>No submissions yet.</div>
               ) : recentSubmissions.map((s, i) => {
-                const isGraded = s.earnedPoints !== null && s.totalPoints !== null && s.totalPoints > 0
+                const isGraded = s.resultsVisible && s.earnedPoints !== null && s.totalPoints !== null && s.totalPoints > 0
                 const pct = isGraded ? (s.earnedPoints! / s.totalPoints!) * 100 : null
                 const badgeStyle = !isGraded
                   ? { bg: '#f5f4f0', color: '#888' }

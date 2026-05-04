@@ -124,10 +124,15 @@ export function useQuizzes() {
 
   async function toggleQuiz(id: string, isOpen: boolean) {
     const quiz = quizzes.find(q => q.id === id)
-    const updates: Record<string, unknown> = {
-      is_open: isOpen,
-      open_notif_sent: false,
-      reminder_notif_sent: false,
+    const updates: Record<string, unknown> = { is_open: isOpen }
+    if (isOpen) {
+      // Reset flags so the scheduler sends the open/reminder notifications again
+      updates.open_notif_sent = false
+      updates.reminder_notif_sent = false
+    } else {
+      // Mark both flags sent so the scheduler doesn't re-open and re-notify
+      updates.open_notif_sent = true
+      updates.reminder_notif_sent = true
     }
     // If manually reopening after the deadline has passed, clear close_at so the
     // scheduler doesn't auto-close it again within the next minute.
