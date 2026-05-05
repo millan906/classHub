@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { humanizeError } from '../utils/humanizeError'
 import type { GradeGroup, GradeColumn, GradeEntry } from '../types'
 
 // Re-export so existing imports of these types from this file continue to work
@@ -12,6 +13,7 @@ export function useGradeBook(courseId?: string | null) {
   const [entries, setEntries] = useState<GradeEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [realtimeOk, setRealtimeOk] = useState(true)
 
   useEffect(() => {
     fetchAll()
@@ -31,7 +33,9 @@ export function useGradeBook(courseId?: string | null) {
         const deleted = payload.old as { id: string }
         setEntries(prev => prev.filter(e => e.id !== deleted.id))
       })
-      .subscribe()
+      .subscribe((status) => {
+        setRealtimeOk(status === 'SUBSCRIBED')
+      })
     return () => { supabase.removeChannel(channel) }
   }, [courseId])
 
@@ -58,7 +62,7 @@ export function useGradeBook(courseId?: string | null) {
       setColumns(colsRes.data || [])
       setEntries(entsRes.data || [])
     } catch (err) {
-      setError((err as { message?: string })?.message ?? 'Failed to load grade book')
+      setError(humanizeError(err, 'Failed to load grade book.'))
     } finally {
       setLoading(false)
     }
@@ -209,7 +213,7 @@ export function useGradeBook(courseId?: string | null) {
   }
 
   return {
-    groups, columns, entries, loading, error,
+    groups, columns, entries, loading, error, realtimeOk,
     addGroup, updateGroup, deleteGroup,
     addColumn, findOrCreateLinkedColumn, updateColumnMaxScore, releaseColumn, deleteColumn,
     upsertEntry, batchUpsertEntries,

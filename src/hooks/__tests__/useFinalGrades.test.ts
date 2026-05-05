@@ -90,10 +90,10 @@ describe('useFinalGrades', () => {
   })
 
   it('exposes error on fetch failure', async () => {
-    mockSupabase.from.mockReturnValue(makeChainable({ data: null, error: { message: 'permission denied' } }))
+    mockSupabase.from.mockReturnValue(makeChainable({ data: null, error: { message: 'permission denied', code: '42501' } }))
     const { result } = renderHook(() => useFinalGrades())
     await waitFor(() => expect(result.current.loading).toBe(false))
-    expect(result.current.error).toBe('permission denied')
+    expect(result.current.error).toBe("You don't have permission to do that.")
   })
 
   it('cleans up realtime channel on unmount', async () => {

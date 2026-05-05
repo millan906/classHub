@@ -573,7 +573,7 @@ export default function FacultyGradeBook() {
   const [exceptionsCol, setExceptionsCol] = useState<GradeColumn | null>(null)
   const [colExceptions, setColExceptions] = useState<QuizException[]>([])
 
-  const { groups, columns, entries, error: gradeBookError, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, releaseColumn, deleteColumn, upsertEntry, batchUpsertEntries, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
+  const { groups, columns, entries, error: gradeBookError, realtimeOk, addGroup, updateGroup, deleteGroup, addColumn, updateColumnMaxScore, releaseColumn, deleteColumn, upsertEntry, batchUpsertEntries, findOrCreateLinkedColumn } = useGradeBook(selectedCourseId)
 
   useEffect(() => {
     fetchAllSubmissions()
@@ -707,6 +707,16 @@ export default function FacultyGradeBook() {
 
   return (
     <div>
+      {!realtimeOk && (
+        <div style={{
+          background: '#FFF3CD', color: '#856404', fontSize: '12px',
+          padding: '8px 16px', borderBottom: '1px solid #FFE69C',
+          display: 'flex', alignItems: 'center', gap: '8px',
+        }}>
+          <span>⚠</span>
+          <span>Live updates disconnected — scores may be out of date. Refresh the page if this persists.</span>
+        </div>
+      )}
       {confirmDeleteCol && (
         <ConfirmDialog
           title="Remove column"

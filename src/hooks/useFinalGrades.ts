@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { percentageToGWA } from '../utils/gwaConversion'
+import { humanizeError } from '../utils/humanizeError'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -42,7 +43,7 @@ export function useFinalGrades() {
       setFinalGrades(rows)
       setHasMore(rows.length === PAGE_SIZE)
     } catch (err) {
-      setError((err as { message?: string })?.message ?? 'Failed to load final grades')
+      setError(humanizeError(err, 'Failed to load final grades.'))
     } finally {
       setLoading(false)
     }

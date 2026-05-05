@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
+import { humanizeError } from '../utils/humanizeError'
 import { withTimeout } from '../utils/withTimeout'
 import { extractSubmissionPath } from '../utils/submissionUrl'
 import type { Quiz, QuizSubmission, FileSubmission, QuizFormData, QuizException } from '../types'
@@ -36,7 +37,7 @@ export function useQuizzes(createdBy?: string) {
       quizIdsRef.current = rows.map(q => q.id)
       setQuizzes(rows)
     } catch (err) {
-      setError((err as { message?: string })?.message ?? 'Failed to load assessments')
+      setError(humanizeError(err, 'Failed to load assessments.'))
     } finally {
       setLoading(false)
     }
@@ -44,7 +45,7 @@ export function useQuizzes(createdBy?: string) {
 
   async function fetchMySubmissions(studentId: string) {
     const { data, error: err } = await supabase.from('quiz_submissions').select('*').eq('student_id', studentId)
-    if (err) { setError(err.message); return }
+    if (err) { setError(humanizeError(err)); return }
     setSubmissions(data || [])
   }
 
@@ -55,7 +56,7 @@ export function useQuizzes(createdBy?: string) {
     // submissions from other faculty or institutions at scale
     if (ids.length > 0) query = query.in('quiz_id', ids) as typeof query
     const { data, error: err } = await query
-    if (err) { setError(err.message); return }
+    if (err) { setError(humanizeError(err)); return }
     setSubmissions(data || [])
   }
 

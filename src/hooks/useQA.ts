@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { humanizeError } from '../utils/humanizeError'
 import type { Question } from '../types'
 
 const PAGE_SIZE = 20
@@ -28,7 +29,7 @@ export function useQA(institutionId?: string | null) {
       setHasMore(rows.length === count)
       loadedCountRef.current = count
     } catch (err) {
-      setError((err as { message?: string })?.message ?? 'Failed to load questions')
+      setError(humanizeError(err, 'Failed to load questions.'))
     } finally {
       setLoading(false)
     }

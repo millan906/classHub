@@ -91,10 +91,10 @@ describe('useQuizzes', () => {
   })
 
   it('exposes error when fetch fails', async () => {
-    mockSupabase.from.mockReturnValue(makeChainable({ data: null, error: { message: 'access denied' } }))
+    mockSupabase.from.mockReturnValue(makeChainable({ data: null, error: { message: 'Failed to fetch' } }))
     const { result } = renderHook(() => useQuizzes())
     await waitFor(() => expect(result.current.loading).toBe(false))
-    expect(result.current.error).toBe('access denied')
+    expect(result.current.error).toBe('Connection problem. Please check your internet and try again.')
   })
 
   it('re-fetches when createdBy changes', async () => {

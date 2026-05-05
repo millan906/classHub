@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { withTimeout } from '../utils/withTimeout'
+import { humanizeError } from '../utils/humanizeError'
 import type { Slide } from '../types'
 
 export function useSlides(institutionId?: string | null) {
@@ -26,7 +27,7 @@ export function useSlides(institutionId?: string | null) {
       if (err) throw err
       setSlides(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load slides')
+      setError(humanizeError(err, 'Failed to load slides.'))
     } finally {
       setLoading(false)
     }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useStudents } from '../../hooks/useStudents'
@@ -30,11 +30,37 @@ export default function FacultyStudents() {
   const [sortBy, setSortBy] = useState<'first_asc' | 'first_desc' | 'last_asc' | 'last_desc'>('last_asc')
   const [viewingStudent, setViewingStudent] = useState<Profile | null>(null)
 
-  const pending = students.filter(s => s.status === 'pending')
-  const enrolled = students.filter(s => s.status === 'approved')
-  const rejected = students.filter(s => s.status === 'rejected')
-  const openCourses = courses.filter(c => c.status === 'open')
+  const pending = useMemo(() => students.filter(s => s.status === 'pending'), [students])
+  const enrolled = useMemo(() => students.filter(s => s.status === 'approved'), [students])
+  const rejected = useMemo(() => students.filter(s => s.status === 'rejected'), [students])
+  const openCourses = useMemo(() => courses.filter(c => c.status === 'open'), [courses])
 
+  // O(1) lookup: student_id → course_id[] — replaces O(n²) enrollments.some() in the filter loop
+  const enrollmentsByCourse = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const e of enrollments) {
+      if (!map.has(e.student_id)) map.set(e.student_id, new Set())
+      map.get(e.student_id)!.add(e.course_id)
+    }
+    return map
+  }, [enrollments])
+
+  const visibleStudents = useMemo(() => {
+    let visible = enrolled
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      visible = visible.filter(s => s.full_name.toLowerCase().includes(q))
+    }
+    if (filterCourseId !== 'all') {
+      visible = visible.filter(s => enrollmentsByCourse.get(s.id)?.has(filterCourseId))
+    }
+    return [...visible].sort((a, b) => {
+      const last = (n: string) => n.trim().split(' ').slice(-1)[0] ?? n
+      const first = (n: string) => n.trim().split(' ')[0] ?? n
+      const [ka, kb] = sortBy.startsWith('last') ? [last(a.full_name), last(b.full_name)] : [first(a.full_name), first(b.full_name)]
+      return sortBy.endsWith('desc') ? kb.localeCompare(ka) : ka.localeCompare(kb)
+    })
+  }, [enrolled, searchQuery, filterCourseId, sortBy, enrollmentsByCourse])
 
   function startApproving(studentId: string) {
     setApprovingId(studentId)
@@ -67,8 +93,8 @@ export default function FacultyStudents() {
   }
 
   function getStudentCourses(studentId: string): Course[] {
-    const ids = enrollments.filter(e => e.student_id === studentId).map(e => e.course_id)
-    return courses.filter(c => ids.includes(c.id))
+    const ids = enrollmentsByCourse.get(studentId) ?? new Set()
+    return courses.filter(c => ids.has(c.id))
   }
 
   // ── Student detail view ──────────────────────────────────────────────────────
@@ -337,31 +363,18 @@ export default function FacultyStudents() {
           {courses.map(c => <option key={c.id} value={c.id}>{c.name}{c.section ? ` · ${c.section}` : ''}</option>)}
         </select>
       </div>
-      {(() => {
-        let visible = enrolled
-        if (searchQuery.trim()) {
-          const q = searchQuery.trim().toLowerCase()
-          visible = visible.filter(s => s.full_name.toLowerCase().includes(q))
-        }
-        if (filterCourseId !== 'all') visible = visible.filter(s => enrollments.some(e => e.student_id === s.id && e.course_id === filterCourseId))
-        visible = [...visible].sort((a, b) => {
-          const last = (n: string) => n.trim().split(' ').slice(-1)[0] ?? n
-          const first = (n: string) => n.trim().split(' ')[0] ?? n
-          const [ka, kb] = sortBy.startsWith('last') ? [last(a.full_name), last(b.full_name)] : [first(a.full_name), first(b.full_name)]
-          return sortBy.endsWith('desc') ? kb.localeCompare(ka) : ka.localeCompare(kb)
-        })
-        return visible.length === 0
-          ? <div style={{ fontSize: '13px', color: '#888' }}>No students match the selected filters.</div>
-          : visible.map(s => (
-              <EnrolledStudentCard
-                key={s.id}
-                student={s}
-                assignedCourses={getStudentCourses(s.id)}
-                onClick={() => setViewingStudent(s)}
-                onUnenroll={courseId => unenrollStudent(courseId, s.id)}
-              />
-            ))
-      })()}
+      {visibleStudents.length === 0
+        ? <div style={{ fontSize: '13px', color: '#888' }}>No students match the selected filters.</div>
+        : visibleStudents.map(s => (
+            <EnrolledStudentCard
+              key={s.id}
+              student={s}
+              assignedCourses={getStudentCourses(s.id)}
+              onClick={() => setViewingStudent(s)}
+              onUnenroll={courseId => unenrollStudent(courseId, s.id)}
+            />
+          ))
+      }
 
       {/* ── Rejected ── */}
       {rejected.length > 0 && (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
+import { humanizeError } from '../utils/humanizeError'
 import { withTimeout } from '../utils/withTimeout'
 import { fireQuizOpenEmail } from './useNotifications'
 import type { PdfQuiz, PdfQuizSubmission, PdfQuizFormData, Profile } from '../types'
@@ -30,7 +31,7 @@ export function usePdfQuizzes() {
       if (err) throw err
       setPdfQuizzes(data || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load PDF quizzes')
+      setError(humanizeError(err, 'Failed to load PDF quizzes.'))
     } finally {
       setLoading(false)
     }

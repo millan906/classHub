@@ -40,58 +40,70 @@ export default function FacultyDashboard() {
     })
   }, [courses])
 
-  const enrolled = students.filter(s => s.status === 'approved')
-  const pending = students.filter(s => s.status === 'pending')
-  const openQuestions = questions.filter(q => !q.is_answered).length
+  const enrolled = useMemo(() => students.filter(s => s.status === 'approved'), [students])
+  const pending = useMemo(() => students.filter(s => s.status === 'pending'), [students])
+  const openQuestions = useMemo(() => questions.filter(q => !q.is_answered).length, [questions])
 
   // ── Course-scoped helpers (defined first — used by all calculations below) ─
-  const courseStudentIds: Set<string> = selectedCourseId === 'all'
-    ? new Set(enrolled.map(s => s.id))
-    : new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.student_id))
+  const courseStudentIds = useMemo<Set<string>>(() =>
+    selectedCourseId === 'all'
+      ? new Set(enrolled.map(s => s.id))
+      : new Set(enrollments.filter(e => e.course_id === selectedCourseId).map(e => e.student_id)),
+    [selectedCourseId, enrolled, enrollments],
+  )
 
   const courseEnrolledCount = courseStudentIds.size
 
-  const courseQuizzes = selectedCourseId === 'all'
-    ? quizzes
-    : quizzes.filter(q => q.course_id === selectedCourseId)
+  const courseQuizzes = useMemo(() =>
+    selectedCourseId === 'all'
+      ? quizzes
+      : quizzes.filter(q => q.course_id === selectedCourseId),
+    [selectedCourseId, quizzes],
+  )
 
   // ── Essays pending grading (scoped to selected course) ────────────────────
-  const courseQuizIds = new Set(courseQuizzes.map(q => q.id))
-  const essayPendingCount = submissions.filter(sub => {
-    if (!courseQuizIds.has(sub.quiz_id)) return false
-    const quiz = quizzes.find(q => q.id === sub.quiz_id)
-    if (!quiz) return false
-    return (quiz.questions ?? []).some(q => q.type === 'essay') && !sub.essay_scores
-  }).length
-
-  // ── Assessments closing soon within 48 hrs (scoped to selected course) ────
-  const now = Date.now()
-  const in48h = now + 48 * 60 * 60 * 1000
-  const closingSoon = courseQuizzes.filter(q =>
-    q.is_open && q.due_date &&
-    new Date(q.due_date).getTime() <= in48h &&
-    new Date(q.due_date).getTime() > now
-  )
+  const { essayPendingCount, courseQuizIds, closingSoon } = useMemo(() => {
+    const now = Date.now()
+    const in48h = now + 48 * 60 * 60 * 1000
+    const ids = new Set(courseQuizzes.map(q => q.id))
+    const quizMap = new Map(quizzes.map(q => [q.id, q]))
+    const essayCount = submissions.filter(sub => {
+      if (!ids.has(sub.quiz_id)) return false
+      const quiz = quizMap.get(sub.quiz_id)
+      if (!quiz) return false
+      return (quiz.questions ?? []).some(q => q.type === 'essay') && !sub.essay_scores
+    }).length
+    const soon = courseQuizzes.filter(q =>
+      q.is_open && q.due_date &&
+      new Date(q.due_date).getTime() <= in48h &&
+      new Date(q.due_date).getTime() > now
+    )
+    return { essayPendingCount: essayCount, courseQuizIds: ids, closingSoon: soon }
+  }, [courseQuizzes, quizzes, submissions])
 
   // ── Students with no submissions in the selected course ───────────────────
-  const submittedInCourseIds = new Set(
-    submissions.filter(s => courseQuizIds.has(s.quiz_id)).map(s => s.student_id)
-  )
-  const noSubmissionStudents = enrolled.filter(s =>
-    courseStudentIds.has(s.id) && !submittedInCourseIds.has(s.id)
-  )
+  const { submittedInCourseIds, noSubmissionStudents } = useMemo(() => {
+    const submitted = new Set(
+      submissions.filter(s => courseQuizIds.has(s.quiz_id)).map(s => s.student_id)
+    )
+    const noSubs = enrolled.filter(s => courseStudentIds.has(s.id) && !submitted.has(s.id))
+    return { submittedInCourseIds: submitted, noSubmissionStudents: noSubs }
+  }, [submissions, courseQuizIds, enrolled, courseStudentIds])
 
-  // Latest assessment for selected course
-  const latestQuiz = courseQuizzes[0] ?? null
-  const latestQuizSubs = latestQuiz
-    ? submissions.filter(s => s.quiz_id === latestQuiz.id && courseStudentIds.has(s.student_id))
-    : []
-  const submissionRate = courseEnrolledCount > 0 && latestQuiz
-    ? Math.round((latestQuizSubs.length / courseEnrolledCount) * 100)
-    : 0
-  const avgScore = latestQuizSubs.length > 0
-    ? Math.round(latestQuizSubs.reduce((a, s) => a + (s.score ?? 0), 0) / latestQuizSubs.length)
-    : 0
+  // ── Latest assessment stats for selected course ───────────────────────────
+  const { latestQuiz, latestQuizSubs, submissionRate, avgScore } = useMemo(() => {
+    const latest = courseQuizzes[0] ?? null
+    const subs = latest
+      ? submissions.filter(s => s.quiz_id === latest.id && courseStudentIds.has(s.student_id))
+      : []
+    const rate = courseEnrolledCount > 0 && latest
+      ? Math.round((subs.length / courseEnrolledCount) * 100)
+      : 0
+    const avg = subs.length > 0
+      ? Math.round(subs.reduce((a, s) => a + (s.score ?? 0), 0) / subs.length)
+      : 0
+    return { latestQuiz: latest, latestQuizSubs: subs, submissionRate: rate, avgScore: avg }
+  }, [courseQuizzes, submissions, courseStudentIds, courseEnrolledCount])
 
   // ── Weighted grade helpers (mirrors GradeBook exactly) ───────────────────
   const entryMap = useMemo(
@@ -114,7 +126,6 @@ export default function FacultyDashboard() {
       else dist.low++
     }
     return dist
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseStudentIds, groups, columns, entryMap])
   const chartData = [
     { name: 'Low  0–49%',  count: distribution.low,  color: '#EF4444' },
