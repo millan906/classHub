@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { calcScore } from '../utils/gradeCalculations'
 import { withTimeout } from '../utils/withTimeout'
@@ -10,6 +10,8 @@ export function useQuizzes(createdBy?: string) {
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  // Tracks loaded quiz IDs so fetchAllSubmissions can scope without a timing dependency
+  const quizIdsRef = useRef<string[]>([])
 
   useEffect(() => {
     fetchQuizzes()
@@ -30,7 +32,9 @@ export function useQuizzes(createdBy?: string) {
       if (createdBy) query = query.eq('created_by', createdBy) as typeof query
       const { data, error: err } = await query
       if (err) throw err
-      setQuizzes(data || [])
+      const rows = data || []
+      quizIdsRef.current = rows.map(q => q.id)
+      setQuizzes(rows)
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'Failed to load assessments')
     } finally {
@@ -45,7 +49,12 @@ export function useQuizzes(createdBy?: string) {
   }
 
   async function fetchAllSubmissions() {
-    const { data, error: err } = await supabase.from('quiz_submissions').select('*')
+    const ids = quizIdsRef.current
+    let query = supabase.from('quiz_submissions').select('*')
+    // Scope to faculty's own quizzes when IDs are available — prevents loading
+    // submissions from other faculty or institutions at scale
+    if (ids.length > 0) query = query.in('quiz_id', ids) as typeof query
+    const { data, error: err } = await query
     if (err) { setError(err.message); return }
     setSubmissions(data || [])
   }

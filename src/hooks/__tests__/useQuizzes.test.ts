@@ -112,6 +112,30 @@ describe('useQuizzes', () => {
     await waitFor(() => expect(fetchCount).toBeGreaterThan(countAfterFirst))
   })
 
+  it('fetchAllSubmissions scopes to loaded quiz IDs', async () => {
+    const fakeQuizzes = [
+      { id: 'q1', title: 'Quiz 1', questions: [] },
+      { id: 'q2', title: 'Quiz 2', questions: [] },
+    ]
+    const quizChain = makeChainable({ data: fakeQuizzes, error: null })
+    const subChain = makeChainable({ data: [], error: null })
+    const inSpy = subChain.in as ReturnType<typeof vi.fn>
+
+    // First call (quizzes fetch) returns quizzes; subsequent calls (submissions) return subChain
+    let callCount = 0
+    mockSupabase.from.mockImplementation(() => {
+      callCount++
+      return callCount === 1 ? quizChain : subChain
+    })
+
+    const { result } = renderHook(() => useQuizzes('fac-1'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await result.current.fetchAllSubmissions()
+
+    expect(inSpy).toHaveBeenCalledWith('quiz_id', ['q1', 'q2'])
+  })
+
   it('cleans up realtime channel on unmount', async () => {
     const { unmount } = renderHook(() => useQuizzes())
     await waitFor(() => {})
