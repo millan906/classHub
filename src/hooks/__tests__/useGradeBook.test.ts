@@ -4,9 +4,6 @@ import { useGradeBook } from '../useGradeBook'
 
 // ── Supabase mock ─────────────────────────────────────────────────────────────
 
-// Store registered handlers so tests can fire simulated realtime events
-const realtimeHandlers: Record<string, (payload: unknown) => void> = {}
-
 type FilterArg = { event: string; table: string }
 type HandlerFn = (payload: unknown) => void
 
@@ -86,13 +83,13 @@ describe('useGradeBook', () => {
   })
 
   it('incremental INSERT: appends new entry without full refetch', async () => {
-    const initialEntry = { id: 'e1', column_id: 'col1', student_id: 's1', value: 80, manually_overridden: false }
+    const initialEntry = { id: 'e1', column_id: 'col1', student_id: 's1', score: 80, manually_overridden: false }
     mockSupabase.from.mockReturnValue(makeChainable({ data: [initialEntry], error: null }))
     const { result } = renderHook(() => useGradeBook())
     await waitFor(() => expect(result.current.loading).toBe(false))
     const fromCallCount = (mockSupabase.from as ReturnType<typeof vi.fn>).mock.calls.length
 
-    const newEntry = { id: 'e2', column_id: 'col1', student_id: 's2', value: 90, manually_overridden: false }
+    const newEntry = { id: 'e2', column_id: 'col1', student_id: 's2', score: 90, manually_overridden: false }
     act(() => {
       getHandler('INSERT', 'grade_entries')?.({ new: newEntry })
     })
@@ -103,23 +100,23 @@ describe('useGradeBook', () => {
   })
 
   it('incremental UPDATE: replaces existing entry by id', async () => {
-    const initialEntry = { id: 'e1', column_id: 'col1', student_id: 's1', value: 80, manually_overridden: false }
+    const initialEntry = { id: 'e1', column_id: 'col1', student_id: 's1', score: 80, manually_overridden: false }
     mockSupabase.from.mockReturnValue(makeChainable({ data: [initialEntry], error: null }))
     const { result } = renderHook(() => useGradeBook())
     await waitFor(() => expect(result.current.loading).toBe(false))
     // Verify initial state
     expect(result.current.entries).toContainEqual(initialEntry)
 
-    const updatedEntry = { ...initialEntry, value: 95 }
+    const updatedEntry = { ...initialEntry, score: 95 }
     act(() => {
       getHandler('UPDATE', 'grade_entries')?.({ new: updatedEntry })
     })
-    expect(result.current.entries.find(e => e.id === 'e1')?.value).toBe(95)
+    expect(result.current.entries.find(e => e.id === 'e1')?.score).toBe(95)
     expect(result.current.entries).toHaveLength(1)
   })
 
   it('incremental DELETE: removes entry by id', async () => {
-    const initialEntry = { id: 'e1', column_id: 'col1', student_id: 's1', value: 80, manually_overridden: false }
+    const initialEntry = { id: 'e1', column_id: 'col1', student_id: 's1', score: 80, manually_overridden: false }
     mockSupabase.from.mockReturnValue(makeChainable({ data: [initialEntry], error: null }))
     const { result } = renderHook(() => useGradeBook())
     await waitFor(() => expect(result.current.loading).toBe(false))

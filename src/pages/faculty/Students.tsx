@@ -16,7 +16,7 @@ import type { Profile, Course } from '../../types'
 export default function FacultyStudents() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { students, loading: studentsLoading, loadingMore, hasMore, loadMore, approveWithCourses, rejectStudent } = useStudents(institution?.id)
+  const { students, loadingMore, hasMore, loadMore, approveWithCourses, rejectStudent } = useStudents(institution?.id)
   const { courses } = useCourses(null, profile?.id)
   const { enrollments, refetch: refetchEnrollments, unenrollStudent } = useAllEnrollments()
   const { quizzes, submissions } = useQuizzes(profile?.id)
