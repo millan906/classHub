@@ -5,7 +5,7 @@ import { withTimeout } from '../utils/withTimeout'
 import { extractSubmissionPath } from '../utils/submissionUrl'
 import type { Quiz, QuizSubmission, FileSubmission, QuizFormData, QuizException } from '../types'
 
-export function useQuizzes() {
+export function useQuizzes(createdBy?: string) {
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [submissions, setSubmissions] = useState<QuizSubmission[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,15 +18,17 @@ export function useQuizzes() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'quizzes' }, fetchQuizzes)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [createdBy])
 
   async function fetchQuizzes() {
     try {
       setError(null)
-      const { data, error: err } = await supabase
+      let query = supabase
         .from('quizzes')
         .select('*, questions:quiz_questions(*)')
         .order('created_at', { ascending: false })
+      if (createdBy) query = query.eq('created_by', createdBy) as typeof query
+      const { data, error: err } = await query
       if (err) throw err
       setQuizzes(data || [])
     } catch (err) {

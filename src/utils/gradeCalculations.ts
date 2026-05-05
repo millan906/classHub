@@ -1,8 +1,8 @@
 import type { GradeGroup, GradeColumn } from '../types'
 
-/** Returns percentage score (0–100), safe for zero-total edge case. */
+/** Returns percentage score (0–100), safe for zero-total edge case. Clamped to 100. */
 export function calcScore(earned: number, total: number): number {
-  return total > 0 ? Math.round((earned / total) * 100) : 0
+  return total > 0 ? Math.min(100, Math.round((earned / total) * 100)) : 0
 }
 
 /**

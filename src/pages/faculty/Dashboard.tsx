@@ -19,7 +19,7 @@ export default function FacultyDashboard() {
   const { profile } = useAuth()
   const { students } = useStudents()
   const { questions } = useQA()
-  const { quizzes, submissions } = useQuizzes()
+  const { quizzes, submissions } = useQuizzes(profile?.id)
   const { groups, columns, entries } = useGradeBook()
   const { enrollments } = useAllEnrollments()
   const { courses } = useCourses(null, profile?.id)

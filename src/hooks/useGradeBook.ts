@@ -19,7 +19,18 @@ export function useGradeBook(courseId?: string | null) {
       .channel('gradebook-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'grade_groups' }, fetchAll)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'grade_columns' }, fetchAll)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'grade_entries' }, fetchAll)
+      // grade_entries handled incrementally to avoid wiping in-progress ScoreCell edits
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'grade_entries' }, (payload) => {
+        setEntries(prev => [...prev, payload.new as GradeEntry])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'grade_entries' }, (payload) => {
+        const updated = payload.new as GradeEntry
+        setEntries(prev => prev.map(e => e.id === updated.id ? updated : e))
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'grade_entries' }, (payload) => {
+        const deleted = payload.old as { id: string }
+        setEntries(prev => prev.filter(e => e.id !== deleted.id))
+      })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [courseId])

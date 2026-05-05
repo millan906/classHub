@@ -20,22 +20,50 @@ export interface MyFinalGrade extends FinalGrade {
   course_name: string
 }
 
+const PAGE_SIZE = 50
+
 // For faculty: full management of all final grades
 export function useFinalGrades() {
   const [finalGrades, setFinalGrades] = useState<FinalGrade[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function fetchAll() {
     try {
       setError(null)
-      const { data, error: err } = await supabase.from('final_grades').select('*')
+      const { data, error: err } = await supabase
+        .from('final_grades')
+        .select('*')
+        .range(0, PAGE_SIZE - 1)
       if (err) throw err
-      if (data) setFinalGrades(data)
+      const rows = data || []
+      setFinalGrades(rows)
+      setHasMore(rows.length === PAGE_SIZE)
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'Failed to load final grades')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function loadMore() {
+    setLoadingMore(true)
+    try {
+      const from = finalGrades.length
+      const { data, error: err } = await supabase
+        .from('final_grades')
+        .select('*')
+        .range(from, from + PAGE_SIZE - 1)
+      if (err) throw err
+      const rows = data || []
+      setFinalGrades(prev => [...prev, ...rows])
+      setHasMore(rows.length === PAGE_SIZE)
+    } catch (_err) {
+      // silent — already showing loaded data
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -105,7 +133,7 @@ export function useFinalGrades() {
     await fetchAll()
   }
 
-  return { finalGrades, loading, error, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse }
+  return { finalGrades, loading, loadingMore, hasMore, loadMore, error, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse }
 }
 
 // For students: view their own published final grades with course names

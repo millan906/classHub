@@ -557,7 +557,7 @@ function ColHeader({
 
 export default function FacultyGradeBook() {
   const { profile } = useAuth()
-  const { quizzes, submissions, fetchAllSubmissions, fetchExceptionsForQuiz, grantException, revokeException } = useQuizzes()
+  const { quizzes, submissions, fetchAllSubmissions, fetchExceptionsForQuiz, grantException, revokeException } = useQuizzes(profile?.id)
   const { students } = useStudents()
   const { courses } = useCourses(null, profile?.id)
   const { enrollments } = useAllEnrollments()

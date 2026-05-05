@@ -33,7 +33,7 @@ function gwaStanding(gwa: string): string {
 }
 
 export default function StudentGrades() {
-  const { profile } = useAuth()
+  const { profile, loading: authLoading } = useAuth()
   const { grades: finalGrades, loading: gradesLoading } = useMyFinalGrades(profile?.id ?? null)
   const { enrolledCourseIds, loading: enrollLoading } = useMyEnrollments(profile?.id ?? null)
   const { courses, loading: coursesLoading } = useCourses()
@@ -68,7 +68,7 @@ export default function StudentGrades() {
     void fetchComponentGrades()
   }, [profile?.id, enrolledCourseIds.join(',')])
 
-  if (gradesLoading || enrollLoading || coursesLoading) return <Spinner />
+  if (authLoading || gradesLoading || enrollLoading || coursesLoading) return <Spinner />
 
   const enrolledCourses = courses.filter(c => enrolledCourseIds.includes(c.id))
 

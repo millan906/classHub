@@ -27,7 +27,7 @@ import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } fro
 
 export default function FacultyQuizzes() {
   const { profile } = useAuth()
-  const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz, uploadAttachment } = useQuizzes()
+  const { quizzes, submissions, loading, error, createQuiz, updateQuiz, deleteQuiz, toggleQuiz, fetchAllSubmissions, fetchFileSubmissions, saveEssayScores, releaseResults, copyQuiz, uploadAttachment } = useQuizzes(profile?.id)
   const { slides } = useSlides()
   const { students } = useStudents()
   const { courses } = useCourses(null, profile?.id)

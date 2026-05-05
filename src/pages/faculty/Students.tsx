@@ -16,10 +16,10 @@ import type { Profile, Course } from '../../types'
 export default function FacultyStudents() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { students, approveWithCourses, rejectStudent } = useStudents(institution?.id)
+  const { students, loading: studentsLoading, loadingMore, hasMore, loadMore, approveWithCourses, rejectStudent } = useStudents(institution?.id)
   const { courses } = useCourses(null, profile?.id)
   const { enrollments, refetch: refetchEnrollments, unenrollStudent } = useAllEnrollments()
-  const { quizzes, submissions } = useQuizzes()
+  const { quizzes, submissions } = useQuizzes(profile?.id)
   const { groups, columns, entries } = useGradeBook()
 
   const [approvingId, setApprovingId] = useState<string | null>(null)
@@ -387,6 +387,19 @@ export default function FacultyStudents() {
             />
           ))}
         </>
+      )}
+
+      {hasMore && (
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <button onClick={loadMore} disabled={loadingMore} style={{
+            fontSize: '13px', padding: '7px 20px', borderRadius: '8px',
+            border: '0.5px solid rgba(0,0,0,0.25)', background: 'transparent',
+            cursor: loadingMore ? 'default' : 'pointer', opacity: loadingMore ? 0.5 : 1,
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            {loadingMore ? 'Loading…' : 'Load more students'}
+          </button>
+        </div>
       )}
     </div>
   )

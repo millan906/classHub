@@ -10,7 +10,7 @@ import { percentageToGWA, gwaColor } from '../../utils/gwaConversion'
 export default function FacultyFinalGrades() {
   const { profile } = useAuth()
   const { courses } = useCourses(null, profile?.id)
-  const { finalGrades, error: gradesError, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse } = useFinalGrades()
+  const { finalGrades, loadingMore, hasMore, loadMore, error: gradesError, upsertGrade, publishGrade, unpublishGrade, publishAllForCourse } = useFinalGrades()
   const { students: allStudents } = useStudents()
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const { enrollments } = useCourseEnrollments(selectedCourseId)
@@ -305,6 +305,19 @@ export default function FacultyFinalGrades() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {hasMore && (
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <button onClick={loadMore} disabled={loadingMore} style={{
+            fontSize: '13px', padding: '7px 20px', borderRadius: '8px',
+            border: '0.5px solid rgba(0,0,0,0.25)', background: 'transparent',
+            cursor: loadingMore ? 'default' : 'pointer', opacity: loadingMore ? 0.5 : 1,
+            fontFamily: 'Inter, sans-serif',
+          }}>
+            {loadingMore ? 'Loading…' : 'Load more'}
+          </button>
         </div>
       )}
     </div>

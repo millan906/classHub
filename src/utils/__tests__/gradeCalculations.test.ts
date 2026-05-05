@@ -50,6 +50,11 @@ describe('calcScore', () => {
   it('handles perfect score', () => {
     expect(calcScore(100, 100)).toBe(100)
   })
+
+  it('clamps to 100 when earned exceeds total (typo / bonus scenario)', () => {
+    expect(calcScore(110, 100)).toBe(100)
+    expect(calcScore(15, 10)).toBe(100)
+  })
 })
 
 // ─── computeWeightedGrade ─────────────────────────────────────────────────────

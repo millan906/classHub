@@ -11,7 +11,7 @@ export default function StudentAnnouncements() {
   const { institution } = useInstitutionContext()
   const { announcements, loading, loadingMore, hasMore, loadMore } = useAnnouncements(institution?.id)
   const { courses } = useCourses()
-  const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
+  const { enrolledCourseIds, loading: enrollLoading } = useMyEnrollments(profile?.id ?? null)
 
   const visibleAnnouncements = announcements.filter(a =>
     a.course_id == null || enrolledCourseIds.includes(a.course_id)
@@ -20,7 +20,7 @@ export default function StudentAnnouncements() {
   return (
     <div>
       <PageHeader title="Announcements" subtitle="Stay up to date with class updates." />
-      {loading
+      {loading || enrollLoading
         ? null
         : visibleAnnouncements.length === 0
           ? <div style={{ fontSize: '13px', color: '#888' }}>No announcements yet.</div>
