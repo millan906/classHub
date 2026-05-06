@@ -20,6 +20,11 @@ export default function ResetPassword() {
   const [expired, setExpired] = useState(false)
 
   useEffect(() => {
+    // Handle the case where PASSWORD_RECOVERY fired before this component mounted
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setReady(true)
+    })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') setReady(true)
     })

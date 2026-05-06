@@ -21,8 +21,22 @@ export function useAuth() {
   }
 
   useEffect(() => {
+    let isRecovery = false
+
+    // Subscribe first so the PASSWORD_RECOVERY event sets the flag before getSession resolves
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        isRecovery = true
+        setLoading(false)
+        return
+      }
+      if (session?.user) fetchProfile(session.user.id)
+      else { setProfile(null); setLoading(false) }
+    })
+
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
+        if (isRecovery) return  // let ResetPassword handle this
         if (session?.user) fetchProfile(session.user.id)
         else setLoading(false)
       })
@@ -30,11 +44,6 @@ export function useAuth() {
         setError('Failed to load session. Please refresh.')
         setLoading(false)
       })
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) fetchProfile(session.user.id)
-      else { setProfile(null); setLoading(false) }
-    })
 
     return () => subscription.unsubscribe()
   }, [])
