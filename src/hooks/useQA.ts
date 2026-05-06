@@ -4,7 +4,7 @@ import { humanizeError } from '../utils/humanizeError'
 import type { Question } from '../types'
 
 const PAGE_SIZE = 20
-const QA_SELECT = `*, poster:profiles!posted_by(id, full_name, email, role, status, created_at), answers(*, poster:profiles!posted_by(id, full_name, email, role, status, created_at))`
+const QA_SELECT = `*, poster:profiles!posted_by(id, full_name), answers(*, poster:profiles!posted_by(id, full_name))`
 
 export function useQA(institutionId?: string | null) {
   const [questions, setQuestions] = useState<Question[]>([])

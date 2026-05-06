@@ -61,7 +61,7 @@ export function useFinalGrades() {
       const rows = data || []
       setFinalGrades(prev => [...prev, ...rows])
       setHasMore(rows.length === PAGE_SIZE)
-    } catch (_err) {
+    } catch {
       // silent — already showing loaded data
     } finally {
       setLoadingMore(false)

@@ -351,7 +351,7 @@ export default function StudentDashboard() {
                     cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
                   }}
                 >
-                  Start quiz →
+                  Check assessment →
                 </button>
               )}
             </div>
@@ -371,7 +371,7 @@ export default function StudentDashboard() {
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#065f46" strokeWidth="2.5">
                     <polygon points="4,2 14,8 4,14" />
                   </svg>
-                  Start quiz now
+                  Check assessment
                 </button>
               </div>
             )}

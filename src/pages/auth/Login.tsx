@@ -15,6 +15,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [cooldownSecs, setCooldownSecs] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const navigate = useNavigate()
@@ -117,7 +118,40 @@ export default function Login() {
             <div style={{ fontSize: '12px', color: '#888' }}>Password</div>
             <Link to="/forgot-password" style={{ fontSize: '12px', color: '#1D9E75', textDecoration: 'none' }}>Forgot password?</Link>
           </div>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" style={inputStyle} required />
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              style={{ ...inputStyle, marginBottom: 0, paddingRight: '36px', boxSizing: 'border-box', width: '100%' }}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(p => !p)}
+              style={{
+                position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                color: '#888', display: 'flex', alignItems: 'center',
+              }}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              )}
+            </button>
+          </div>
+          <div style={{ marginBottom: '12px' }} />
 
           {isBlocked && (
             <div style={{ fontSize: '12px', color: '#7A4F00', background: '#FFF8EC', border: '0.5px solid rgba(239,159,39,0.4)', borderRadius: '8px', padding: '8px 12px', marginBottom: '10px' }}>

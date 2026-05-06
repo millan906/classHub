@@ -19,9 +19,9 @@ import { QuizCard } from '../../components/quizzes/QuizCard'
 import { QuizBuilder, TYPE_CONFIG } from '../../components/quizzes/QuizBuilder'
 import { QuizResults } from '../../components/quizzes/QuizResults'
 import { ManualEntriesSection } from '../../components/quizzes/ManualEntriesSection'
-import { PdfQuizCard } from '../../components/pdfquizzes/PdfQuizCard'
 import { PdfQuizBuilder } from '../../components/pdfquizzes/PdfQuizBuilder'
 import { PdfQuizResults } from '../../components/pdfquizzes/PdfQuizResults'
+import { PdfQuizSection } from '../../components/pdfquizzes/PdfQuizSection'
 import { Toast } from '../../components/ui/Toast'
 import type { Quiz, FileSubmission, QuizFormData, PdfQuiz, PdfQuizFormData } from '../../types'
 
@@ -46,7 +46,6 @@ export default function FacultyQuizzes() {
   const [editingPdfQuiz, setEditingPdfQuiz] = useState<PdfQuiz | null>(null)
   const [viewingPdfResults, setViewingPdfResults] = useState<PdfQuiz | null>(null)
   const [confirmDeletePdf, setConfirmDeletePdf] = useState<PdfQuiz | null>(null)
-  const [pdfSectionCollapsed, setPdfSectionCollapsed] = useState(false)
   const [toast, setToast] = useState<{ message: string; type?: 'success' | 'error' } | null>(null)
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
@@ -513,64 +512,23 @@ export default function FacultyQuizzes() {
         })
       })()}
 
-      {/* PDF Quizzes section */}
-      <div style={{ marginTop: '24px', marginBottom: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <button
-            onClick={() => setPdfSectionCollapsed(p => !p)}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}
-          >
-            <span style={{ fontSize: '11px', color: '#888', display: 'inline-block', transition: 'transform 0.15s', transform: pdfSectionCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>▼</span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PDF Quizzes</span>
-            <span style={{ fontSize: '11px', color: '#aaa', fontWeight: 400 }}>
-              ({pdfQuizzes.filter(q => filterCourseId === 'all' || (filterCourseId === 'none' ? !q.course_id : q.course_id === filterCourseId)).length})
-            </span>
-          </button>
-          <Button variant="primary" onClick={() => setShowPdfBuilder(true)}>+ New PDF Quiz</Button>
-        </div>
-
-        {!pdfSectionCollapsed && (() => {
-          const filtered = pdfQuizzes.filter(q => {
-            if (filterCourseId === 'all') return true
-            if (filterCourseId === 'none') return !q.course_id
-            return q.course_id === filterCourseId
-          })
-          if (filtered.length === 0) {
-            return <div style={{ fontSize: '13px', color: '#888' }}>No PDF quizzes yet.</div>
-          }
-          return filtered.map(quiz => {
-            const quizCourse = quiz.course_id ? courses.find(c => c.id === quiz.course_id) : null
-            const quizSubs = pdfSubmissions.filter(s => s.pdf_quiz_id === quiz.id)
-            return (
-              <div key={quiz.id}>
-                {quizCourse && filterCourseId === 'all' && (
-                  <div style={{ marginBottom: '4px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px', background: '#E6F1FB', color: '#185FA5', display: 'inline-block' }}>
-                      {quizCourse.name}{quizCourse.section ? ` · Section ${quizCourse.section}` : ''}
-                    </span>
-                  </div>
-                )}
-                <PdfQuizCard
-                  quiz={quiz}
-                  submissions={quizSubs}
-                  totalStudents={enrolledForCourse(quiz.course_id).length}
-                  isFaculty
-                  courses={courses}
-                  onToggle={togglePdfQuiz}
-                  onReleaseResults={releasePdfResults}
-                  onCopy={async (quizId, targetCourseId) => {
-                    await copyPdfQuiz(quizId, targetCourseId, profile!.id)
-                    showToast('PDF Quiz copied successfully')
-                  }}
-                  onEdit={setEditingPdfQuiz}
-                  onDelete={setConfirmDeletePdf}
-                  onViewResults={setViewingPdfResults}
-                />
-              </div>
-            )
-          })
-        })()}
-      </div>
+      <PdfQuizSection
+        pdfQuizzes={pdfQuizzes}
+        pdfSubmissions={pdfSubmissions}
+        filterCourseId={filterCourseId}
+        courses={courses}
+        enrolledForCourse={enrolledForCourse}
+        onToggle={togglePdfQuiz}
+        onReleaseResults={releasePdfResults}
+        onCopy={async (quizId, targetCourseId) => {
+          await copyPdfQuiz(quizId, targetCourseId, profile!.id)
+          showToast('PDF Quiz copied successfully')
+        }}
+        onEdit={setEditingPdfQuiz}
+        onDelete={setConfirmDeletePdf}
+        onViewResults={setViewingPdfResults}
+        onNew={() => setShowPdfBuilder(true)}
+      />
 
       <ManualEntriesSection
         columns={columns}

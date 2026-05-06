@@ -63,6 +63,7 @@ export default function FacultyDashboard() {
 
   // ── Essays pending grading (scoped to selected course) ────────────────────
   const { essayPendingCount, courseQuizIds, closingSoon } = useMemo(() => {
+    // eslint-disable-next-line react-hooks/purity
     const now = Date.now()
     const in48h = now + 48 * 60 * 60 * 1000
     const ids = new Set(courseQuizzes.map(q => q.id))
