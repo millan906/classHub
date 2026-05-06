@@ -10,7 +10,7 @@ interface Props {
   courses: Course[]
   enrolledForCourse: (courseId: string | null | undefined) => Profile[]
   onToggle: (id: string, open: boolean) => Promise<void>
-  onReleaseResults: (id: string) => Promise<void>
+  onReleaseResults: (id: string, visible: boolean) => Promise<void>
   onCopy: (quizId: string, targetCourseId: string) => Promise<void>
   onEdit: (quiz: PdfQuiz) => void
   onDelete: (quiz: PdfQuiz) => void
