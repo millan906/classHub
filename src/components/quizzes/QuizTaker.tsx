@@ -260,6 +260,11 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
 
   async function handleSubmit(auto = false) {
     if (submitting) return
+    const isFileOnly = quiz.allow_file_upload && questions.length === 0
+    if (isFileOnly && !pendingFile && !existingFile) {
+      setSubmitError('Please select a file to upload before submitting.')
+      return
+    }
     setSubmitting(true)
     setSubmitError('')
     let earned = 0
@@ -434,11 +439,11 @@ export function QuizTaker({ quiz, onSubmit, onCancel, onLogEvent, onFileUpload, 
           <input type="file" accept="application/pdf,image/*"
             onChange={e => {
               const f = e.target.files?.[0] ?? null
-              if (f && f.size > 50 * 1024 * 1024) { alert('File too large. Maximum size is 50 MB.'); e.target.value = ''; return }
+              if (f && f.size > 25 * 1024 * 1024) { alert('File too large. Maximum size is 25 MB.'); e.target.value = ''; return }
               setPendingFile(f)
             }}
             style={{ fontSize: '13px' }} />
-          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>PDF or image only · Max 50 MB</div>
+          <div style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>PDF or image only · Max 25 MB</div>
           {pendingFile && (
             <div style={{ fontSize: '12px', color: '#0F6E56', marginTop: '6px' }}>
               ✓ Ready to submit: {pendingFile.name} ({(pendingFile.size / 1024 / 1024).toFixed(1)} MB)

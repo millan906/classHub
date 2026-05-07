@@ -65,6 +65,9 @@ export default function StudentQuizzes() {
   async function handleSubmit(answers: Record<string, string>, earnedPoints: number, totalPoints: number, autoSubmitted = false, keystrokeCount = 0, startedAt?: string, answerTimestamps?: Record<string, string>) {
     if (!profile || !takingQuiz) return
     await submitQuiz(takingQuiz.id, profile.id, answers, earnedPoints, totalPoints, autoSubmitted, keystrokeCount, startedAt, answerTimestamps)
+    // Invalidate the file submission cache for this quiz so "View submission →"
+    // re-fetches after a resubmit (otherwise a stale null entry hides the new file).
+    setFileSubMap(prev => { const next = { ...prev }; delete next[takingQuiz.id]; return next })
     const hasEssay = (takingQuiz.questions ?? []).some(q => q.type === 'essay')
     if (!hasEssay) setTimeout(() => setTakingQuiz(null), 3000)
   }
