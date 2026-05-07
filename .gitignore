@@ -28,3 +28,8 @@ dist-ssr
 *.sw?
 .vercel
 .env*.local
+supabase/.temp/
+.claude/
+coverage/
+*.rtf
+*.pages
