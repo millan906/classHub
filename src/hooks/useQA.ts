@@ -73,10 +73,21 @@ export function useQA(institutionId?: string | null) {
     return () => { supabase.removeChannel(channel) }
   }, [institutionId])
 
+  async function uploadAttachment(file: File): Promise<{ url: string; name: string }> {
+    const ext = file.name.split('.').pop()
+    const path = `qa/${crypto.randomUUID()}.${ext}`
+    const { error } = await supabase.storage.from('attachments').upload(path, file, { upsert: false })
+    if (error) throw error
+    const { data: { publicUrl } } = supabase.storage.from('attachments').getPublicUrl(path)
+    return { url: publicUrl, name: file.name }
+  }
+
   async function postQuestion(
     title: string, body: string, tag: string, userId: string,
     isPrivate = false, posterRole?: string,
     courseId?: string | null, recipientIds?: string[] | null,
+    questionType: 'question' | 'excuse_request' = 'question',
+    attachmentUrl?: string | null, attachmentName?: string | null,
   ) {
     const isDM = recipientIds && recipientIds.length > 0
     const { data } = await supabase
@@ -86,6 +97,9 @@ export function useQA(institutionId?: string | null) {
         is_private: isDM ? true : isPrivate,
         course_id: courseId ?? null,
         recipient_ids: isDM ? recipientIds : null,
+        question_type: questionType,
+        attachment_url: attachmentUrl ?? null,
+        attachment_name: attachmentName ?? null,
       })
       .select('id')
       .single()
@@ -122,8 +136,10 @@ export function useQA(institutionId?: string | null) {
         await supabase.from('notifications').insert(
           facultyIds.map((uid: string) => ({
             user_id: uid,
-            title: 'New question in Q&A',
-            body: `"${title}"${isPrivate ? ' (private)' : ''} — needs your attention.`,
+            title: questionType === 'excuse_request' ? 'New excuse / request in Q&A' : 'New question in Q&A',
+            body: questionType === 'excuse_request'
+              ? `"${title}" — a student submitted an excuse or request.`
+              : `"${title}"${isPrivate ? ' (private)' : ''} — needs your attention.`,
             type: 'qa_new_question',
             related_id: data.id,
             course_name: null,
@@ -205,6 +221,6 @@ export function useQA(institutionId?: string | null) {
     }) as Question))
   }
 
-  return { questions, loading, loadingMore, hasMore, loadMore, error, postQuestion, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
+  return { questions, loading, loadingMore, hasMore, loadMore, error, postQuestion, uploadAttachment, updateQuestion, deleteQuestion, toggleQuestion, postAnswer, endorseAnswer, refetch: fetchQuestions }
 
 }

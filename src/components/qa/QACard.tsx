@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { Avatar, getInitials, getAvatarColors } from '../ui/Avatar'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import type { Question, Profile } from '../../types'
+import { viewFile } from '../../utils/viewFile'
+import type { Question, Profile, Quiz, AttendanceSession } from '../../types'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '7px 11px', fontSize: '13px',
@@ -28,9 +29,13 @@ interface QACardProps {
   onUpdate?: (id: string, title: string, body: string, tag: string, isPrivate?: boolean) => Promise<void>
   onToggle?: (id: string, isAnswered: boolean) => Promise<void>
   onDelete?: (id: string) => Promise<void>
+  quizzes?: Quiz[]
+  attendanceSessions?: AttendanceSession[]
+  onGrantRetake?: (quizId: string, studentId: string) => Promise<void>
+  onLogExcused?: (sessionId: string, studentId: string) => Promise<void>
 }
 
-export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate, onToggle, onDelete }: QACardProps) {
+export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate, onToggle, onDelete, quizzes, attendanceSessions, onGrantRetake, onLogExcused }: QACardProps) {
   const [showReply, setShowReply] = useState(false)
   const [showAnswers, setShowAnswers] = useState(false)
   const [replyText, setReplyText] = useState('')
@@ -43,9 +48,42 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [excusePanel, setExcusePanel] = useState<'retake' | 'excused' | null>(null)
+  const [selectedQuizId, setSelectedQuizId] = useState('')
+  const [selectedSessionId, setSelectedSessionId] = useState('')
+  const [acting, setActing] = useState(false)
+  const [actionDone, setActionDone] = useState('')
+  const [actionError, setActionError] = useState('')
 
   const isFaculty = currentProfile.role === 'faculty'
   const isOwner = currentProfile.id === question.posted_by
+  const isExcuseRequest = question.question_type === 'excuse_request'
+  const courseQuizzes = (quizzes ?? []).filter(q => !question.course_id || q.course_id === question.course_id)
+  const courseSessions = (attendanceSessions ?? []).filter(s => !question.course_id || s.course_id === question.course_id)
+
+  async function handleGrantRetake() {
+    if (!selectedQuizId || !onGrantRetake) return
+    setActing(true); setActionError('')
+    try {
+      await onGrantRetake(selectedQuizId, question.posted_by)
+      setActionDone('Retake granted successfully.')
+      setExcusePanel(null); setSelectedQuizId('')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to grant retake.')
+    } finally { setActing(false) }
+  }
+
+  async function handleLogExcused() {
+    if (!selectedSessionId || !onLogExcused) return
+    setActing(true); setActionError('')
+    try {
+      await onLogExcused(selectedSessionId, question.posted_by)
+      setActionDone('Marked as excused in attendance.')
+      setExcusePanel(null); setSelectedSessionId('')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to log excused absence.')
+    } finally { setActing(false) }
+  }
   const wasEdited = question.updated_at && question.updated_at !== question.created_at
   const borderColor = question.is_answered ? '#1D9E75' : '#EF9F27'
   const poster = question.poster
@@ -163,6 +201,14 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
             🔒 Private
           </span>
         )}
+        {question.question_type === 'excuse_request' && (
+          <span style={{
+            fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
+            background: '#FEF3CD', color: '#7A4F00', flexShrink: 0,
+          }}>
+            📋 Excuse / Request
+          </span>
+        )}
         <Badge
           label={question.is_answered ? `${answerCount} response${answerCount !== 1 ? 's' : ''}` : 'Unanswered'}
           color={question.is_answered ? 'green' : 'amber'}
@@ -187,6 +233,104 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
       <div style={{ fontSize: '13px', color: '#555', lineHeight: 1.6, marginBottom: '10px' }}>
         {question.body}
       </div>
+
+      {/* Attachment — shown for excuse requests that have a supporting document */}
+      {question.attachment_url && (
+        <div style={{ marginBottom: '10px' }}>
+          <button
+            onClick={() => viewFile(question.attachment_url!)}
+            style={{
+              fontSize: '12px', color: '#185FA5', background: '#EFF6FF',
+              border: '0.5px solid #BFDBFE', borderRadius: '8px',
+              padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            📎 {question.attachment_name ?? 'View document'}
+          </button>
+        </div>
+      )}
+
+      {/* Faculty action panel — only on excuse requests */}
+      {isFaculty && isExcuseRequest && (onGrantRetake || onLogExcused) && (
+        <div style={{ background: '#F8F8F8', border: '0.5px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '10px 12px', marginBottom: '10px' }}>
+          <div style={{ fontSize: '11px', color: '#888', fontWeight: 500, marginBottom: '8px' }}>Actions</div>
+          {actionDone && !excusePanel && (
+            <div style={{ fontSize: '12px', color: '#0F6E56', marginBottom: '6px' }}>✓ {actionDone}</div>
+          )}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: excusePanel ? '10px' : 0 }}>
+            {onGrantRetake && (
+              <button
+                onClick={() => { setExcusePanel(excusePanel === 'retake' ? null : 'retake'); setActionError('') }}
+                style={{
+                  fontSize: '12px', fontWeight: 500, padding: '4px 12px', borderRadius: '999px',
+                  border: '0.5px solid #1D9E75', background: excusePanel === 'retake' ? '#1D9E75' : 'transparent',
+                  color: excusePanel === 'retake' ? '#fff' : '#1D9E75', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                Grant retake
+              </button>
+            )}
+            {onLogExcused && (
+              <button
+                onClick={() => { setExcusePanel(excusePanel === 'excused' ? null : 'excused'); setActionError('') }}
+                style={{
+                  fontSize: '12px', fontWeight: 500, padding: '4px 12px', borderRadius: '999px',
+                  border: '0.5px solid #185FA5', background: excusePanel === 'excused' ? '#185FA5' : 'transparent',
+                  color: excusePanel === 'excused' ? '#fff' : '#185FA5', cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                Log excused absence
+              </button>
+            )}
+          </div>
+
+          {excusePanel === 'retake' && (
+            <div>
+              {courseQuizzes.length === 0
+                ? <div style={{ fontSize: '12px', color: '#aaa' }}>No assessments found for this course.</div>
+                : <select
+                    value={selectedQuizId}
+                    onChange={e => setSelectedQuizId(e.target.value)}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '13px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff', fontFamily: 'inherit', marginBottom: '6px' }}
+                  >
+                    <option value=''>Select assessment…</option>
+                    {courseQuizzes.map(q => <option key={q.id} value={q.id}>{q.title}</option>)}
+                  </select>
+              }
+              {actionError && <div style={{ fontSize: '12px', color: '#A32D2D', marginBottom: '6px' }}>{actionError}</div>}
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                <Button onClick={() => { setExcusePanel(null); setSelectedQuizId('') }}>Cancel</Button>
+                <Button variant="primary" onClick={handleGrantRetake} disabled={!selectedQuizId || acting}>
+                  {acting ? 'Granting…' : 'Grant'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {excusePanel === 'excused' && (
+            <div>
+              {courseSessions.length === 0
+                ? <div style={{ fontSize: '12px', color: '#aaa' }}>No attendance sessions found for this course.</div>
+                : <select
+                    value={selectedSessionId}
+                    onChange={e => setSelectedSessionId(e.target.value)}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '13px', borderRadius: '8px', border: '0.5px solid rgba(0,0,0,0.25)', background: '#fff', fontFamily: 'inherit', marginBottom: '6px' }}
+                  >
+                    <option value=''>Select session…</option>
+                    {courseSessions.map(s => <option key={s.id} value={s.id}>{s.label} — {s.date}</option>)}
+                  </select>
+              }
+              {actionError && <div style={{ fontSize: '12px', color: '#A32D2D', marginBottom: '6px' }}>{actionError}</div>}
+              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                <Button onClick={() => { setExcusePanel(null); setSelectedSessionId('') }}>Cancel</Button>
+                <Button variant="primary" onClick={handleLogExcused} disabled={!selectedSessionId || acting}>
+                  {acting ? 'Logging…' : 'Log'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Actions — all in one row */}
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>

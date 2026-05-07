@@ -202,6 +202,9 @@ export interface Question {
   updated_at?: string
   poster?: Profile
   answers?: Answer[]
+  question_type?: 'question' | 'excuse_request'
+  attachment_url?: string | null
+  attachment_name?: string | null
 }
 
 export interface Answer {

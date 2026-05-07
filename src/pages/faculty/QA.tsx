@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useInstitutionContext } from '../../contexts/InstitutionContext'
 import { useQA } from '../../hooks/useQA'
+import { useQuizzes } from '../../hooks/useQuizzes'
 import { useCourses } from '../../hooks/useCourses'
 import { useStudents } from '../../hooks/useStudents'
 import { useAllEnrollments } from '../../hooks/useEnrollments'
+import { supabase } from '../../lib/supabase'
 import { PageHeader } from '../../components/ui/Card'
 import { PostQuestion } from '../../components/qa/PostQuestion'
 import { QACard } from '../../components/qa/QACard'
+import type { AttendanceSession } from '../../types'
 
 export default function FacultyQA() {
   const { profile } = useAuth()
@@ -19,6 +22,17 @@ export default function FacultyQA() {
   const { courses } = useCourses(institution?.id, profile?.id)
   const { students } = useStudents(institution?.id)
   const { enrollments: allEnrollments } = useAllEnrollments()
+  const { quizzes, grantException } = useQuizzes(profile?.id)
+  const [allSessions, setAllSessions] = useState<AttendanceSession[]>([])
+
+  useEffect(() => {
+    if (courses.length === 0) return
+    const courseIds = courses.map(c => c.id)
+    supabase.from('attendance_sessions').select('*')
+      .in('course_id', courseIds)
+      .order('date', { ascending: false })
+      .then(({ data }) => setAllSessions(data ?? []))
+  }, [courses])
 
   const approvedStudents = students.filter(s => s.status === 'approved')
 
@@ -30,7 +44,10 @@ export default function FacultyQA() {
     ? allQuestions.filter(q => q.course_id === courseFilter || enrolledInFilter.has(q.posted_by))
     : allQuestions
 
-  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean, courseId?: string | null, recipientIds?: string[] | null) {
+  async function handlePost(
+    title: string, body: string, tag: string, isPrivate: boolean,
+    courseId?: string | null, recipientIds?: string[] | null,
+  ) {
     if (!profile) return
     await postQuestion(title, body, tag, profile.id, isPrivate, profile.role, courseId, recipientIds)
   }
@@ -38,6 +55,19 @@ export default function FacultyQA() {
   async function handleAnswer(questionId: string, body: string) {
     if (!profile) return
     await postAnswer(questionId, body, profile.id, profile.role)
+  }
+
+  async function handleGrantRetake(quizId: string, studentId: string) {
+    if (!profile) return
+    await grantException(quizId, studentId, 1, profile.id)
+  }
+
+  async function handleLogExcused(sessionId: string, studentId: string) {
+    const { error } = await supabase.from('attendance_records').upsert(
+      { session_id: sessionId, student_id: studentId, status: 'excused' },
+      { onConflict: 'session_id,student_id' }
+    )
+    if (error) throw error
   }
 
   async function handleDelete(id: string) {
@@ -98,6 +128,10 @@ export default function FacultyQA() {
               onUpdate={updateQuestion}
               onToggle={toggleQuestion}
               onDelete={handleDelete}
+              quizzes={quizzes}
+              attendanceSessions={allSessions}
+              onGrantRetake={handleGrantRetake}
+              onLogExcused={handleLogExcused}
             />
           ))
       }

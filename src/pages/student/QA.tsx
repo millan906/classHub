@@ -10,16 +10,21 @@ import { QACard } from '../../components/qa/QACard'
 export default function StudentQA() {
   const { profile } = useAuth()
   const { institution } = useInstitutionContext()
-  const { questions, loadingMore, hasMore, loadMore, error: qaError, postQuestion, updateQuestion, postAnswer } = useQA(institution?.id)
+  const { questions, loadingMore, hasMore, loadMore, error: qaError, postQuestion, uploadAttachment, updateQuestion, postAnswer } = useQA(institution?.id)
   const { courses: allCourses } = useCourses(institution?.id)
   const { enrolledCourseIds } = useMyEnrollments(profile?.id ?? null)
 
   // Only show courses the student is enrolled in
   const enrolledCourses = allCourses.filter(c => enrolledCourseIds.includes(c.id))
 
-  async function handlePost(title: string, body: string, tag: string, isPrivate: boolean, courseId?: string | null) {
+  async function handlePost(
+    title: string, body: string, tag: string, isPrivate: boolean,
+    courseId?: string | null, recipientIds?: string[] | null,
+    questionType?: 'question' | 'excuse_request',
+    attachmentUrl?: string | null, attachmentName?: string | null,
+  ) {
     if (!profile) return
-    await postQuestion(title, body, tag, profile.id, isPrivate, profile.role, courseId)
+    await postQuestion(title, body, tag, profile.id, isPrivate, profile.role, courseId, recipientIds, questionType, attachmentUrl, attachmentName)
   }
 
   async function handleAnswer(questionId: string, body: string) {
@@ -43,7 +48,7 @@ export default function StudentQA() {
           {qaError}
         </div>
       )}
-      <PostQuestion onPost={handlePost} courses={enrolledCourses} />
+      <PostQuestion onPost={handlePost} courses={enrolledCourses} onUploadAttachment={uploadAttachment} />
       {visibleQuestions.length === 0
         ? <div style={{ fontSize: '13px', color: '#888' }}>No questions yet. Be the first to ask!</div>
         : visibleQuestions.map(q => (
