@@ -178,54 +178,50 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
         <Avatar initials={initials} bg={colors.bg} color={colors.color} size={28} seed={poster?.avatar_seed} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '13px', fontWeight: 600 }}>{question.title}</div>
-          <div style={{ fontSize: '11px', color: '#888' }}>
-            {poster?.full_name ?? 'Unknown'} · {timeAgo(question.created_at)}
-            {wasEdited && (
-              <span style={{ color: '#bbb', marginLeft: '4px' }}>· edited {timeAgo(question.updated_at!)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '11px', color: '#888' }}>
+              {poster?.full_name ?? 'Unknown'} · {timeAgo(question.created_at)}
+              {wasEdited && (
+                <span style={{ color: '#bbb', marginLeft: '4px' }}>· edited {timeAgo(question.updated_at!)}</span>
+              )}
+            </span>
+            {question.is_private && (
+              <span style={{ fontSize: '11px', color: '#888' }}>· 🔒</span>
             )}
+            <span style={{ marginLeft: 'auto', flexShrink: 0 }}>
+              {question.is_answered
+                ? <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px', background: '#E1F5EE', color: '#0F6E56' }}>Closed</span>
+                : <span style={{ fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px', background: '#FEF3CD', color: '#7A4F00' }}>Unanswered</span>
+              }
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Badges row — indented to align with title, wraps on mobile */}
-      <div style={{ paddingLeft: '38px', display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
-        {question.recipient_ids && question.recipient_ids.length > 0 && isFaculty && (
-          <span style={{
-            fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#EFF6FF', color: '#1D4ED8',
-          }}>
-            → {question.recipient_ids.length === 1 ? '1 student' : `${question.recipient_ids.length} students`}
-          </span>
-        )}
-        {question.is_private && !question.recipient_ids?.length && (
-          <span style={{
-            fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#F3F0FF', color: '#5B4FCF',
-          }}>
-            🔒 Private
-          </span>
-        )}
-        {question.question_type === 'excuse_request' && (
-          <span style={{
-            fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#FEF3CD', color: '#7A4F00',
-          }}>
-            📋 Excuse / Request
-          </span>
-        )}
-        <Badge
-          label={question.is_answered ? `${answerCount} response${answerCount !== 1 ? 's' : ''}` : 'Unanswered'}
-          color={question.is_answered ? 'green' : 'amber'}
-        />
-        {question.is_answered && (
-          <span style={{
-            fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#E1F5EE', color: '#0F6E56',
-          }}>
-            Closed
-          </span>
-        )}
-      </div>
+      {/* Badges row — content metadata only, wraps on mobile */}
+      {(question.question_type === 'excuse_request' || (question.recipient_ids && question.recipient_ids.length > 0 && isFaculty) || answerCount > 0) && (
+        <div style={{ paddingLeft: '38px', display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+          {question.recipient_ids && question.recipient_ids.length > 0 && isFaculty && (
+            <span style={{
+              fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
+              background: '#EFF6FF', color: '#1D4ED8',
+            }}>
+              → {question.recipient_ids.length === 1 ? '1 student' : `${question.recipient_ids.length} students`}
+            </span>
+          )}
+          {question.question_type === 'excuse_request' && (
+            <span style={{
+              fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
+              background: '#FEF3CD', color: '#7A4F00',
+            }}>
+              📋 Excuse / Request
+            </span>
+          )}
+          {answerCount > 0 && (
+            <Badge label={`${answerCount} response${answerCount !== 1 ? 's' : ''}`} color="green" />
+          )}
+        </div>
+      )}
 
       {/* Tag — above question body */}
       {question.tag && (
