@@ -173,7 +173,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
       borderLeft: `3px solid ${borderColor}`,
       borderRadius: '0 12px 12px 0', padding: '0.9rem 1.1rem', marginBottom: '8px',
     }}>
-      {/* Header: avatar + title + status */}
+      {/* Header: avatar + title/author only — badges on their own row below */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '4px' }}>
         <Avatar initials={initials} bg={colors.bg} color={colors.color} size={28} seed={poster?.avatar_seed} />
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -185,10 +185,14 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
             )}
           </div>
         </div>
+      </div>
+
+      {/* Badges row — indented to align with title, wraps on mobile */}
+      <div style={{ paddingLeft: '38px', display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
         {question.recipient_ids && question.recipient_ids.length > 0 && isFaculty && (
           <span style={{
             fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#EFF6FF', color: '#1D4ED8', flexShrink: 0,
+            background: '#EFF6FF', color: '#1D4ED8',
           }}>
             → {question.recipient_ids.length === 1 ? '1 student' : `${question.recipient_ids.length} students`}
           </span>
@@ -196,7 +200,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
         {question.is_private && !question.recipient_ids?.length && (
           <span style={{
             fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#F3F0FF', color: '#5B4FCF', flexShrink: 0,
+            background: '#F3F0FF', color: '#5B4FCF',
           }}>
             🔒 Private
           </span>
@@ -204,7 +208,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
         {question.question_type === 'excuse_request' && (
           <span style={{
             fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#FEF3CD', color: '#7A4F00', flexShrink: 0,
+            background: '#FEF3CD', color: '#7A4F00',
           }}>
             📋 Excuse / Request
           </span>
@@ -216,7 +220,7 @@ export function QACard({ question, currentProfile, onAnswer, onEndorse, onUpdate
         {question.is_answered && (
           <span style={{
             fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '999px',
-            background: '#E1F5EE', color: '#0F6E56', flexShrink: 0,
+            background: '#E1F5EE', color: '#0F6E56',
           }}>
             Closed
           </span>
